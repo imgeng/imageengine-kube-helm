@@ -35,7 +35,7 @@ entries:
   - annotations:
       artifacthub.io/signKey: |
         fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
-        url: https://kube.imageengine.io/charts/pubkey.asc
+        url: https://kube.imageengine.io/pubkey.asc
     apiVersion: v2
     appVersion: 2.10.9
     created: "2026-04-19T16:17:31.994440001Z"
@@ -57,7 +57,7 @@ entries:
       url: https://www.scientiamobile.com
     name: imageengine-kube
     sources:
-    - https://kube.imageengine.io/charts
+    - https://kube.imageengine.io
     type: application
     urls:
     - imageengine-kube-0.8.8.tgz
