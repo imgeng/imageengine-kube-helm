@@ -2,7 +2,7 @@
 
 ImageEngine Kube deploys the [ImageEngine](https://imageengine.io) image-optimization and delivery platform inside your own Kubernetes cluster — device-aware image transformation, multi-tier caching, and edge delivery, all running on infrastructure you control. See [imageengine.io/why-kube/](https://imageengine.io/why-kube/) for what the platform does and why you might want to self-host it.
 
-The chart is published to the Helm repository at `https://kube.imageengine.io/charts`.
+The chart is published to the Helm repository at `https://kube.imageengine.io`. Source and issue tracking live at [`imgeng/imageengine-kube-helm`](https://github.com/imgeng/imageengine-kube-helm) on GitHub.
 
 > **Active trial or subscription required.** A single ImageEngine API key is used for both runtime authentication (origin configs, device data, purges) and for pulling the chart's container images from `docker.scientiamobile.com`. You cannot install the chart without one. Sign up for a trial or subscription at [imageengine.io](https://imageengine.io) to get your key.
 
@@ -12,7 +12,7 @@ For anything beyond the quick-start below, see the docs linked in [Where to next
 
 1. **Add the Helm repository**
    ```bash
-   helm repo add imageengine https://kube.imageengine.io/charts
+   helm repo add imageengine https://kube.imageengine.io
    helm repo update
    ```
 
@@ -54,7 +54,7 @@ For the full step-by-step including a smoke-test `curl`, see [docs/GETTING_START
 
 ## Verifying the chart signature (optional)
 
-Every published chart `.tgz` is GPG-signed. A matching `.prov` provenance file is published alongside each release, and our public key is available at [kube.imageengine.io/charts/pubkey.asc](https://kube.imageengine.io/charts/pubkey.asc).
+Every published chart `.tgz` is GPG-signed. A matching `.prov` provenance file is published alongside each release, and our public key is available at [kube.imageengine.io/pubkey.asc](https://kube.imageengine.io/pubkey.asc).
 
 **Fingerprint:** `C3A5 5111 ED91 FEDE 4A82 A4B4 4632 6606 0957 C4B3`
 
@@ -65,7 +65,7 @@ To verify a chart before installing:
 # The gnupg-ring: prefix forces the classic OpenPGP keyring format that
 # Helm's --verify can read. Without it, GPG 2.1+ creates a keybox (KBX)
 # file that Helm rejects with "tag byte does not have MSB set".
-curl -fsSL https://kube.imageengine.io/charts/pubkey.asc \
+curl -fsSL https://kube.imageengine.io/pubkey.asc \
    | gpg --no-default-keyring --no-options \
          --keyring gnupg-ring:$HOME/.gnupg/imageengine-pubring.gpg --import
 

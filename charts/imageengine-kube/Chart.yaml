@@ -2,12 +2,13 @@ apiVersion: v2
 name: imageengine-kube
 description: ImageEngine - cloud-native image optimization
 type: application
-version: 0.8.8
+version: 0.8.9
 appVersion: "2.10.9"
 kubeVersion: ">=1.30.0-0"
 home: https://imageengine.io
 sources:
-  - https://kube.imageengine.io/charts
+  - https://kube.imageengine.io
+  - https://github.com/imgeng/imageengine-kube-helm
 icon: https://imageengine.io/favicon.ico
 keywords:
   - image-optimization
@@ -23,4 +24,4 @@ maintainers:
 annotations:
   artifacthub.io/signKey: |
     fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
-    url: https://kube.imageengine.io/charts/pubkey.asc
+    url: https://kube.imageengine.io/pubkey.asc
