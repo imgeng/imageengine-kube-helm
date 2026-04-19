@@ -97,9 +97,28 @@ helm install my-imageengine imageengine/imageengine-kube \
   <p>Signing key fingerprint:</p>
   <p><span class="fp">C3A5 5111 ED91 FEDE 4A82&nbsp; A4B4 4632 6606 0957 C4B3</span></p>
 
+  <h2>Documentation</h2>
+  <p>Full chart documentation lives alongside the source on GitHub:</p>
+  <ul class="links">
+    <li><a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/README.md">Chart README</a> &mdash; quick start, signature verification, provider presets</li>
+    <li><a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/GETTING_STARTED.md">Getting started</a> &mdash; full first-deployment walkthrough</li>
+    <li><a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/REQUIREMENTS.md">Requirements</a> &mdash; Kubernetes version, storage, network, compute</li>
+    <li><a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/SIZING.md">Sizing</a> &mdash; recommended footprints by traffic level</li>
+    <li><a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/CUSTOMIZATIONS.md">Customizations</a> &mdash; replicas, autoscaling, ingress, TLS, OSC, Varnish tuning</li>
+    <li><a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/TROUBLESHOOTING.md">Troubleshooting</a> &mdash; common issues and fixes</li>
+    <li>Provider guides:
+      <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/providers/AWS.md">AWS</a>,
+      <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/providers/AZURE.md">Azure</a>,
+      <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/providers/DIGITALOCEAN.md">DigitalOcean</a>,
+      <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/providers/GKE.md">GKE</a>,
+      <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/providers/LINODE.md">Linode</a>,
+      <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/providers/CUSTOM.md">self-managed / bare metal</a></li>
+  </ul>
+
   <h2>Resources</h2>
   <ul class="links">
     <li><a href="https://imageengine.io">imageengine.io</a> &mdash; product home</li>
+    <li><a href="https://github.com/imgeng/imageengine-kube-helm">Chart source on GitHub</a> &mdash; issues and pull requests welcome</li>
     <li><a href="https://artifacthub.io/packages/search?repo=imageengine-kube">ArtifactHub listing</a></li>
     <li><a href="./index.yaml">index.yaml</a> &mdash; Helm repository manifest</li>
     <li><a href="./pubkey.asc">pubkey.asc</a> &mdash; GPG public key (ASCII-armored)</li>
