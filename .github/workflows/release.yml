@@ -42,6 +42,7 @@ jobs:
         uses: azure/setup-helm@v4
 
       - name: Run chart-releaser
+        id: cr
         uses: helm/chart-releaser-action@v1.7.0
         with:
           charts_dir: charts
@@ -49,3 +50,35 @@ jobs:
           config: cr.yaml
         env:
           CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish .prov files to gh-pages
+        if: steps.cr.outputs.changed_charts != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eux
+          git fetch origin gh-pages
+          worktree=$(mktemp -d -t ghpages.XXXX)
+          git worktree add "$worktree" gh-pages
+          pushd "$worktree" >/dev/null
+
+          changed=false
+          for tgz in *.tgz; do
+            [ -f "$tgz" ] || continue
+            prov="${tgz}.prov"
+            [ -f "$prov" ] && continue
+            tag="${tgz%.tgz}"
+            if gh release download "$tag" --repo "$GITHUB_REPOSITORY" \
+                 --pattern '*.prov' --dir . 2>/dev/null; then
+              git add "$prov"
+              changed=true
+            fi
+          done
+
+          if [ "$changed" = true ]; then
+            git commit -m "Publish .prov files for $(date -u +%Y-%m-%dT%H:%M:%SZ) release"
+            git push origin gh-pages
+          fi
+
+          popd >/dev/null
+          git worktree remove "$worktree" --force
