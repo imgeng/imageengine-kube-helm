@@ -27,7 +27,7 @@ For anything beyond the quick-start below, see the docs linked in [Where to next
      --docker-password=<your-api-key> \
      --docker-email=<your-email>
    ```
-   You need an **active** ImageEngine Kube subscription to mint the API key.
+   You need an **active** ImageEngine Kube trial or subscription to create the API key.
 
 3. **Write a minimal `imageengine-values.yaml`** — `provider:` is the only must-have:
    ```yaml
@@ -84,7 +84,7 @@ helm install imageengine imageengine/imageengine-kube \
 
 ## Provider presets
 
-Setting `provider:` auto-configures the right storage class and ingress class for that platform. Explicit values in your file always take precedence. Cloud-LB-specific annotations (LB name, NLB type, scheme, etc.) live under `service.annotations` — see your provider doc ([AWS](/kube/providers/aws/), [Azure](/kube/providers/azure/), [DigitalOcean](/kube/providers/digitalocean/), [GKE](/kube/providers/gke/), [Linode](/kube/providers/linode/), or [self-managed](/kube/providers/custom/)) for the right keys.
+Setting `provider:` auto-configures the right storage class and ingress class for that platform. Explicit values in your file always take precedence. Cloud-LB-specific annotations (LB name, NLB type, scheme, etc.) live under `service.annotations` — see your provider doc ([AWS](docs/providers/AWS.md), [Azure](docs/providers/AZURE.md), [DigitalOcean](docs/providers/DIGITALOCEAN.md), [GKE](docs/providers/GKE.md), [Linode](docs/providers/LINODE.md), or [self-managed](docs/providers/CUSTOM.md)) for the right keys.
 
 | Provider | Storage Class | Ingress Class | Doc |
 |----------|--------------|---------------|-----|

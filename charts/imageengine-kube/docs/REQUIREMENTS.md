@@ -19,7 +19,7 @@ The hard minimums for running ImageEngine Kube. If your environment doesn't meet
 
 ## External access
 
-The chart's edge is exposed via a single Service whose type you choose with `service.type` (rendered by [templates/services.yaml](https://artifacthub.io/packages/helm/imageengine-kube/imageengine-kube?modal=template&template=services.yaml)). The default is `LoadBalancer`, which means **if you keep that default, your cluster must have a working LoadBalancer integration**:
+The chart's edge is exposed via a single Service whose type you choose with `service.type` (rendered by [templates/services.yaml](https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/templates/services.yaml)). The default is `LoadBalancer`, which means **if you keep that default, your cluster must have a working LoadBalancer integration**:
 
 - On managed Kubernetes (EKS / GKE / AKS / DOKS / LKE), the cloud's LB controller is built in.
 - On self-managed clusters (bare metal, on-prem, hybrid), install MetalLB or front the cluster with an external load balancer. See [providers/CUSTOM.md](providers/CUSTOM.md).
@@ -46,7 +46,7 @@ The chart references two Kubernetes Secrets by name and **does not create them f
 
 The exact `kubectl create secret` commands are in [GETTING_STARTED.md](GETTING_STARTED.md). The image-pull secret name can be overridden via `secrets.imagePullSecretName` if you'd rather use a name that fits your existing convention.
 
-A third optional secret, `ie-kube-fetcher`, is referenced in `values.yaml` as a place to store cloud-storage credentials (AWS / Wasabi keys) for the fetcher when your origins live in private buckets. It's only needed if you uncomment the corresponding env vars.
+A third optional secret, `ie-kube-fetcher`, is referenced in [`values.yaml`](https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/values.yaml) as a place to store cloud-storage credentials (AWS / Wasabi keys) for the fetcher when your origins live in private buckets. It's only needed if you uncomment the corresponding env vars.
 
 ## Compute footprint
 
@@ -64,5 +64,5 @@ For higher traffic tiers, see [SIZING.md](SIZING.md).
 
 - [GETTING_STARTED.md](GETTING_STARTED.md) — install once requirements are met.
 - [SIZING.md](SIZING.md) — pick a footprint for your traffic.
-- Your provider doc for platform-specific prep: [AWS](/kube/providers/aws/), [Azure](/kube/providers/azure/), [DigitalOcean](/kube/providers/digitalocean/), [GKE](/kube/providers/gke/), [Linode](/kube/providers/linode/), [self-managed](/kube/providers/custom/).
+- Your provider doc for platform-specific prep: [AWS](providers/AWS.md), [Azure](providers/AZURE.md), [DigitalOcean](providers/DIGITALOCEAN.md), [GKE](providers/GKE.md), [Linode](providers/LINODE.md), [self-managed](providers/CUSTOM.md).
 

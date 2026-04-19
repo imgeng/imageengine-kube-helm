@@ -25,7 +25,7 @@ LoadBalancer -> edge -> varnish -> backend -> fetcher  -> origin
 
 Each section below covers what the component does, how it behaves under load, and the defaults it ships with.
 
-**Chart-wide note on CPU limits:** every component in this chart sets CPU **requests** but not CPU **limits**, by design. For the Go-based components (edge, backend, fetcher, processor, OSC) this avoids the Go GOMAXPROCS / CFS-throttling pitfall — the Go runtime reads the cgroup CFS quota and caps `GOMAXPROCS` to it, artificially limiting concurrency regardless of node capacity. Varnish and rsyslog (C-based) skip CPU limits for the simpler reason that bursty workloads are better served by scheduler fair-share than by hard kernel throttling. **Don't add a CPU limit to any component** unless you have a specific reason and have thought through both effects. See the "Component Resources" comment block at the top of the components section in `values.yaml`.
+**Chart-wide note on CPU limits:** every component in this chart sets CPU **requests** but not CPU **limits**, by design. For the Go-based components (edge, backend, fetcher, processor, OSC) this avoids the Go GOMAXPROCS / CFS-throttling pitfall — the Go runtime reads the cgroup CFS quota and caps `GOMAXPROCS` to it, artificially limiting concurrency regardless of node capacity. Varnish and rsyslog (C-based) skip CPU limits for the simpler reason that bursty workloads are better served by scheduler fair-share than by hard kernel throttling. **Don't add a CPU limit to any component** unless you have a specific reason and have thought through both effects. See the "Component Resources" comment block at the top of the components section in [`values.yaml`](https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/values.yaml).
 
 ### Edge
 
@@ -54,7 +54,7 @@ A 5% Varnish hit-ratio improvement is usually worth more than doubling any downs
 
 **Important:** keep `edge.replicaCount` equal to `varnish.replicaCount`. The edge enforces concurrent-connection limits to protect Varnish from overload, and those limits are tuned assuming a 1:1 ratio. Skewing the ratio (more edges per Varnish, or more Varnishes per edge) either over-throttles legitimate traffic or lets too much through for Varnish to handle.
 
-**Defaults:** 1 replica, 1 GiB / 500m CPU requests, 4 GiB memory limit, 10 GiB / 500 GiB ephemeral storage request/limit. Storage strategy via `varnish.env.VARNISH_STORAGE` and the per-tier knobs — see [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md) and the inline comments in `values.yaml`.
+**Defaults:** 1 replica, 1 GiB / 500m CPU requests, 4 GiB memory limit, 10 GiB / 500 GiB ephemeral storage request/limit. Storage strategy via `varnish.env.VARNISH_STORAGE` and the per-tier knobs — see [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md) and the inline comments in [`values.yaml`](https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/values.yaml).
 
 ### Backend
 

@@ -350,5 +350,5 @@ kubectl top nodes
 
 - [SIZING.md](SIZING.md) — when the fix is "give it more resources."
 - [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md) — exact override syntax for every knob mentioned above.
-- Your provider doc — when the issue is platform-specific (LB controller, storage class, ingress controller): [AWS](/kube/providers/aws/), [Azure](/kube/providers/azure/), [DigitalOcean](/kube/providers/digitalocean/), [GKE](/kube/providers/gke/), [Linode](/kube/providers/linode/), [self-managed](/kube/providers/custom/).
+- Your provider doc — when the issue is platform-specific (LB controller, storage class, ingress controller): [AWS](providers/AWS.md), [Azure](providers/AZURE.md), [DigitalOcean](providers/DIGITALOCEAN.md), [GKE](providers/GKE.md), [Linode](providers/LINODE.md), [self-managed](providers/CUSTOM.md).
 

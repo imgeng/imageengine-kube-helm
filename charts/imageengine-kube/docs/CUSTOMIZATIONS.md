@@ -2,7 +2,7 @@
 
 A guided tour of the overrides customers actually use, organized by the question you're trying to answer. Snippets are chart values you'd put in your `imageengine-values.yaml` and pass with `helm install -f imageengine-values.yaml`.
 
-This doc covers the **most common** knobs. The full set of options — including every tunable env var per component — lives in the comments of `values.yaml`. To see the version you'll install, run `helm show values imageengine/imageengine-kube`, or browse the chart on [Artifact Hub](https://artifacthub.io/packages/helm/imageengine-kube/imageengine-kube). When in doubt, look there.
+This doc covers the **most common** knobs. The full set of options — including every tunable env var per component — lives in the comments of `values.yaml`. To see the version you'll install, run `helm show values imageengine/imageengine-kube`, or browse the chart source on GitHub at [`imgeng/imageengine-kube-helm`](https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/values.yaml). When in doubt, look there.
 
 ## How do I scale a component?
 
@@ -72,7 +72,7 @@ backend:
       memory: "8Gi"
 ```
 
-Note: **none of the chart's components set a CPU limit** by default — only CPU requests. This is a chart-wide policy. The Go-based components (edge, backend, fetcher, processor, OSC) would otherwise hit the Go GOMAXPROCS / CFS-throttling pitfall (Go caps concurrency from the cgroup CFS quota); Varnish and rsyslog (C-based) skip CPU limits because bursty workloads are better served by scheduler fair-share than by hard kernel throttling. Don't add a CPU limit to any component unless you have a specific reason — see the "Component Resources" comment block at the top of the components section in `values.yaml` for the full rationale.
+Note: **none of the chart's components set a CPU limit** by default — only CPU requests. This is a chart-wide policy. The Go-based components (edge, backend, fetcher, processor, OSC) would otherwise hit the Go GOMAXPROCS / CFS-throttling pitfall (Go caps concurrency from the cgroup CFS quota); Varnish and rsyslog (C-based) skip CPU limits because bursty workloads are better served by scheduler fair-share than by hard kernel throttling. Don't add a CPU limit to any component unless you have a specific reason — see the "Component Resources" comment block at the top of the components section in [`values.yaml`](https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/values.yaml) for the full rationale.
 
 ## How do I make the OSC bigger or use a specific storage class?
 
@@ -153,7 +153,7 @@ varnish:
     # VARNISH_STORAGE_3: "file,/u/cache/varnish-tier3.bin,100G,128K"
 ```
 
-Full list of varnishd parameters and storage options lives in the comments of `values.yaml`, in the `varnish:` block.
+Full list of varnishd parameters and storage options lives in the comments of [`values.yaml`](https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/values.yaml), in the `varnish:` block.
 
 ## How do I tune the edge cache?
 
@@ -183,7 +183,7 @@ service:
 
 Pick one of three exposure modes:
 
-- **`type: LoadBalancer`** (default): the cloud LB controller provisions a public IP and traffic flows directly into the chart. Use `service.annotations` for cloud-LB-specific tuning (LB name, NLB type, ACL annotations, etc. — see your provider doc ([AWS](/kube/providers/aws/), [Azure](/kube/providers/azure/), [DigitalOcean](/kube/providers/digitalocean/), [GKE](/kube/providers/gke/), [Linode](/kube/providers/linode/), or [self-managed](/kube/providers/custom/)) for the right keys).
+- **`type: LoadBalancer`** (default): the cloud LB controller provisions a public IP and traffic flows directly into the chart. Use `service.annotations` for cloud-LB-specific tuning (LB name, NLB type, ACL annotations, etc. — see your provider doc ([AWS](providers/AWS.md), [Azure](providers/AZURE.md), [DigitalOcean](providers/DIGITALOCEAN.md), [GKE](providers/GKE.md), [Linode](providers/LINODE.md), or [self-managed](providers/CUSTOM.md)) for the right keys).
 - **`type: ClusterIP`**: the Service is reachable only inside the cluster. Pair this with `ingress.enabled: true` (below) so an ingress controller you've installed handles external traffic. Common for bare metal / on-prem and for installs that want hostname-based routing or TLS at the ingress layer.
 - **`type: NodePort`**: opens a port on every node. Useful for environments without a LB controller and without an ingress installed; rarely the right answer in production.
 
@@ -238,7 +238,7 @@ ingress:
         - images-staging.example.com
 ```
 
-The Ingress is rendered by [templates/ingress.yaml](https://artifacthub.io/packages/helm/imageengine-kube/imageengine-kube?modal=template&template=ingress.yaml) and routes all hosts to the edge Service. Provider-specific TLS guidance is in your provider doc.
+The Ingress is rendered by [templates/ingress.yaml](https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/templates/ingress.yaml) and routes all hosts to the edge Service. Provider-specific TLS guidance is in your provider doc.
 
 ## How do I use my own image-pull secret name?
 
@@ -334,7 +334,7 @@ If `content:` is empty, the edge falls back to its built-in carbon.txt. **Use yo
 
 ## Component env vars
 
-The bottom of every component block in `values.yaml` is an `env:` map. Anything you put there is injected as an env var on every container of that component:
+The bottom of every component block in [`values.yaml`](https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/values.yaml) is an `env:` map. Anything you put there is injected as an env var on every container of that component:
 
 ```yaml
 processor:
@@ -351,10 +351,10 @@ backend:
     IE_BACKEND_LOGLEVEL: "INFO"
 ```
 
-The full set of supported env vars is documented in the inline comments of `values.yaml` — there are far too many to list here.
+The full set of supported env vars is documented in the inline comments of [`values.yaml`](https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/values.yaml) — there are far too many to list here.
 
 ## Next
 
 - [SIZING.md](SIZING.md) — how to choose the right values for your traffic volume.
 - [TROUBLESHOOTING.md](TROUBLESHOOTING.md) — when an override produces an unexpected result.
-- Your provider doc for cloud-specific overrides (LB type, ingress controller, TLS): [AWS](/kube/providers/aws/), [Azure](/kube/providers/azure/), [DigitalOcean](/kube/providers/digitalocean/), [GKE](/kube/providers/gke/), [Linode](/kube/providers/linode/), [self-managed](/kube/providers/custom/).
+- Your provider doc for cloud-specific overrides (LB type, ingress controller, TLS): [AWS](providers/AWS.md), [Azure](providers/AZURE.md), [DigitalOcean](providers/DIGITALOCEAN.md), [GKE](providers/GKE.md), [Linode](providers/LINODE.md), [self-managed](providers/CUSTOM.md).

@@ -54,7 +54,7 @@ The Docker password is the same value as the API key.
 ## Step 3 — Add the Helm repository
 
 ```bash
-helm repo add imageengine https://kube.imageengine.io/charts
+helm repo add imageengine https://kube.imageengine.io
 helm repo update
 ```
 
@@ -111,11 +111,11 @@ DOMAIN=<your-imageengine-host>     # e.g. abc12345.cdn.imgeng.in
 ACCEPT="accept: image/avif,image/webp"
 
 # Basic request
-curl -I --connect-to "$DOMAIN:80:$EXTERNAL_IP:80" \
+curl -I --resolve "$DOMAIN:80:$EXTERNAL_IP" \
   "http://$DOMAIN/path/to/your/image.jpg"
 
 # Confirm ImageEngine is processing the response
-curl -sSI --connect-to "$DOMAIN:80:$EXTERNAL_IP:80" \
+curl -sSI --resolve "$DOMAIN:80:$EXTERNAL_IP" \
   -H "$ACCEPT" \
   -H "imgeng-audit: true" \
   "http://$DOMAIN/path/to/your/image.jpg?imgeng=/w_100" \
