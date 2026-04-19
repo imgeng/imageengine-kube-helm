@@ -1,0 +1,10 @@
+# chart-releaser config consumed by .github/workflows/release.yml
+#
+# Signing flags are passed to `cr package` (no equivalent action input exists).
+# pages-index-path puts index.yaml under /charts/ on gh-pages so the existing
+# customer URL https://kube.imageengine.io/charts/index.yaml keeps resolving.
+sign: true
+key: "releases@imageengine.io"
+keyring: "/tmp/imageengine-secring.gpg"
+passphrase-file: "/tmp/imageengine-passphrase"
+pages-index-path: "charts/index.yaml"
