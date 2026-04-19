@@ -2,7 +2,7 @@ apiVersion: v2
 name: imageengine-kube
 description: ImageEngine - cloud-native image optimization
 type: application
-version: 0.8.7
+version: 0.8.8
 appVersion: "2.10.9"
 kubeVersion: ">=1.30.0-0"
 home: https://imageengine.io
