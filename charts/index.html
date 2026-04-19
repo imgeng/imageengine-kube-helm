@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>ImageEngine Helm Charts</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="https://imageengine.io/favicon.ico">
+  <style>
+    :root {
+      --fg: #1a1a1f;
+      --muted: #6b6b78;
+      --bg: #ffffff;
+      --code-bg: #f4f4f7;
+      --border: #e5e5ec;
+      --accent: #0a66c2;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --fg: #e8e8ee;
+        --muted: #9a9aa6;
+        --bg: #14141a;
+        --code-bg: #1f1f27;
+        --border: #2a2a35;
+        --accent: #6aa9ff;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 3rem 1.25rem 5rem;
+      color: var(--fg);
+      background: var(--bg);
+    }
+    header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.25rem; }
+    header img { width: 36px; height: 36px; }
+    h1 { margin: 0; font-size: 1.65rem; }
+    .sub { color: var(--muted); margin: 0.25rem 0 2rem; }
+    h2 { margin-top: 2.25rem; font-size: 1.2rem; border-bottom: 1px solid var(--border); padding-bottom: 0.35rem; }
+    code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.92em; }
+    code { background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 4px; }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.9rem 1rem;
+      overflow-x: auto;
+    }
+    pre code { background: none; padding: 0; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .fp {
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.35rem 0.6rem;
+      display: inline-block;
+      letter-spacing: 0.02em;
+      word-break: break-all;
+    }
+    ul.links { padding-left: 1.2rem; }
+    ul.links li { margin: 0.25rem 0; }
+    footer { margin-top: 3rem; color: var(--muted); font-size: 0.85rem; text-align: center; }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="https://imageengine.io/favicon.ico" alt="">
+    <h1>ImageEngine Helm Charts</h1>
+  </header>
+  <p class="sub">Cloud-native image optimization, packaged for Kubernetes.</p>
+
+  <p>
+    <a href="https://artifacthub.io/packages/helm/imageengine-kube/imageengine-kube">
+      <img src="https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/imageengine-kube" alt="Artifact Hub">
+    </a>
+  </p>
+
+  <h2>Add the repository</h2>
+<pre><code>helm repo add imageengine https://kube.imageengine.io/charts
+helm repo update
+helm search repo imageengine</code></pre>
+
+  <h2>Install</h2>
+<pre><code>helm install my-imageengine imageengine/imageengine-kube</code></pre>
+
+  <h2>Verify signatures</h2>
+  <p>Charts published from version <code>0.8.5</code> onward are signed with GPG.</p>
+<pre><code>curl -fsSL https://kube.imageengine.io/charts/pubkey.asc \
+  | gpg --dearmor &gt; ~/.gnupg/imageengine-kube.kbx
+
+helm install my-imageengine imageengine/imageengine-kube \
+  --verify --keyring ~/.gnupg/imageengine-kube.kbx</code></pre>
+
+  <p>Signing key fingerprint:</p>
+  <p><span class="fp">C3A5 5111 ED91 FEDE 4A82&nbsp; A4B4 4632 6606 0957 C4B3</span></p>
+
+  <h2>Resources</h2>
+  <ul class="links">
+    <li><a href="https://imageengine.io">imageengine.io</a> &mdash; product home</li>
+    <li><a href="https://artifacthub.io/packages/search?repo=imageengine-kube">ArtifactHub listing</a></li>
+    <li><a href="./index.yaml">index.yaml</a> &mdash; Helm repository manifest</li>
+    <li><a href="./pubkey.asc">pubkey.asc</a> &mdash; GPG public key (ASCII-armored)</li>
+  </ul>
+
+  <footer>
+    Maintained by <a href="https://www.scientiamobile.com">ScientiaMobile</a>.
+  </footer>
+</body>
+</html>
