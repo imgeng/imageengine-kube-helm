@@ -4,7 +4,7 @@ entries:
   - annotations:
       artifacthub.io/signKey: |
         fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
-        url: https://kube.imageengine.io/charts/pubkey.asc
+        url: https://kube.imageengine.io/pubkey.asc
     apiVersion: v2
     appVersion: 2.10.9
     created: "2026-04-18T18:49:04.675733488-04:00"
@@ -26,15 +26,15 @@ entries:
       url: https://www.scientiamobile.com
     name: imageengine-kube
     sources:
-    - https://kube.imageengine.io/charts
+    - https://kube.imageengine.io
     type: application
     urls:
-    - https://kube.imageengine.io/charts/imageengine-kube-0.8.7.tgz
+    - imageengine-kube-0.8.7.tgz
     version: 0.8.7
   - annotations:
       artifacthub.io/signKey: |
         fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
-        url: https://kube.imageengine.io/charts/pubkey.asc
+        url: https://kube.imageengine.io/pubkey.asc
     apiVersion: v2
     appVersion: 2.10.9
     created: "2026-04-18T18:49:04.674718792-04:00"
@@ -56,10 +56,10 @@ entries:
       url: https://www.scientiamobile.com
     name: imageengine-kube
     sources:
-    - https://kube.imageengine.io/charts
+    - https://kube.imageengine.io
     type: application
     urls:
-    - https://kube.imageengine.io/charts/imageengine-kube-0.8.6.tgz
+    - imageengine-kube-0.8.6.tgz
     version: 0.8.6
   - apiVersion: v2
     appVersion: 2.10.9
@@ -82,10 +82,10 @@ entries:
       url: https://www.scientiamobile.com
     name: imageengine-kube
     sources:
-    - https://kube.imageengine.io/charts
+    - https://kube.imageengine.io
     type: application
     urls:
-    - https://kube.imageengine.io/charts/imageengine-kube-0.8.5.tgz
+    - imageengine-kube-0.8.5.tgz
     version: 0.8.5
   - apiVersion: v2
     appVersion: 2.10.9
@@ -108,10 +108,10 @@ entries:
       url: https://www.scientiamobile.com
     name: imageengine-kube
     sources:
-    - https://kube.imageengine.io/charts
+    - https://kube.imageengine.io
     type: application
     urls:
-    - https://kube.imageengine.io/charts/imageengine-kube-0.8.4.tgz
+    - imageengine-kube-0.8.4.tgz
     version: 0.8.4
   - apiVersion: v2
     appVersion: 2.10.9
@@ -120,7 +120,7 @@ entries:
     digest: 097e037a2739dba07fc29980e1d624c9c91e82dafce189c524564d17489f7f41
     name: imageengine-kube
     urls:
-    - https://kube.imageengine.io/charts/imageengine-kube-0.8.3.tgz
+    - imageengine-kube-0.8.3.tgz
     version: 0.8.3
   - apiVersion: v2
     appVersion: 2.10.9
@@ -129,7 +129,7 @@ entries:
     digest: 0cf7f6b78b8c29c3c992d8ff3d3875db5cbfdbbcd82dc37b077e6926957298df
     name: imageengine-kube
     urls:
-    - https://kube.imageengine.io/charts/imageengine-kube-0.8.2.tgz
+    - imageengine-kube-0.8.2.tgz
     version: 0.8.2
   - apiVersion: v2
     appVersion: 2.10.9
@@ -138,6 +138,6 @@ entries:
     digest: c74c7011832c60519152a25867fb185bf87fcf1f06bcfd51617918e8161734c4
     name: imageengine-kube
     urls:
-    - https://kube.imageengine.io/charts/imageengine-kube-0.8.0.tgz
+    - imageengine-kube-0.8.0.tgz
     version: 0.8.0
 generated: "2026-04-18T18:49:04.66890859-04:00"

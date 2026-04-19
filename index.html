@@ -79,7 +79,7 @@
   </p>
 
   <h2>Add the repository</h2>
-<pre><code>helm repo add imageengine https://kube.imageengine.io/charts
+<pre><code>helm repo add imageengine https://kube.imageengine.io
 helm repo update
 helm search repo imageengine</code></pre>
 
@@ -88,7 +88,7 @@ helm search repo imageengine</code></pre>
 
   <h2>Verify signatures</h2>
   <p>Charts published from version <code>0.8.5</code> onward are signed with GPG.</p>
-<pre><code>curl -fsSL https://kube.imageengine.io/charts/pubkey.asc \
+<pre><code>curl -fsSL https://kube.imageengine.io/pubkey.asc \
   | gpg --dearmor &gt; ~/.gnupg/imageengine-kube.kbx
 
 helm install my-imageengine imageengine/imageengine-kube \
