@@ -1,0 +1,84 @@
+{{/*
+The user-facing edge Service. Type is configurable via service.type
+(LoadBalancer by default; ClusterIP for installs that front the chart with
+their own ingress; NodePort for environments without a LB controller).
+*/}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "imageengine.fullname" . }}-edge
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  {{- with .Values.service.externalTrafficPolicy }}
+  externalTrafficPolicy: {{ . }}
+  {{- end }}
+  {{- with .Values.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  selector:
+    app: {{ include "imageengine.name" . }}
+    tier: edge
+  ports:
+    - name: http
+      protocol: TCP
+      port: {{ .Values.service.port }}
+      targetPort: 8080
+
+---
+{{/* Internal cluster-only services for component-to-component traffic. */}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "imageengine.fullname" . }}-varnish
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 8080
+  selector:
+    app: {{ include "imageengine.name" . }}
+    tier: varnish
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "imageengine.fullname" . }}-backend
+spec:
+  ports:
+    - port: 80
+      targetPort: 8000
+  selector:
+    app: {{ include "imageengine.name" . }}
+    tier: backend
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "imageengine.fullname" . }}-processor
+spec:
+  ports:
+    - port: 80
+      targetPort: 8000
+  selector:
+    app: {{ include "imageengine.name" . }}
+    tier: processor
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "imageengine.fullname" . }}-fetcher
+spec:
+  ports:
+    - port: 80
+      targetPort: 8000
+  selector:
+    app: {{ include "imageengine.name" . }}
+    tier: fetcher

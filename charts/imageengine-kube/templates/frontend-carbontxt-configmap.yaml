@@ -1,0 +1,14 @@
+# ConfigMap for custom carbon.txt content
+# Only created when GWF verification is enabled
+{{- if .Values.edge.carbontxt.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "imageengine.fullname" . }}-carbontxt
+  labels:
+    app: {{ include "imageengine.name" . }}
+    tier: edge
+data:
+  carbon.txt: |
+{{ .Values.edge.carbontxt.content | indent 4 }}
+{{- end }}

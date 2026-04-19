@@ -1,0 +1,87 @@
+# ImageEngine Kube Rsyslog Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "imageengine.fullname" . }}-rsyslog
+  labels:
+    app: {{ include "imageengine.name" . }}
+    tier: logging
+spec:
+  replicas: {{ .Values.rsyslog.replicaCount }}
+  minReadySeconds: {{ .Values.rsyslog.minReadySeconds | default 0 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: {{ include "imageengine.name" . }}
+      tier: logging
+  template:
+    metadata:
+      labels:
+        app: {{ include "imageengine.name" . }}
+        tier: logging
+      {{- with .Values.rsyslog.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      securityContext:
+        fsGroup: 1000
+      imagePullSecrets:
+        - name: {{ .Values.secrets.imagePullSecretName }}
+      {{- with .Values.rsyslog.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.rsyslog.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.rsyslog.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: {{ include "imageengine.name" . }}
+              tier: logging
+      terminationGracePeriodSeconds: 1
+      containers:
+        - name: rsyslog-pipeline
+          image: "{{ .Values.rsyslog.image.repository }}:{{ .Values.images.rsyslog }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsUser: 0
+            capabilities:
+              drop:
+              - ALL
+              add:
+              - NET_BIND_SERVICE
+              - CHOWN
+              - SETUID
+              - SETGID
+              - DAC_OVERRIDE
+              - FOWNER
+          ports:
+            - containerPort: 514
+              protocol: TCP
+            - containerPort: 514
+              protocol: UDP
+          readinessProbe:
+            tcpSocket:
+              port: 514
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.rsyslog.resources | nindent 12 }}
+          env:
+            - name: FORWARD_IP
+              value: "{{ .Values.rsyslog.forwarder }}"

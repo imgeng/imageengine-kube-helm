@@ -1,0 +1,94 @@
+# ImageEngine Kube Varnish Cache Deployment
+# Varnish HTTP cache: sits between the edge proxy and the backend
+# Deployed separately from edge so cache survives edge updates
+# Traffic flow: edge -> varnish:8080 -> backend
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "imageengine.fullname" . }}-varnish
+spec:
+  replicas: {{ .Values.varnish.replicaCount }}
+  minReadySeconds: {{ .Values.varnish.minReadySeconds | default 0 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: {{ include "imageengine.name" . }}
+      tier: varnish
+  template:
+    metadata:
+      labels:
+        app: {{ include "imageengine.name" . }}
+        tier: varnish
+      {{- with .Values.varnish.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      securityContext:
+        fsGroup: 1000
+      imagePullSecrets:
+        - name: {{ .Values.secrets.imagePullSecretName }}
+      {{- with .Values.varnish.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.varnish.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.varnish.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: {{ include "imageengine.name" . }}
+              tier: varnish
+      containers:
+        - name: varnish
+          image: "{{ .Values.varnish.image.repository }}:{{ .Values.images.varnish }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+              add:
+              - DAC_OVERRIDE
+              - CHOWN
+              - SETUID
+              - SETGID
+          resources:
+            {{- toYaml .Values.varnish.resources | nindent 12 }}
+          ports:
+            - containerPort: 8080
+              name: varnish
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          env:
+            - name: IE_BACKENDS
+              value: "{{ include "imageengine.fullname" . }}-backend"
+            - name: COMPONENT
+              value: "varnish"
+            - name: VARNISH_LISTEN_PORT
+              value: "8080"
+            {{- range $key, $value := .Values.identity }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- range $key, $value := .Values.varnish.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}

@@ -1,0 +1,20 @@
+{{- if .Values.fetcher.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "imageengine.fullname" . }}-fetcher-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "imageengine.fullname" . }}-fetcher
+  minReplicas: {{ .Values.fetcher.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.fetcher.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.fetcher.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}

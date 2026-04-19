@@ -1,0 +1,20 @@
+{{- if .Values.processor.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "imageengine.fullname" . }}-processor-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "imageengine.fullname" . }}-processor
+  minReplicas: {{ .Values.processor.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.processor.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.processor.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}

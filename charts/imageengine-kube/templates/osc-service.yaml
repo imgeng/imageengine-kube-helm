@@ -1,0 +1,16 @@
+# ImageEngine Kube Object Storage Cache Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "imageengine.fullname" . }}-osc
+  labels:
+    app: {{ include "imageengine.name" . }}
+    tier: object-storage
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.objectStorageCache.service.port }}
+      targetPort: 8000
+  selector:
+    app: {{ include "imageengine.name" . }}
+    tier: object-storage

@@ -1,0 +1,111 @@
+# ImageEngine Kube Backend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "imageengine.fullname" . }}-backend
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  minReadySeconds: {{ .Values.backend.minReadySeconds | default 0 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: {{ include "imageengine.name" . }}
+      tier: backend
+  template:
+    metadata:
+      labels:
+        app: {{ include "imageengine.name" . }}
+        tier: backend
+      {{- with .Values.backend.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      securityContext:
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+      imagePullSecrets:
+        - name: {{ .Values.secrets.imagePullSecretName }}
+      {{- with .Values.backend.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.backend.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.backend.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: {{ include "imageengine.name" . }}
+              tier: backend
+      containers:
+        - name: backend
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.images.backend }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop:
+              - ALL
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          ports:
+            - containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          env:
+            - name: IE_BACKEND_BIND_HOSTPORT
+              value: "0.0.0.0:8000"
+            - name: IE_ORIGINFETCHER_URL
+              value: "http://{{ include "imageengine.fullname" . }}-fetcher:80"
+            - name: IE_PROCESSOR_URL
+              value: "http://{{ include "imageengine.fullname" . }}-processor:80"
+            # Sharding is not supported in this chart
+            - name: OSCCLIENT_ENVCONFIG
+              value: "true"
+            - name: OSC0_HOST
+              value: "{{ include "imageengine.fullname" . }}-osc:80"
+            - name: IE_BACKEND_STATSD_SYSLOG_ADDRESS
+              value: "{{ include "imageengine.fullname" . }}-rsyslog:514"
+            # Secrets
+            - name: IE_BACKEND_IMAGEENGINE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ie-kube-api-key
+                  key: KEY
+            - name: ORIGINCONF_EMITTER_CHANNEL_KEY
+              value: "api-key:$(IE_BACKEND_IMAGEENGINE_API_KEY)"
+            - name: IE_BACKEND_IMAGEENGINE_API_URL
+              value: {{ .Values.imageengine.imageEngineApiUrl | quote }}
+            - name: IE_BACKEND_IMAGEENGINE_API_TIMEOUT
+              value: "10s"
+            - name: IE_BACKEND_SENTRY_DSN
+              value: {{ .Values.sentry.BACKEND_DSN | quote }}
+            # Env vars for statistics
+            {{- range $key, $value := .Values.identity }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            # Env vars below this line are from values.yaml
+            {{- range $key, $value := .Values.backend.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}

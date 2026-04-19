@@ -1,0 +1,98 @@
+# ImageEngine Kube Processor Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "imageengine.fullname" . }}-processor
+spec:
+  replicas: {{ .Values.processor.replicaCount }}
+  minReadySeconds: {{ .Values.processor.minReadySeconds | default 0 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: {{ include "imageengine.name" . }}
+      tier: processor
+  template:
+    metadata:
+      labels:
+        app: {{ include "imageengine.name" . }}
+        tier: processor
+      {{- with .Values.processor.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      securityContext:
+        fsGroup: 1000
+      imagePullSecrets:
+        - name: {{ .Values.secrets.imagePullSecretName }}
+      {{- with .Values.processor.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.processor.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.processor.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: {{ include "imageengine.name" . }}
+              tier: processor
+      containers:
+        - name: processor
+          image: "{{ .Values.processor.image.repository }}:{{ .Values.images.processor }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+              add:
+              - CHOWN
+              - SETUID
+              - SETGID
+          resources:
+            {{- toYaml .Values.processor.resources | nindent 12 }}
+          ports:
+            - containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          env:
+            - name: IE_PROCESSOR_BIND_HOSTPORT
+              value: "0.0.0.0:8000"
+            # Sharding is not supported in this chart
+            - name: OSCCLIENT_ENVCONFIG
+              value: "true"
+            - name: OSC0_HOST
+              value: "{{ include "imageengine.fullname" . }}-osc:80"
+            - name: IE_PROCESSOR_STATSD_SYSLOG_ADDRESS
+              value: "{{ include "imageengine.fullname" . }}-rsyslog:514"
+            # Secrets
+            - name: IE_PROCESSOR_SENTRY_DSN
+              value: {{ .Values.sentry.PROCESSOR_DSN | quote }}
+            # Env vars for statistics
+            {{- range $key, $value := .Values.identity }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            # Env vars below this line are from values.yaml
+            {{- range $key, $value := .Values.processor.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+

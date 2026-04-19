@@ -1,0 +1,128 @@
+# ImageEngine Kube Edge Proxy Deployment
+# Go edge proxy: traffic entry point, WURFL device detection, admission control
+# Traffic flow: LoadBalancer -> edge:8080 -> varnish:8080 -> backend
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "imageengine.fullname" . }}-edge
+spec:
+  replicas: {{ .Values.edge.replicaCount }}
+  minReadySeconds: {{ .Values.edge.minReadySeconds | default 0 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: {{ include "imageengine.name" . }}
+      tier: edge
+  template:
+    metadata:
+      labels:
+        app: {{ include "imageengine.name" . }}
+        tier: edge
+      {{- with .Values.edge.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      securityContext:
+        fsGroup: 1000
+      imagePullSecrets:
+        - name: {{ .Values.secrets.imagePullSecretName }}
+      {{- with .Values.edge.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.edge.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.edge.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: {{ include "imageengine.name" . }}
+              tier: edge
+      containers:
+        - name: edge
+          image: "{{ .Values.edge.image.repository }}:{{ .Values.images.edge }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+          resources:
+            {{- toYaml .Values.edge.resources | nindent 12 }}
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 9090
+              name: metrics
+          readinessProbe:
+            httpGet:
+              # /health lives on the edge admin listener (EDGE_METRICS_ADDR,
+              # default :9090) so the customer-facing port is free to proxy
+              # /health to customer origins. Coupled to wit-frontend:
+              # the legacy /status endpoint was removed in the same release.
+              path: /health
+              port: 9090
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          env:
+            - name: EDGE_VARNISH_URL
+              value: "http://{{ include "imageengine.fullname" . }}-varnish:80"
+            - name: EDGE_SYSLOG_SERVER
+              value: "{{ include "imageengine.fullname" . }}-rsyslog:514"
+            - name: COMPONENT
+              value: "edge"
+            - name: EDGE_SENTRY_DSN
+              value: {{ .Values.sentry.FRONTEND_DSN | quote }}
+            - name: EDGE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ie-kube-api-key
+                  key: KEY
+            - name: EDGE_EMITTER_SERVER_KEY
+              value: "api-key:$(EDGE_API_KEY)"
+            - name: EDGE_EMITTER_BAN_KEY
+              value: "api-key:$(EDGE_API_KEY)"
+            - name: EDGE_API_URL
+              value: {{ .Values.imageengine.imageEngineApiUrl | quote }}
+            {{- range $key, $value := .Values.identity }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- if and .Values.edge.carbontxt.enabled .Values.edge.carbontxt.hash }}
+            - name: EDGE_CARBONTXT_HASH
+              value: {{ .Values.edge.carbontxt.hash | quote }}
+            {{- end }}
+            {{- if and .Values.edge.carbontxt.enabled .Values.edge.carbontxt.content }}
+            - name: EDGE_CARBONTXT_FILE
+              value: "/usr/share/iee/carbon.txt"
+            {{- end }}
+            {{- range $key, $value := .Values.edge.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          volumeMounts:
+            {{- if and .Values.edge.carbontxt.enabled .Values.edge.carbontxt.content }}
+            - name: carbontxt
+              mountPath: /usr/share/iee/carbon.txt
+              subPath: carbon.txt
+              readOnly: true
+            {{- end }}
+      volumes:
+        {{- if and .Values.edge.carbontxt.enabled .Values.edge.carbontxt.content }}
+        - name: carbontxt
+          configMap:
+            name: {{ include "imageengine.fullname" . }}-carbontxt
+        {{- end }}

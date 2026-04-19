@@ -1,0 +1,620 @@
+imagePullPolicy: Always
+
+###################################################
+# Image Tags
+###################################################
+# Centralized image tags/versions for all components
+images:
+  edge: "4.0.2"
+  varnish: "4.0.2"
+  backend: "2.10.9"
+  fetcher: "1.26.5"
+  processor: "3.19.0"
+  osc: "3.3.6"
+  rsyslog: "24.04"
+
+###################################################
+# Provider Configuration
+###################################################
+# Set this to auto-configure provider-specific defaults.
+# Supported: aws | azure | digitalocean | gke | linode | custom
+# When set, provider-specific defaults are applied for:
+#   - Storage classes
+#   - Ingress annotations
+#   - External DNS configuration
+# You can still override any value explicitly. The default `custom` applies
+# no presets — use this for bare metal, on-prem, or any self-managed cluster.
+provider: "custom"
+
+# Provider-specific default configurations
+# These are applied automatically when 'provider' is set
+# Do not modify unless you need to change the defaults
+providerPresets:
+  aws:
+    storageClass: "gp3"
+    ingressClass: "nginx"
+    ingressAnnotations: {}
+    externalDnsProvider: "aws"
+  digitalocean:
+    storageClass: "do-block-storage"
+    ingressClass: "nginx"
+    ingressAnnotations: {}
+    externalDnsProvider: "digitalocean"
+  linode:
+    storageClass: "linode-block-storage-retain"
+    ingressClass: "nginx"
+    ingressAnnotations: {}
+    externalDnsProvider: "linode"
+  gke:
+    storageClass: "standard-rwo"
+    ingressClass: "gce"
+    ingressAnnotations: {}
+    externalDnsProvider: "google"
+  azure:
+    storageClass: "managed-csi-premium"
+    ingressClass: "nginx"
+    ingressAnnotations: {}
+    externalDnsProvider: "azure"
+imageengine:
+  # <production|staging|canary|testing|development>
+  environment: &appEnv "testing"
+  emitterServer: &emitterServer "wss://emitter.eleven45.net:443"
+  imageEngineApiUrl: &imageEngineApiUrl "https://control-api.imageengine.io"
+
+sentry:
+  FRONTEND_DSN: ""
+  BACKEND_DSN: ""
+  FETCHER_DSN: ""
+  PROCESSOR_DSN: ""
+  OSC_DSN: ""
+
+secrets:
+  imagePullSecretName: "ie-kube-image-pull"
+
+identity:
+  DEPLOY: blue
+  PRODUCT: imageengine
+  ENVIRONMENT: *appEnv
+  # hostname: <FQDN>
+  HOST_ID: k8s-pod
+  PROVIDER: kube-testing
+  REGION: us-east-1
+  AZ: us-east-1a
+
+ingress:
+  enabled: false     # Enable or disable the ingress controller
+  annotations: {}   # Add any annotations for the ingress here (optional)
+  className: ""      # Leave empty to use provider preset, or specify explicitly (e.g., nginx, alb, gce)
+  hosts:
+    - images.example.com
+    - images-staging.example.com
+    - images-qa.example.com
+  # TLS configuration - requires a certificate (see docs/tls-setup.md)
+  # The certificate can be provisioned by cert-manager, cloud provider, or manually.
+  # Example with cert-manager (add annotation: cert-manager.io/cluster-issuer: letsencrypt-prod):
+  #   tls:
+  #     - secretName: images-example-com-tls
+  #       hosts:
+  #         - images.example.com
+  tls: []
+
+###################################################
+# Edge Service (user-facing entry point)
+###################################################
+# How the chart's edge pods are exposed to traffic.
+#   type: LoadBalancer  -> cloud LB controller provisions a public IP (default;
+#                          works on all managed-Kubernetes providers)
+#   type: ClusterIP     -> internal-only; you front the chart with your own
+#                          ingress controller (set ingress.enabled: true below)
+#   type: NodePort      -> for environments without a LB controller
+service:
+  type: LoadBalancer
+  port: 80
+  # Cloud LB / Service annotations. Provider-specific examples (NLB type, LB
+  # name, scheme, etc.) live in the per-provider docs under docs/providers/.
+  annotations: {}
+  # CIDR allowlist for inbound traffic when type is LoadBalancer. Empty = open.
+  loadBalancerSourceRanges: []
+  # "" (default = Cluster) | "Local". Local preserves client source IP at the
+  # cost of uneven traffic distribution across nodes.
+  externalTrafficPolicy: ""
+
+###################################################
+# Component Resources — Chart-wide Note
+###################################################
+# CPU LIMITS ARE INTENTIONALLY OMITTED on every component in this chart.
+# The Go-based components (edge, backend, fetcher, processor, OSC) would
+# otherwise hit the GOMAXPROCS/CFS pitfall: the Go runtime reads the
+# cgroup CFS quota and caps GOMAXPROCS to that, artificially limiting
+# concurrency regardless of actual node capacity. Varnish and rsyslog
+# (C-based) avoid CPU limits because bursty workloads are better served
+# by the scheduler's proportional-share than by hard kernel throttling.
+#
+# CPU REQUESTS are still set on every component, which is what guarantees
+# scheduling and fair sharing under contention. To re-add CPU limits
+# (e.g. if your cluster enforces a LimitRange that requires them), add a
+# limits.cpu key under the component's resources block below.
+###################################################
+
+###################################################
+# ImageEngine Kube Edge Proxy Configuration
+###################################################
+# Go edge proxy: traffic entry point, WURFL device detection, admission control.
+# Traffic flow: LoadBalancer -> edge:8080 -> varnish:8080 -> backend
+edge:
+  replicaCount: 1
+  minReadySeconds: 0
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  image:
+    repository: docker.scientiamobile.com/iekube/imageengine-frontend.edge
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+  env:
+    # Max cache TTL (seconds); backend TTLs above this are clamped (604800 = 7 days)
+    EDGE_MAX_TTL: 604800
+    # Natural-width LRU cache size (entries)
+    EDGE_WIDTH_CACHE_SIZE: "10000000"
+    # Origin config source: "file" or "api"
+    EDGE_ORIGIN_CONF_SOURCE: api
+    # EDGE_ORIGIN_CONF_REFRESH_INTERVAL: 1h
+    # Emitter
+    EDGE_EMITTER_SERVER: *emitterServer
+    # EDGE_EMITTER_SERVER_KEY: "<<SECRET: ie-kube-emitter.KEY>>"
+    EDGE_EMITTER_CHANNEL: production/imageengine-kube/frontend/settings
+    # EDGE_EMITTER_BAN_KEY: "<<SECRET: ie-kube-emitter.KEY>>"
+    EDGE_EMITTER_BAN_CHANNEL: production/imageengine-kube/frontend/purge
+    # Required if EDGE_ORIGIN_CONF_SOURCE is "file" with an S3 URL
+    # AWS_ACCESS_KEY_ID: "<<SECRET: ie-kube-origin-conf.AWS_KEY>>"
+    # AWS_SECRET_ACCESS_KEY: "<<SECRET: ie-kube-origin-conf.AWS_SECRET>>"
+    # EDGE_ORIGIN_CONF_FILE_1: "s3://bucket/path/origin-configs.json"
+    # EDGE_ORIGIN_CONF_FILE_2: "s3://bucket/path/origin-configs-fallback.json"
+
+  ###################################################
+  # Green Web Foundation (GWF) Carbon.txt Verification
+  ###################################################
+  # This optional feature enables verification with the Green Web Foundation
+  # (https://www.thegreenwebfoundation.org/) to prove your infrastructure
+  # is green-certified.
+  #
+  # HOW IT WORKS:
+  # When enabled, a cryptographic signature is added to HTTP Via headers,
+  # allowing GWF to verify that requests passed through your green-certified
+  # infrastructure. The edge proxy has a built-in default carbon.txt from
+  # ScientiaMobile. If you provide custom content below, it will override
+  # the built-in default via the EDGE_CARBONTXT_FILE mechanism. If content
+  # is left empty, the edge proxy's embedded carbon.txt is used.
+  #
+  # IMPORTANT - EACH ORGANIZATION NEEDS THEIR OWN CREDENTIALS:
+  # You must register your own infrastructure with the Green Web Foundation
+  # and obtain your own verification hash. Using another organization's hash
+  # would falsely attribute your traffic to their infrastructure.
+  #
+  # TO ENABLE:
+  # 1. Register at https://www.thegreenwebfoundation.org/
+  # 2. Declare your infrastructure providers and obtain your hash
+  # 3. Set enabled: true below
+  # 4. Set hash: to your GWF verification hash (starts with "GWF-")
+  # 5. Optionally update the content: section to override the built-in carbon.txt
+  #
+  # REFERENCE: https://carbontxt.org/
+  carbontxt:
+    # Set to true to enable GWF verification
+    enabled: false
+    # Your organization's GWF verification hash (obtain from Green Web Foundation)
+    # Example: "GWF-B0edNtZrBWXhj6INCwgNq95hy3P4OMyorcduGb4..."
+    hash: ""
+    # Your carbon.txt file content - customize with your organization's details
+    # See https://carbontxt.org/ for the specification
+    content: |
+      [upstream]
+      providers = [
+          # List your infrastructure providers here
+          # { domain='your-cloud-provider.com', service = 'vps' },
+          # { domain='your-cloud-provider.com', service = 'object-storage' },
+      ]
+      [org]
+      credentials = [
+          # Link to your sustainability documentation
+          # { domain = 'your-domain.com', doctype = 'webpage', url = "https://your-domain.com/sustainability/" },
+      ]
+
+###################################################
+# ImageEngine Kube Varnish Cache Configuration
+###################################################
+# Varnish HTTP cache: sits between the edge proxy and the backend.
+# Deployed separately from edge so cache survives edge updates.
+# Traffic flow: edge -> varnish:8080 -> backend
+varnish:
+  replicaCount: 1
+  minReadySeconds: 0
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  image:
+    repository: docker.scientiamobile.com/iekube/imageengine-frontend.varnish
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+      ephemeral-storage: "10Gi"
+    limits:
+      memory: "4Gi"
+      ephemeral-storage: "500Gi"
+  env:
+    APP_ENV: *appEnv
+    GENERATE_ENV: "true"
+    VARNISH_ENV: "dynamic"
+    VARNISH_MAJOR_VER: "7"
+    # This is set dynamically in the deployment
+    # IE_BACKENDS:
+    RELOADER_ENABLE: "true"
+    # Memory storage
+    # VARNISH_STORAGE: "malloc,64G"
+    #
+    # Filesystem storage
+    # VARNISH_STORAGE: "file,/u/cache/varnish.bin,MAX_DISK"
+    #
+    # Tiered storage
+    VARNISH_STORAGE: "tiered"
+    # Tier 1 is memory storage with 70% of available RAM
+    VARNISH_STORAGE_1: "malloc,70%"
+    # Tier 2 is file storage
+    VARNISH_STORAGE_2: "file,/u/cache/varnish-tier2.bin,50%,8K"
+    # Tier 3 is file storage
+    VARNISH_STORAGE_3: "file,/u/cache/varnish-tier3.bin,8%,128K"
+    #
+    # Additional parameters to pass to varnishd
+    # TODO: Compute these values based on the current instance's resources
+    VARNISH_PARAMS: "-p thread_pools=2
+      -p thread_pool_min=500
+      -p thread_pool_max=5000
+      -p thread_pool_add_delay=2
+      -p send_timeout=15
+      -p listen_depth=65536
+      -p workspace_client=128k
+      -p workspace_backend=160k
+      -p ban_lurker_batch=15
+      -p ban_lurker_sleep=0.01
+      -p nuke_limit=350
+      -p default_grace=60"
+
+###################################################
+# ImageEngine Kube Backend Configuration
+###################################################
+backend:
+  replicaCount: 2
+  minReadySeconds: 0
+  image:
+    repository: docker.scientiamobile.com/iekube/imageengine-backend.server
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "250m"
+    limits:
+      memory: "6Gi"
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 80
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  env:
+    # by default OriginReturnable is disabled
+    # IE_BACKEND_ORIGINRETURNABLE: 0
+    # to enable it
+    # IE_BACKEND_ORIGINRETURNABLE: 1
+    # to set max-age and s-maxage values when Origin is returned (default 180s)
+    IE_BACKEND_ORIGINRETURNABLE_TTL: 30s
+    # customizable TTL for 4xx response (default 180s)
+    # IE_BACKEND_CODE4XX_TTL:
+    IE_BACKEND_SENTRY_ENV: *appEnv
+    # default is WARN
+    # IE_BACKEND_LOGLEVEL:
+    # coreapi
+    # IE_BACKEND_COREAPI_CLIENT_SECRET: "<<SECRET: ie-kube-core-api.CLIENT_SECRET>>"
+    # CORE_API_HOST: *coreApiUrl
+    ### coredata
+    # intervel between coredata data refresh operations, 15 mins
+    COREDATA_REFRESH_INTERVAL: 300s
+    COREDATA_MAIN_DOMAIN: .imgeng.in
+    ### OriginConf
+    # Use the ImageEngine API to fetch origin configurations
+    IE_BACKEND_ORIGINCONFFILE_USE_API: true
+    # IE_BACKEND_ORIGINCONFFILE_1: *originConfFile1
+    # IE_BACKEND_ORIGINCONFFILE_2: *originConfFile2
+    ### Emitter env variables
+    # default is true
+    # ORIGINCONF_EMITTER_SERVER_ENABLE:
+    ORIGINCONF_EMITTER_SERVER: *emitterServer
+    ORIGINCONF_EMITTER_CHANNEL: production/imageengine-kube/origin-conf/changes
+    # default empty
+    # ORIGINCONF_EMITTER_CHANNEL_KEY: "<<SECRET: ie-kube-emitter.KEY>>"
+    # default:1000
+    IE_ORIGINFETCHER_MAX_CONN: 5000
+    # default:15s
+    # IE_ORIGINFETCHER_TIMEOUT:
+    ## Object Storage Cache
+    # IE_OSC_TIMEOUT
+    # default:0 (autotune : 6*number of cores)
+    # IE_OSC_MAX_CONN
+    # default:4000
+    # IE_OSC_ENQUEUE_QUEUE_SIZE
+    # Processor
+    # default:2000
+    # IE_PROCESSOR_MAX_CONN:
+    # default:60s
+    # IE_PROCESSOR_TIMEOUT:
+    # Default to 50000
+    # IE_PROCESSOR_ENQUEUEIMAGE_QUEUE_SIZE:
+    ### statsd env variables
+    # Disabled by default: rsyslog ships with forwarder: discard, so statsd
+    # metrics would just be dropped. Set to true (and configure rsyslog) to emit.
+    IE_BACKEND_STATSD_ENABLE: false
+    # default:local1
+    # IE_BACKEND_STATSD_SYSLOG_FACILITY:
+    # default:info
+    # IE_BACKEND_STATSD_SYSLOG_PRIORITY:
+    # default:0.5
+    # IE_BACKEND_STATSD_SAMPLE_RATE:
+    # default:1s
+    # IE_BACKEND_STATSD_MIDDLEWARE_DATA_INTERVAL:
+
+###################################################
+# ImageEngine Kube Origin Fetcher Configuration
+###################################################
+fetcher:
+  replicaCount: 2
+  minReadySeconds: 0
+  image:
+    repository: docker.scientiamobile.com/iekube/imageengine-origin-fetcher.server
+  resources:
+    requests:
+      memory: "768Mi"
+      cpu: "250m"
+    limits:
+      memory: "4Gi"
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 80
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  env:
+    # default:WARN
+    # IE_ORIGINFETCHER_LOGLEVEL
+    # default:false : Writes to OSC are synchronous if true, enqueued if false
+    # IE_ORIGINFETCHER_SYNC_OSC_WRITES
+    # used for tests
+    # IE_ORIGINFETCHER_DUMMY_ORIGINS
+    # IE_ORIGINFETCHER_DUMMY_CACHE_CONTROL
+    IE_ORIGINFETCHER_FETCHER_THREADS_FOR_DOMAIN: 200
+    # IE_ORIGINFETCHER_MAX_FETCH_OBJECT_SIZE_IN_MB
+    # IE_ORIGINFETCHER_FETCHER_CLIENT_TIMEOUT
+    IE_ORIGINFETCHER_FETCHER_CLIENT_DIAL_TIMEOUT: 10s
+    IE_ORIGINFETCHER_MAX_QUEUE_PER_ORIGIN: 2000
+    IE_ORIGINFETCHER_TIMEOUT_QUEUE_FULL_ORIGIN: 50ms
+    # IE_ORIGINFETCHER_IP_VALIDATION_ENABLED
+    # Object Storage Cache
+    # default:60s
+    # IE_OSC_TIMEOUT
+    # default:200
+    # IE_OSC_MAX_CONN
+    # default:4000
+    IE_OSC_ENQUEUE_QUEUE_SIZE: 4000
+    # Imageengine Processor
+    # default:0 = autotune : 20 * numcore
+    # IE_PROCESSOR_MAX_CONN
+    # Sentry
+    IE_ORIGINFETCHER_SENTRY_ENV: &appEnv
+    # AWS
+    # IE_ORIGINFETCHER_AWS_ACCESS_KEY_ID: "<<SECRET: ie-kube-fetcher.AWS_KEY>>"
+    # IE_ORIGINFETCHER_AWS_SECRET_ACCESS_KEY: "<<SECRET: ie-kube-fetcher.AWS_SECRET>>"
+    # WASABI
+    # IE_ORIGINFETCHER_WASABI_ACCESS_KEY_ID: "<<SECRET: ie-kube-fetcher.WASABI_KEY>>"
+    # IE_ORIGINFETCHER_WASABI_SECRET_ACCESS_KEY: "<<SECRET: ie-kube-fetcher.WASABI_SECRET>>"
+    # statsd env variables
+    # Disabled by default: rsyslog ships with forwarder: discard, so statsd
+    # metrics would just be dropped. Set to true (and configure rsyslog) to emit.
+    IE_ORIGINFETCHER_STATSD_ENABLE: false
+    # default:local1
+    # IE_ORIGINFETCHER_STATSD_SYSLOG_FACILITY
+    # default:info
+    # IE_ORIGINFETCHER_STATSD_SYSLOG_PRIORITY
+    # default:0.5
+    # IE_ORIGINFETCHER_STATSD_SAMPLE_RATE
+    # default:1s
+    # IE_ORIGINFETCHER_STATSD_MIDDLEWARE_DATA_INTERVAL: 1s
+    # Application Log env variables
+    IE_ORIGINFETCHER_APPLICATION_LOG_ENABLE: true
+    # IE_ORIGINFETCHER_APPLICATION_LOG_PROTOCOL: tcp
+    # IE_ORIGINFETCHER_APPLICATION_LOG_FACILITY: local4
+    # IE_ORIGINFETCHER_APPLICATION_LOG_SEVERITY: info
+    # IE_ORIGINFETCHER_APPLICATION_LOG_TAG: origin-fetcher
+
+###################################################
+# ImageEngine Kube Image Processor Configuration
+###################################################
+processor:
+  replicaCount: 2
+  minReadySeconds: 0
+  image:
+    repository: docker.scientiamobile.com/iekube/imageengine-processor.server
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "6Gi"
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 16
+    targetCPUUtilizationPercentage: 80
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  env:
+    # HTTP Server timeouts
+    IE_PROCESSOR_HTTP_READ_TIMEOUT: 15m
+    IE_PROCESSOR_HTTP_WRITE_TIMEOUT: 15m
+    # default:WARN
+    # IE_PROCESSOR_LOGLEVEL
+    # Object Storage Cache
+    # IE_OSC_TIMEOUT
+    # default:0 (autotune : 6*number of cores)
+    # IE_OSC_MAX_CONN
+    # default:4000
+    # IE_OSC_ENQUEUE_QUEUE_SIZE
+    # default:0 (autotune : 6*number of cores)
+    # IE_OSC_MAX_CONN:
+    # default:1, 1.2 for filling better up to 100% cpu
+    IE_PROCESSOR_PROCESSINGTHREADS_PER_CORE: 1.2
+    # default:0.5 number of images per second per core
+    # IE_PROCESSOR_IMG_PER_SEC_PER_CORE
+    # default:60s Total time to complete an imgproc request
+    # IE_PROCESSOR_MAX_PROCESSING_TIME
+    IE_PROCESSOR_SENTRY_ENV: *appEnv
+    # Disabled by default: rsyslog ships with forwarder: discard, so statsd
+    # metrics would just be dropped. Set to true (and configure rsyslog) to emit.
+    IE_PROCESSOR_STATSD_ENABLE: false
+    # default:local1
+    # IE_PROCESSOR_STATSD_SYSLOG_FACILITY
+    # default:info
+    # IE_PROCESSOR_STATSD_SYSLOG_PRIORITY
+    # default:0.5
+    # IE_PROCESSOR_STATSD_SAMPLE_RATE
+    # default:1s
+    # IE_PROCESSOR_STATSD_MIDDLEWARE_DATA_INTERVAL
+    # numbers we are using in stage
+    IE_PROCESSOR_DEFAULT_JP2_COMPRESSION: "1>80;2>75;3>70;4>60"
+    # Controls the CPU effort spent improving compression when encoding to avif
+    # using libvips. Defaults to 8. 0 is slowest 9 is fastest.
+    # IE_PROCESSOR_SPEED_AVIF_ENCODING: 8
+    # VIPS: defines the threshold for large images that are decompressed to
+    # temporary random-access files on disc and then processed from there. The value
+    # is a simple integer with a unit postfix of "k", "m" or "g" to indicate
+    # kilobytes, megabytes or gigabytes. The default threshold is 10 GB.
+    IE_PROCESSOR_VIPS_DISC_THRESHOLD: 10g
+
+######################################################
+# ImageEngine Kube Object Storage Cache Configuration
+######################################################
+objectStorageCache:
+  replicaCount: 1
+  minReadySeconds: 0
+  image:
+    repository: docker.scientiamobile.com/iekube/object-storage-cache.server
+  enabled: true
+  persistence:
+    enabled: true
+    storageClass: ""             # Leave empty to use provider preset, or specify explicitly
+    size: "40Gi"                 # Adjust the size as per your need
+  service:
+    port: 80
+  resources:
+    requests:
+      memory: "2Gi"
+      cpu: "500m"
+    limits:
+      memory: "4Gi"
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  storagePath: &oscStoragePath "/u/data"
+  env:
+    # Log level : ERROR, WARN, INFO, DEBUG, default WARN
+    OSC_LOGLEVEL: WARN
+    # max time in cache, default:2160h (90 days)
+    OSC_MAX_TTL: 2160h
+    # The maximum number of operating system threads that the OSC can use. Default 20000
+    # OSC_MAXTHREADS: 20000
+    # FileSystem env variables
+    # default:/data/osc
+    OSC_FS_STORAGE_PATH: *oscStoragePath
+    #OSC_FS_STORAGE_SHARD_PATH_DEPTH: 2
+    # Sentry env variables
+    OSC_SENTRY_ENV: *appEnv
+    # Emitter env variables
+    OSC_EMITTER_SERVER: *emitterServer
+    # OSC_EMITTER_CHANNEL_KEY: "<<SECRET: ie-kube-emitter.KEY>>"
+    OSC_EMITTER_CHANNEL: production/imageengine/origin-cache/purge
+    # OSC_EMITTER_RESULT_CHANNEL_KEY: "<<SECRET: ie-kube-emitter.KEY>>"
+    OSC_EMITTER_RESULT_CHANNEL: production/imageengine/origin-cache/purge-result
+    # statsd env variables
+    # Disabled by default: rsyslog ships with forwarder: discard, so statsd
+    # metrics would just be dropped. Set to true (and configure rsyslog) to emit.
+    OSC_STATSD_ENABLE: false
+    # default:local1
+    # OSC_STATSD_SYSLOG_FACILITY
+    # default:info
+    # OSC_STATSD_SYSLOG_PRIORITY
+    # default:0.5
+    # OSC_STATSD_SAMPLE_RATE
+    # default:1s
+    # OSC_STATSD_MIDDLEWARE_DATA_INTERVAL
+    # osc-expirer settings
+    #
+    # Disk-pressure cleaner thresholds. The cleaner triggers when free disk
+    # drops at or below LIMIT, and runs until free disk reaches at least TARGET.
+    # TARGET MUST be greater than LIMIT (the application enforces this and will
+    # silently bump TARGET to LIMIT+2 with a warning if you violate it).
+    # App defaults are LIMIT=4 / TARGET=6; the chart raises both so the cleaner
+    # has more room to work and doesn't run continuously near the cliff.
+    OSC_FS_DISK_FREE_LIMIT_PERC: 15
+    OSC_FS_DISK_FREE_TARGET_PERC: 20
+    #
+    # default:4 Free inodes percentage limit under which the cleaner will start to remove files until the target is reached
+    # OSC_FS_INODE_FREE_LIMIT_PERC
+    #
+    # default:6 Free inodes percentage target
+    # OSC_FS_INODE_FREE_TARGET_PERC
+    #
+    # default:1000000 Freespace check cadence (number of traversed entries)
+    # OSC_DISK_FREE_CHECK_COUNT
+    #
+    # TTL to consider when clean-mode is active and we check if an unexpired object must be removed anyway
+    # If set (in the form of duration), it is used only if its value is smaller than "current MaxTTL"/5.
+    # OSC_CLEANUP_MAX_TTL
+    #
+    # default:1us time to wait before checking an entry when traversing fs (to prevent osc-expirer from becoming resource-greedy)
+    OSC_WALKERDELAY: 1ms
+    #
+    # default: 5m Defines the sleep interval between subsequent runs for the osc-expirer CLI tool
+    # OSC_EXPIRER_LOOP_DELAY
+    #
+
+###################################################
+# ImageEngine Kube Logging Configuration
+###################################################
+rsyslog:
+  replicaCount: 1
+  minReadySeconds: 0
+  image:
+    repository: "docker.scientiamobile.com/iekube/base.rsyslog"
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  forwarder: "discard"

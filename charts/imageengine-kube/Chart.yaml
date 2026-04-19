@@ -1,0 +1,26 @@
+apiVersion: v2
+name: imageengine-kube
+description: ImageEngine - cloud-native image optimization
+type: application
+version: 0.8.7
+appVersion: "2.10.9"
+kubeVersion: ">=1.30.0-0"
+home: https://imageengine.io
+sources:
+  - https://kube.imageengine.io/charts
+icon: https://imageengine.io/favicon.ico
+keywords:
+  - image-optimization
+  - image-cdn
+  - cdn
+  - imageengine
+  - varnish
+  - wurfl
+maintainers:
+  - name: ScientiaMobile
+    email: support@scientiamobile.com
+    url: https://www.scientiamobile.com
+annotations:
+  artifacthub.io/signKey: |
+    fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+    url: https://kube.imageengine.io/charts/pubkey.asc

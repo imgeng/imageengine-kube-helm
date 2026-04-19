@@ -1,0 +1,59 @@
+Thanks for installing {{ .Chart.Name }} {{ .Chart.Version }}.
+
+Release: {{ .Release.Name }}
+Namespace: {{ .Release.Namespace }}
+
+Watch the components come up (about 1-2 minutes; the OSC pod takes longest
+because it has to bind a PersistentVolume):
+
+  kubectl --namespace {{ .Release.Namespace }} get pods -l app={{ include "imageengine.name" . }} -w
+
+{{- if eq .Values.service.type "LoadBalancer" }}
+
+Get the external IP of the edge LoadBalancer (give your cloud provider a
+minute to allocate it):
+
+  kubectl --namespace {{ .Release.Namespace }} get svc {{ include "imageengine.fullname" . }}-edge
+
+{{- else if .Values.ingress.enabled }}
+
+External access is via your ingress controller. Hostnames configured:
+{{- range .Values.ingress.hosts }}
+  - {{ . }}
+{{- end }}
+
+  kubectl --namespace {{ .Release.Namespace }} get ingress {{ include "imageengine.fullname" . }}-ingress
+
+Make sure your DNS for the hostnames above points at your ingress controller's
+external address.
+
+{{- else }}
+
+Heads up: service.type is "{{ .Values.service.type }}" and ingress.enabled is
+false. The chart is installed but the edge isn't reachable from outside the
+cluster. To expose it, either:
+
+  - Set service.type=LoadBalancer (cloud LB controller required), or
+  - Set ingress.enabled=true and provide ingress.hosts (ingress controller
+    required), or
+  - Use kubectl port-forward for testing:
+
+    kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "imageengine.fullname" . }}-edge 8080:{{ .Values.service.port }}
+
+{{- end }}
+
+For a smoke-test curl walkthrough, see step 6 of:
+  docs/GETTING_STARTED.md
+
+Other useful docs:
+  docs/REQUIREMENTS.md     - prerequisites
+  docs/SIZING.md           - capacity planning per traffic tier
+  docs/CUSTOMIZATIONS.md   - the most common overrides
+  docs/TROUBLESHOOTING.md  - when something doesn't work
+  docs/providers/          - platform-specific guidance
+{{- if eq .Values.provider "custom" }}
+
+You're using `provider: custom` (the default). If you're on AWS / Azure /
+DigitalOcean / GKE / Linode, set `provider:` to the matching name to get
+the correct storage class and ingress class auto-configured.
+{{- end }}

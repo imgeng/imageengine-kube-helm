@@ -1,0 +1,15 @@
+# # ImageEngine Kube Object Storage Cache Persistent Volume Claim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "imageengine.fullname" . }}-osc-pvc
+  labels:
+    app: {{ include "imageengine.name" . }}
+    tier: object-storage
+spec:
+  accessModes:
+    - ReadWriteOnce            # Ensure it's only accessible by one node at a time
+  resources:
+    requests:
+      storage: {{ .Values.objectStorageCache.persistence.size }}
+  storageClassName: {{ include "imageengine.storageClass" . }}

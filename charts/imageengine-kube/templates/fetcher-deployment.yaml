@@ -1,0 +1,124 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "imageengine.fullname" . }}-fetcher
+spec:
+  replicas: {{ .Values.fetcher.replicaCount }}
+  minReadySeconds: {{ .Values.fetcher.minReadySeconds | default 0 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: {{ include "imageengine.name" . }}
+      tier: fetcher
+  template:
+    metadata:
+      labels:
+        app: {{ include "imageengine.name" . }}
+        tier: fetcher
+      {{- with .Values.fetcher.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      securityContext:
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+      imagePullSecrets:
+        - name: {{ .Values.secrets.imagePullSecretName }}
+      {{- with .Values.fetcher.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.fetcher.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.fetcher.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: {{ include "imageengine.name" . }}
+              tier: fetcher
+      containers:
+        - name: fetcher
+          image: "{{ .Values.fetcher.image.repository }}:{{ .Values.images.fetcher }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop:
+              - ALL
+          resources:
+            {{- toYaml .Values.fetcher.resources | nindent 12 }}
+          ports:
+            - containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          env:
+            - name: IE_ORIGINFETCHER_BIND_HOSTPORT
+              value: "0.0.0.0:8000"
+            # Sharding is not supported in this chart
+            - name: OSCCLIENT_ENVCONFIG
+              value: "true"
+            - name: OSC0_HOST
+              value: "{{ include "imageengine.fullname" . }}-osc:80"
+            - name: IE_PROCESSOR_URL
+              value: "http://{{ include "imageengine.fullname" . }}-processor:80"
+            - name: IE_ORIGINFETCHER_STATSD_SYSLOG_ADDRESS
+              value: "{{ include "imageengine.fullname" . }}-rsyslog:514"
+            - name: IE_ORIGINFETCHER_APPLICATION_LOG_HOST
+              value: "{{ include "imageengine.fullname" . }}-rsyslog:514"
+            - name: IE_ORIGINFETCHER_SENTRY_DSN
+              value: {{ .Values.sentry.FETCHER_DSN | quote }}
+            # Secrets
+            - name: IE_ORIGINFETCHER_AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: ie-kube-fetcher
+                  key: AWS_KEY
+                  optional: true
+            - name: IE_ORIGINFETCHER_AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ie-kube-fetcher
+                  key: AWS_SECRET
+                  optional: true
+            - name: IE_ORIGINFETCHER_WASABI_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: ie-kube-fetcher
+                  key: WASABI_KEY
+                  optional: true
+            - name: IE_ORIGINFETCHER_WASABI_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ie-kube-fetcher
+                  key: WASABI_SECRET
+                  optional: true
+            # Env vars for statistics
+            {{- range $key, $value := .Values.identity }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            # Env vars below this line are from values.yaml
+            {{- range $key, $value := .Values.fetcher.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+

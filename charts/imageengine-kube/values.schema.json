@@ -1,0 +1,161 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "imageengine-kube values",
+  "description": "Schema for the imageengine-kube Helm chart values. Catches the most common misconfigurations at install time.",
+  "type": "object",
+  "properties": {
+    "provider": {
+      "description": "Cloud provider preset. Use 'custom' for bare metal, on-prem, or any self-managed cluster.",
+      "type": "string",
+      "enum": ["aws", "azure", "digitalocean", "gke", "linode", "custom"]
+    },
+    "service": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "description": "Edge Service type. LoadBalancer (default) requires a working LB integration; ClusterIP is internal-only and typically paired with ingress.enabled=true; NodePort opens a port on every node.",
+          "type": "string",
+          "enum": ["ClusterIP", "NodePort", "LoadBalancer"]
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "loadBalancerSourceRanges": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "externalTrafficPolicy": {
+          "type": "string",
+          "enum": ["", "Cluster", "Local"]
+        }
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "className": { "type": "string" },
+        "hosts": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "tls": { "type": "array" }
+      },
+      "if": {
+        "properties": { "enabled": { "const": true } },
+        "required": ["enabled"]
+      },
+      "then": {
+        "properties": {
+          "hosts": {
+            "type": "array",
+            "minItems": 1,
+            "description": "ingress.hosts must contain at least one hostname when ingress.enabled is true",
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "secrets": {
+      "type": "object",
+      "properties": {
+        "imagePullSecretName": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of a pre-existing Kubernetes Secret of type kubernetes.io/dockerconfigjson"
+        }
+      }
+    },
+    "objectStorageCache": {
+      "type": "object",
+      "properties": {
+        "replicaCount": {
+          "description": "OSC must run as exactly 1 replica. Sharded OSC is not supported in this chart; multiple OSC pods would split the cache by hostname and collapse the hit ratio.",
+          "type": "integer",
+          "const": 1
+        },
+        "persistence": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "storageClass": { "type": "string" },
+            "size": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "properties": {
+        "replicaCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "varnish": {
+      "type": "object",
+      "properties": {
+        "replicaCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "backend": {
+      "type": "object",
+      "properties": {
+        "replicaCount": { "type": "integer", "minimum": 0 },
+        "autoscaling": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "minReplicas": { "type": "integer", "minimum": 1 },
+            "maxReplicas": { "type": "integer", "minimum": 1 },
+            "targetCPUUtilizationPercentage": { "type": "integer", "minimum": 1, "maximum": 100 }
+          }
+        }
+      }
+    },
+    "fetcher": {
+      "type": "object",
+      "properties": {
+        "replicaCount": { "type": "integer", "minimum": 0 },
+        "autoscaling": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "minReplicas": { "type": "integer", "minimum": 1 },
+            "maxReplicas": { "type": "integer", "minimum": 1 },
+            "targetCPUUtilizationPercentage": { "type": "integer", "minimum": 1, "maximum": 100 }
+          }
+        }
+      }
+    },
+    "processor": {
+      "type": "object",
+      "properties": {
+        "replicaCount": { "type": "integer", "minimum": 0 },
+        "autoscaling": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "minReplicas": { "type": "integer", "minimum": 1 },
+            "maxReplicas": { "type": "integer", "minimum": 1 },
+            "targetCPUUtilizationPercentage": { "type": "integer", "minimum": 1, "maximum": 100 }
+          }
+        }
+      }
+    },
+    "rsyslog": {
+      "type": "object",
+      "properties": {
+        "replicaCount": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

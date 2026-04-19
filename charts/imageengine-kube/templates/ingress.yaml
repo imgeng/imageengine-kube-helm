@@ -1,0 +1,35 @@
+{{- if .Values.ingress.enabled -}}
+{{- $root := . }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "imageengine.fullname" . }}-ingress
+  annotations:
+    {{- include "imageengine.ingressAnnotations" . | nindent 4 }}
+spec:
+  ingressClassName: {{ include "imageengine.ingressClass" . }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - host: "{{ . }}"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "imageengine.fullname" $root }}-edge
+                port:
+                  number: {{ $root.Values.service.port }}
+    {{- end }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    {{- range .Values.ingress.tls }}
+    - secretName: {{ .secretName }}
+      hosts:
+        {{- range .hosts }}
+        - "{{ . }}"
+        {{- end }}
+    {{- end }}
+  {{- end }}
+
+{{- end -}}

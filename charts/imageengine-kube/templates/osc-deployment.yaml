@@ -1,0 +1,108 @@
+# ImageEngine Kube Object Storage Cache (OSC) Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "imageengine.fullname" . }}-osc
+  labels:
+    app: {{ include "imageengine.name" . }}
+    tier: object-storage
+spec:
+  replicas: {{ .Values.objectStorageCache.replicaCount }}
+  minReadySeconds: {{ .Values.objectStorageCache.minReadySeconds | default 0 }}
+  selector:
+    matchLabels:
+      app: {{ include "imageengine.name" . }}
+      tier: object-storage
+  template:
+    metadata:
+      labels:
+        app: {{ include "imageengine.name" . }}
+        tier: object-storage
+      {{- with .Values.objectStorageCache.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      securityContext:
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+      imagePullSecrets:
+        - name: {{ .Values.secrets.imagePullSecretName }}
+      {{- with .Values.objectStorageCache.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.objectStorageCache.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.objectStorageCache.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: {{ include "imageengine.name" . }}
+              tier: object-storage
+      containers:
+        - name: object-storage-cache
+          image: "{{ .Values.objectStorageCache.image.repository }}:{{ .Values.images.osc }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop:
+              - ALL
+          ports:
+            - containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.objectStorageCache.resources | nindent 12 }}
+          volumeMounts:
+            # Path where origin images and processed images are stored
+            - name: osc-storage
+              mountPath: {{ .Values.objectStorageCache.storagePath }}
+          env:
+            - name: OSC_BIND_HOSTPORT
+              value: "0.0.0.0:8000"
+            - name: OSC_STATSD_SYSLOG_ADDRESS
+              value: "{{ include "imageengine.fullname" . }}-rsyslog:514"
+            - name: OSC_SENTRY_DSN
+              value: {{ .Values.sentry.OSC_DSN | quote }}
+            # Secrets
+            - name: IE_KUBE_API_KEY_RAW
+              valueFrom:
+                secretKeyRef:
+                  name: ie-kube-api-key
+                  key: KEY
+            - name: OSC_EMITTER_CHANNEL_KEY
+              value: "api-key:$(IE_KUBE_API_KEY_RAW)"
+            # TODO: we can't send messages with a api-key, the app needs to deal with this
+            - name: OSC_EMITTER_RESULT_CHANNEL_KEY
+              value: "api-key:$(IE_KUBE_API_KEY_RAW)"
+            # Env vars for statistics
+            {{- range $key, $value := .Values.identity }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            # Env vars below this line are from values.yaml
+            {{- range $key, $value := .Values.objectStorageCache.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+
+      volumes:
+        - name: osc-storage
+          persistentVolumeClaim:
+            claimName: {{ include "imageengine.fullname" . }}-osc-pvc

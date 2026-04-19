@@ -1,0 +1,6 @@
+/untracked-files
+secrets.yaml
+*.py
+CLAUDE.md
+AGENTS.md
+.gitignore

@@ -1,0 +1,20 @@
+# ImageEngine Kube Rsyslog Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "imageengine.fullname" . }}-rsyslog
+  labels:
+    app: {{ include "imageengine.name" . }}
+    tier: logging
+spec:
+  type: ClusterIP
+  ports:
+    - name: rsyslog-tcp
+      port: 514
+      protocol: TCP
+    - name: rsyslog-udp
+      port: 514
+      protocol: UDP
+  selector:
+    app: {{ include "imageengine.name" . }}
+    tier: logging
