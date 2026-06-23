@@ -101,36 +101,48 @@ kubectl get pods -n imageengine -w
 
 You should see seven deployments (edge, varnish, backend, fetcher, processor, osc, rsyslog) settle into `Running` within a minute or two. The OSC pod is the slowest because it has to bind a PersistentVolume.
 
-Get the external IP of the edge load balancer:
+Get the external address of the edge load balancer:
 
 ```bash
 kubectl get svc -n imageengine -l 'app=imageengine-kube,tier=edge'
 ```
 
-This returns just the `*-edge` Service. With the default `service.type: LoadBalancer`, it will get an external IP from your cloud provider — that may take a minute. If it stays `<pending>` for more than a couple minutes, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+This returns just the `*-edge` Service. With the default `service.type: LoadBalancer`, your cloud provider assigns it an external address in the `EXTERNAL-IP` column — that may take a minute. Depending on the provider this is either an **IP** (e.g. GKE, DigitalOcean) or a **hostname** (e.g. an AWS NLB like `k8s-...elb.amazonaws.com`). Either works for the smoke test below. If it stays `<pending>` for more than a couple minutes, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
 ## Step 6 — Smoke test
 
-Pick a real image URL on a real origin you control, and a hostname that you've already configured in the ImageEngine Control Panel (so the edge knows how to look up its origin config). Then:
+The edge decides which origin to fetch from based on the **`Host`** header of the incoming request. So to test, you need two things:
+
+- the **edge address** from step 5 (an IP or a hostname — both work), and
+- your **ImageEngine Delivery Address** (shown in the ImageEngine Control Panel), so the edge has an origin to pull from.
+
+Capture both into variables. The `jsonpath` below grabs whichever of IP / hostname your provider assigned:
 
 ```bash
-EXTERNAL_IP=<the IP from step 5>
-DOMAIN=<your-imageengine-host>     # e.g. abc12345.cdn.imgeng.in
-ACCEPT="accept: image/avif,image/webp"
+EDGE=$(kubectl get svc -n imageengine imageengine-kube-edge \
+  -o jsonpath='{.status.loadBalancer.ingress[0].ip}{.status.loadBalancer.ingress[0].hostname}')
 
-# Basic request
-curl -I --resolve "$DOMAIN:80:$EXTERNAL_IP" \
-  "http://$DOMAIN/path/to/your/image.jpg"
-
-# Confirm ImageEngine is processing the response
-curl -sSI --resolve "$DOMAIN:80:$EXTERNAL_IP" \
-  -H "$ACCEPT" \
-  -H "imgeng-audit: true" \
-  "http://$DOMAIN/path/to/your/image.jpg?imgeng=/w_100" \
-  | grep -i ^imgeng
+DELIVERY_ADDRESS=<your-imageengine-delivery-address>   # e.g. abc12345.cdn.imgeng.in
 ```
 
-The `imgeng-audit: true` header asks the edge to emit `imgeng-*` debug headers describing what device it detected, which transformations it applied, and which cache layer served the response. If you see those headers, you're done.
+Then send **one** request that connects straight to the edge, tells it which Delivery Address you mean, and forces a resize so you know processing actually ran:
+
+```bash
+curl -sS -o /dev/null -D - \
+  -H "Host: $DELIVERY_ADDRESS" \
+  -H "accept: image/avif,image/webp" \
+  -H "imgeng-audit: true" \
+  "http://$EDGE/path/to/your/image.jpg?imgeng=/w_100" \
+  | grep -i "^imgeng-"
+```
+
+Why this shape:
+
+- `-H "Host: $DELIVERY_ADDRESS"` is the trick that makes it work regardless of whether `$EDGE` is an IP or a hostname — you connect to the edge directly and just name your Delivery Address in the header. No `--resolve` or `/etc/hosts` edits.
+- `?imgeng=/w_100` forces a 100px-wide resize, so a success proves the image actually flowed through the processor, not just that the edge answered.
+- `imgeng-audit: true` asks the edge to emit its `imgeng-*` debug headers; `-o /dev/null -D -` throws away the image body and prints only the response headers.
+
+**A successful run prints several `imgeng-*` headers** describing the device the edge detected, the transformations it applied, and which cache layer served the response. Seeing any of them means the full chain — edge → varnish → backend → fetcher → processor → OSC — is working. Run it a second time and the cache-status header should flip from a miss to a hit. If you instead get a 4xx/5xx or no `imgeng-*` headers at all, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
 ## Next steps
 
