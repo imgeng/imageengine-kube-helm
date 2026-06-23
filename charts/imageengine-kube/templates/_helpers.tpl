@@ -61,16 +61,45 @@ Usage: {{ include "imageengine.ingressAnnotations" . | nindent 4 }}
 */}}
 {{- define "imageengine.ingressAnnotations" -}}
 {{- $annotations := dict -}}
-{{- /* Apply provider preset annotations first */ -}}
+{{- /* Apply provider preset annotations first, but only when the effective ingress
+       class still matches the preset's class. Preset ingress annotations are
+       class-specific (e.g. alb.ingress.kubernetes.io/* for AWS), so if the user
+       overrides ingress.className to something else we must not inject them. */ -}}
 {{- if and .Values.provider (hasKey .Values.providerPresets .Values.provider) -}}
 {{- $preset := index .Values.providerPresets .Values.provider -}}
-{{- if $preset.ingressAnnotations -}}
+{{- $effectiveClass := include "imageengine.ingressClass" . -}}
+{{- if and $preset.ingressAnnotations (eq $effectiveClass ($preset.ingressClass | default "nginx")) -}}
 {{- $annotations = merge $annotations $preset.ingressAnnotations -}}
 {{- end -}}
 {{- end -}}
 {{- /* Merge explicit annotations (these take precedence) */ -}}
 {{- if .Values.ingress.annotations -}}
 {{- $annotations = merge $annotations .Values.ingress.annotations -}}
+{{- end -}}
+{{- /* Output the annotations */ -}}
+{{- range $key, $value := $annotations }}
+{{ $key }}: {{ $value | quote }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Get merged edge Service annotations (provider defaults + explicit overrides).
+Explicit service.annotations take precedence over provider defaults, so a
+deployment can, for example, set the AWS LB scheme back to "internal".
+Usage: {{ include "imageengine.serviceAnnotations" . | nindent 4 }}
+*/}}
+{{- define "imageengine.serviceAnnotations" -}}
+{{- $annotations := dict -}}
+{{- /* Apply provider preset annotations first */ -}}
+{{- if and .Values.provider (hasKey .Values.providerPresets .Values.provider) -}}
+{{- $preset := index .Values.providerPresets .Values.provider -}}
+{{- if $preset.serviceAnnotations -}}
+{{- $annotations = merge $annotations $preset.serviceAnnotations -}}
+{{- end -}}
+{{- end -}}
+{{- /* Merge explicit annotations last so they win on conflicts */ -}}
+{{- if .Values.service.annotations -}}
+{{- $annotations = mergeOverwrite $annotations .Values.service.annotations -}}
 {{- end -}}
 {{- /* Output the annotations */ -}}
 {{- range $key, $value := $annotations }}

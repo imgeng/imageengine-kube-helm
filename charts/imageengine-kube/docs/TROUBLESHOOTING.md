@@ -127,6 +127,7 @@ Common causes:
   ```bash
   kubectl get storageclass
   ```
+  On **EKS** this is the usual culprit: `provider: aws` requests `gp3`, but EKS doesn't create a `gp3` StorageClass by default (you typically only get a legacy `gp2`). Create one — see [providers/AWS.md → Storage](providers/AWS.md#storage) for the exact manifest (the provisioner differs between Auto Mode and standard EKS) — or override to the class you already have.
 - Otherwise set it explicitly:
   ```yaml
   objectStorageCache:
@@ -276,6 +277,25 @@ ingress:
   hosts:
     - images.example.com          # must match the Host header on incoming requests
 ```
+
+---
+
+## Ingress never gets an ADDRESS
+
+**Symptom:** `kubectl get ingress` shows your Ingress but the `ADDRESS` column stays empty, and nothing routes to it. `kubectl describe ingress <name>` shows an event like `ingressClass 'nginx' not found` (or no events at all).
+
+**Cause:** No controller is watching that ingress class. The class is set, but the controller that's supposed to reconcile it isn't installed. The most common case is **EKS Auto Mode**, which ships the **ALB** controller (`alb`) but **not** `ingress-nginx` — so a `className: nginx` Ingress just sits there orphaned.
+
+**Diagnose:**
+
+```bash
+kubectl get ingressclass                          # which classes/controllers actually exist
+kubectl describe ingress <release>-imageengine-kube-ingress
+```
+
+**Fix:** make `ingress.className` match a class that exists. On EKS (`provider: aws`) the preset already defaults to `alb`; if you previously pinned `nginx`, either remove that override or install `ingress-nginx`. See [providers/AWS.md](providers/AWS.md#exposing-the-edge--two-paths).
+
+> Note: the chart's default exposure path on AWS is the LoadBalancer Service (NLB), which needs **no** Ingress controller at all. If you only need a public IP, leave `ingress.enabled: false`.
 
 ---
 

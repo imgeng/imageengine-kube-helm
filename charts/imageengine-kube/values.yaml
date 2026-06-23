@@ -32,28 +32,46 @@ provider: "custom"
 providerPresets:
   aws:
     storageClass: "gp3"
-    ingressClass: "nginx"
-    ingressAnnotations: {}
+    # EKS provides the ALB ingress controller natively (EKS Auto Mode) or via the
+    # AWS Load Balancer Controller add-on, so "alb" is the right default ingress
+    # class. Clusters that instead run ingress-nginx should set
+    # ingress.className: nginx explicitly (see docs/providers/AWS.md).
+    ingressClass: "alb"
+    # When ingress is enabled, make the ALB internet-facing and target Pod IPs
+    # directly (required on EKS Auto Mode / the VPC CNI). Override via
+    # ingress.annotations for private or instance-target deployments.
+    ingressAnnotations:
+      alb.ingress.kubernetes.io/scheme: "internet-facing"
+      alb.ingress.kubernetes.io/target-type: "ip"
+    # EKS (especially Auto Mode) defaults the edge NLB to "internal"; expose it
+    # to the internet by default. Override via service.annotations (e.g. set the
+    # scheme back to "internal") for private deployments.
+    serviceAnnotations:
+      service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
     externalDnsProvider: "aws"
   digitalocean:
     storageClass: "do-block-storage"
     ingressClass: "nginx"
     ingressAnnotations: {}
+    serviceAnnotations: {}
     externalDnsProvider: "digitalocean"
   linode:
     storageClass: "linode-block-storage-retain"
     ingressClass: "nginx"
     ingressAnnotations: {}
+    serviceAnnotations: {}
     externalDnsProvider: "linode"
   gke:
     storageClass: "standard-rwo"
     ingressClass: "gce"
     ingressAnnotations: {}
+    serviceAnnotations: {}
     externalDnsProvider: "google"
   azure:
     storageClass: "managed-csi-premium"
     ingressClass: "nginx"
     ingressAnnotations: {}
+    serviceAnnotations: {}
     externalDnsProvider: "azure"
 imageengine:
   # <production|staging|canary|testing|development>
@@ -167,9 +185,9 @@ edge:
     # Emitter
     EDGE_EMITTER_SERVER: *emitterServer
     # EDGE_EMITTER_SERVER_KEY: "<<SECRET: ie-kube-emitter.KEY>>"
-    EDGE_EMITTER_CHANNEL: production/imageengine-kube/frontend/settings
+    EDGE_EMITTER_CHANNEL: production/imageengine/frontend/settings
     # EDGE_EMITTER_BAN_KEY: "<<SECRET: ie-kube-emitter.KEY>>"
-    EDGE_EMITTER_BAN_CHANNEL: production/imageengine-kube/frontend/purge
+    EDGE_EMITTER_BAN_CHANNEL: production/imageengine/frontend/purge
     # Required if EDGE_ORIGIN_CONF_SOURCE is "file" with an S3 URL
     # AWS_ACCESS_KEY_ID: "<<SECRET: ie-kube-origin-conf.AWS_KEY>>"
     # AWS_SECRET_ACCESS_KEY: "<<SECRET: ie-kube-origin-conf.AWS_SECRET>>"
@@ -337,7 +355,7 @@ backend:
     # default is true
     # ORIGINCONF_EMITTER_SERVER_ENABLE:
     ORIGINCONF_EMITTER_SERVER: *emitterServer
-    ORIGINCONF_EMITTER_CHANNEL: production/imageengine-kube/origin-conf/changes
+    ORIGINCONF_EMITTER_CHANNEL: production/imageengine/origin-conf/changes
     # default empty
     # ORIGINCONF_EMITTER_CHANNEL_KEY: "<<SECRET: ie-kube-emitter.KEY>>"
     # default:1000

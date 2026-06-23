@@ -29,15 +29,12 @@ For anything beyond the quick-start below, see the docs linked in [Where to next
    ```
    You need an **active** ImageEngine Kube trial or subscription to create the API key.
 
-3. **Write a minimal `imageengine-values.yaml`** — `provider:` is the only must-have:
+3. **Write a minimal `imageengine-values.yaml`** — `provider:` is the only must-have. On a cloud provider this alone exposes the edge via a public LoadBalancer:
    ```yaml
    provider: aws
-
-   ingress:
-     enabled: true
-     hosts:
-       - images.example.com
    ```
+   Prefer hostname routing through an Ingress instead? See your provider doc for the
+   right `service.type` / `ingress` combination (e.g. [AWS](docs/providers/AWS.md)).
 
 4. **Install**
    ```bash
@@ -88,7 +85,7 @@ Setting `provider:` auto-configures the right storage class and ingress class fo
 
 | Provider | Storage Class | Ingress Class | Doc |
 |----------|--------------|---------------|-----|
-| `aws` | `gp3` | `nginx` | [docs/providers/AWS.md](docs/providers/AWS.md) |
+| `aws` | `gp3` | `alb` | [docs/providers/AWS.md](docs/providers/AWS.md) |
 | `azure` | `managed-csi-premium` | `nginx` | [docs/providers/AZURE.md](docs/providers/AZURE.md) |
 | `digitalocean` | `do-block-storage` | `nginx` | [docs/providers/DIGITALOCEAN.md](docs/providers/DIGITALOCEAN.md) |
 | `gke` | `standard-rwo` | `gce` | [docs/providers/GKE.md](docs/providers/GKE.md) |
