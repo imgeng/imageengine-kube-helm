@@ -5,11 +5,11 @@ imagePullPolicy: Always
 ###################################################
 # Centralized image tags/versions for all components
 images:
-  edge: "4.0.2"
-  varnish: "4.0.2"
+  edge: "4.0.3"
+  varnish: "4.0.3"
   backend: "2.10.9"
   fetcher: "1.26.5"
-  processor: "3.19.0"
+  processor: "3.20.0"
   osc: "3.3.6"
   rsyslog: "24.04"
 
@@ -59,7 +59,7 @@ imageengine:
   # <production|staging|canary|testing|development>
   environment: &appEnv "testing"
   emitterServer: &emitterServer "wss://emitter.eleven45.net:443"
-  imageEngineApiUrl: &imageEngineApiUrl "https://control-api.imageengine.io"
+  imageEngineApiUrl: "https://control-api.imageengine.io"
 
 sentry:
   FRONTEND_DSN: ""
