@@ -29,7 +29,7 @@ kubectl create secret docker-registry ie-kube-image-pull -n imageengine \
   --docker-password=<your-api-key> \
   --docker-email=<your-email>
 
-helm install imageengine imageengine/imageengine-kube \
+helm install imageengine-kube imageengine/imageengine-kube \
   --namespace imageengine \
   -f imageengine-values.yaml
 ```

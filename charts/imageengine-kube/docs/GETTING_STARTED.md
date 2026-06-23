@@ -88,7 +88,7 @@ That's it. Every other setting has a sensible default. When you're ready to scal
 ## Step 5 — Install
 
 ```bash
-helm install imageengine imageengine/imageengine-kube \
+helm install imageengine-kube imageengine/imageengine-kube \
   --namespace imageengine \
   -f imageengine-values.yaml
 ```

@@ -40,7 +40,7 @@ For anything beyond the quick-start below, see the docs linked in [Where to next
 
 4. **Install**
    ```bash
-   helm install imageengine imageengine/imageengine-kube \
+   helm install imageengine-kube imageengine/imageengine-kube \
      --namespace imageengine \
      -f imageengine-values.yaml
    ```
@@ -76,7 +76,7 @@ gpg --no-default-keyring --no-options \
    --fingerprint releases@imageengine.io
 
 # Pull, verify, and install in one step
-helm install imageengine imageengine/imageengine-kube \
+helm install imageengine-kube imageengine/imageengine-kube \
   --namespace imageengine \
   --verify --keyring ~/.gnupg/imageengine-pubring.gpg \
   -f imageengine-values.yaml
@@ -101,7 +101,7 @@ Setting `provider:` auto-configures the right storage class and ingress class fo
 
 ```bash
 helm repo update
-helm upgrade imageengine imageengine/imageengine-kube \
+helm upgrade imageengine-kube imageengine/imageengine-kube \
   --namespace imageengine \
   -f imageengine-values.yaml
 ```

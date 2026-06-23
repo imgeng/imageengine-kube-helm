@@ -2,7 +2,7 @@
 
 Common failure modes, what they look like, and how to fix them. Symptom-driven — find the section that matches what you're seeing, then run the diagnostic and apply the fix.
 
-The examples below assume you followed [GETTING_STARTED.md](GETTING_STARTED.md) and installed into the `imageengine` namespace with release name `imageengine` (so resources are named `imageengine-kube-imageengine-*`). If you used different names, adjust `-n imageengine` and the resource names accordingly.
+The examples below assume you followed [GETTING_STARTED.md](GETTING_STARTED.md) and installed into the `imageengine` namespace with release name `imageengine-kube` (so resources are named `imageengine-kube-*`). If you used different names, adjust `-n imageengine` and the resource names accordingly.
 
 If you're stuck, the [commands cheatsheet](#commands-cheatsheet) at the bottom covers the kubectl/helm one-liners you'll use most.
 
@@ -15,7 +15,7 @@ If you're stuck, the [commands cheatsheet](#commands-cheatsheet) at the bottom c
 ```
 $ kubectl get svc -n imageengine -l 'app=imageengine-kube,tier=edge'
 NAME                                TYPE           EXTERNAL-IP    ...
-imageengine-kube-imageengine-edge   LoadBalancer   <pending>      ...
+imageengine-kube-edge   LoadBalancer   <pending>      ...
 ```
 
 By default the chart creates the edge as a `Service type: LoadBalancer`. If nothing in the cluster knows how to satisfy that, the service sits in `<pending>` forever.
@@ -23,7 +23,7 @@ By default the chart creates the edge as a `Service type: LoadBalancer`. If noth
 **Diagnose:**
 
 ```bash
-kubectl describe svc -n imageengine imageengine-kube-imageengine-edge
+kubectl describe svc -n imageengine imageengine-kube-edge
 ```
 
 Look at the events at the bottom.
@@ -43,8 +43,8 @@ Look at the events at the bottom.
 ```
 $ kubectl get pods -n imageengine
 NAME                                          READY   STATUS             ...
-imageengine-kube-imageengine-edge-...         0/1     ImagePullBackOff   ...
-imageengine-kube-imageengine-backend-...      0/1     ErrImagePull       ...
+imageengine-kube-edge-...         0/1     ImagePullBackOff   ...
+imageengine-kube-backend-...      0/1     ErrImagePull       ...
 ```
 
 **Diagnose:**
@@ -108,13 +108,13 @@ kubectl rollout restart deploy -n imageengine -l app=imageengine-kube
 ```
 $ kubectl get pvc -n imageengine
 NAME                                STATUS    ...   STORAGECLASS       ...
-imageengine-kube-imageengine-osc-pvc  Pending   ...   <unset>            ...
+imageengine-kube-osc-pvc  Pending   ...   <unset>            ...
 ```
 
 **Diagnose:**
 
 ```bash
-kubectl describe pvc -n imageengine imageengine-kube-imageengine-osc-pvc
+kubectl describe pvc -n imageengine imageengine-kube-osc-pvc
 ```
 
 Common causes:
@@ -149,9 +149,9 @@ Common causes:
 
 ```bash
 kubectl get pods -n imageengine -l app=imageengine-kube
-kubectl logs -n imageengine deploy/imageengine-kube-imageengine-edge --tail=50
-kubectl logs -n imageengine deploy/imageengine-kube-imageengine-varnish --tail=50
-kubectl logs -n imageengine deploy/imageengine-kube-imageengine-backend --tail=50
+kubectl logs -n imageengine deploy/imageengine-kube-edge --tail=50
+kubectl logs -n imageengine deploy/imageengine-kube-varnish --tail=50
+kubectl logs -n imageengine deploy/imageengine-kube-backend --tail=50
 ```
 
 The edge sits in front of varnish, which sits in front of backend. A 502 means one of the downstream services is not Ready or is returning errors.
@@ -172,7 +172,7 @@ This is a cache miss path — fetcher pulls the original from your origin, proce
 **Diagnose:**
 
 ```bash
-kubectl logs -n imageengine deploy/imageengine-kube-imageengine-fetcher --tail=100
+kubectl logs -n imageengine deploy/imageengine-kube-fetcher --tail=100
 ```
 
 Look for connection errors, timeouts, or DNS resolution failures pointing at your origin.
@@ -260,7 +260,7 @@ Also confirm the processor pod has enough ephemeral storage in its `resources.li
 
 ```bash
 kubectl get ingress -n imageengine
-kubectl describe ingress -n imageengine imageengine-kube-imageengine-ingress
+kubectl describe ingress -n imageengine imageengine-kube-ingress
 ```
 
 **Fix:**
@@ -292,7 +292,7 @@ ingress:
 
 ```bash
 kubectl get ingressclass                          # which classes/controllers actually exist (cluster-scoped)
-kubectl describe ingress -n imageengine imageengine-kube-imageengine-ingress
+kubectl describe ingress -n imageengine imageengine-kube-ingress
 ```
 
 **Fix:** make `ingress.className` match a class that exists. On EKS (`provider: aws`) the preset already defaults to `alb`; if you previously pinned `nginx`, either remove that override or install `ingress-nginx`. See [providers/AWS.md](providers/AWS.md#exposing-the-edge--two-paths).
@@ -346,19 +346,19 @@ See [SIZING.md](SIZING.md) for per-component characteristics.
 kubectl get pods -n imageengine -l app=imageengine-kube -o wide
 
 # Live tail any deployment
-kubectl logs -f -n imageengine deploy/imageengine-kube-imageengine-edge
-kubectl logs -f -n imageengine deploy/imageengine-kube-imageengine-backend
-kubectl logs -f -n imageengine deploy/imageengine-kube-imageengine-fetcher
-kubectl logs -f -n imageengine deploy/imageengine-kube-imageengine-processor
-kubectl logs -f -n imageengine deploy/imageengine-kube-imageengine-osc
+kubectl logs -f -n imageengine deploy/imageengine-kube-edge
+kubectl logs -f -n imageengine deploy/imageengine-kube-backend
+kubectl logs -f -n imageengine deploy/imageengine-kube-fetcher
+kubectl logs -f -n imageengine deploy/imageengine-kube-processor
+kubectl logs -f -n imageengine deploy/imageengine-kube-osc
 
 # What helm thinks the release looks like
 helm list -n imageengine
-helm get values imageengine -n imageengine
-helm get manifest imageengine -n imageengine | less
+helm get values imageengine-kube -n imageengine
+helm get manifest imageengine-kube -n imageengine | less
 
 # Render the chart locally without installing (great for diffing values changes)
-helm template imageengine imageengine/imageengine-kube -f imageengine-values.yaml
+helm template imageengine-kube imageengine/imageengine-kube -f imageengine-values.yaml
 
 # Force rollout after secret changes (deployments don't auto-restart on secret edits)
 kubectl rollout restart deploy -n imageengine -l app=imageengine-kube
