@@ -167,7 +167,7 @@ Worker nodes need outbound access to:
 - `docker.scientiamobile.com` (image pull).
 - `https://control-api.imageengine.io` (origin config API).
 - `wss://emitter.eleven45.net:443` (config and purge emitter).
-- Your customer origins (whatever the fetcher will pull from).
+- Your image origins (whatever the fetcher will pull from).
 
 If you're behind a strict firewall or HTTP proxy, allow-list those before installing.
 

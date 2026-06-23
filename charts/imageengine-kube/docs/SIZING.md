@@ -70,7 +70,7 @@ The backend supports HPA on CPU, but in practice memory pressure shows up before
 
 ### Fetcher
 
-**What it does:** Pulls original images from customer origins — generic HTTP origins, S3, Wasabi, etc. — and streams them onward to the processor and the OSC. Only runs on cache-miss paths.
+**What it does:** Pulls original images from origin servers — generic HTTP origins, S3, Wasabi, etc. — and streams them onward to the processor and the OSC. Only runs on cache-miss paths.
 
 **How it scales:** **CPU- and bandwidth-bound during miss storms.** Scaling pattern is similar to the processor — give it generous CPU requests and turn on the HPA at non-PoC traffic levels. At high traffic, network bandwidth to your origins becomes a real constraint. Tunables of note: `IE_ORIGINFETCHER_FETCHER_THREADS_FOR_DOMAIN`, `IE_ORIGINFETCHER_MAX_QUEUE_PER_ORIGIN`, `IE_ORIGINFETCHER_FETCHER_CLIENT_DIAL_TIMEOUT`.
 

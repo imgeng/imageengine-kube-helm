@@ -60,10 +60,9 @@ section for a step-by-step.
 
 - **Releases:** see [Releases](../../releases) — each tagged release has a
   signed `.tgz` package as an asset, mirrored to the `gh-pages` branch.
-- **Source of truth:** the canonical chart source is maintained in a private
-  ScientiaMobile monorepo and mirrored here on every release. Issues, feature
-  requests, and pull requests against the chart are still welcome in **this**
-  repo — they will be triaged and ported upstream as appropriate.
+- **Source of truth:** this public repository is the canonical source for the
+  chart. Issues, feature requests, and pull requests against the chart are
+  welcome here.
 
 ## Repository layout
 

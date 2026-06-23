@@ -1,6 +1,6 @@
 # Customizations
 
-A guided tour of the overrides customers actually use, organized by the question you're trying to answer. Snippets are chart values you'd put in your `imageengine-values.yaml` and pass with `helm install -f imageengine-values.yaml`.
+A guided tour of the overrides, organized by the question you're trying to answer. Snippets are chart values you'd put in your `imageengine-values.yaml` and pass with `helm install -f imageengine-values.yaml`.
 
 This doc covers the **most common** knobs. The full set of options — including every tunable env var per component — lives in the comments of `values.yaml`. To see the version you'll install, run `helm show values imageengine/imageengine-kube`, or browse the chart source on GitHub at [`imgeng/imageengine-kube-helm`](https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/values.yaml). When in doubt, look there.
 
@@ -269,7 +269,7 @@ If your org's convention has you naming it something other than `ie-kube-image-p
 
 ```yaml
 secrets:
-  imagePullSecretName: "my-org-scientiamobile-pull"
+  imagePullSecretName: "my-organization-pull"
 ```
 
 You're still responsible for creating the secret with `kubectl create secret docker-registry`. The chart only references it by name.
