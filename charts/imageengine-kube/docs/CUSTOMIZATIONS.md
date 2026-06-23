@@ -168,6 +168,29 @@ edge:
 
 Both have sensible defaults; only touch them if you have a specific reason.
 
+## How do I control the edge access logs?
+
+The edge proxy emits a structured JSON **access log** (one line per request). The sink is controlled by `EDGE_LOG_TARGET`:
+
+```yaml
+edge:
+  env:
+    EDGE_LOG_TARGET: stdout   # stdout | syslog | both | none
+```
+
+| Value    | Where access logs go                                                            |
+| -------- | ------------------------------------------------------------------------------- |
+| `stdout` | The pod's stdout/stderr — what you see in `kubectl logs deploy/...-edge`. **Default.** |
+| `syslog` | Shipped to `EDGE_SYSLOG_SERVER` (the in-cluster rsyslog aggregator).            |
+| `both`   | stdout **and** syslog.                                                           |
+| `none`   | Access logging is disabled entirely.                                             |
+
+This is why you see JSON lines on the edge pod's stdout out of the box: `EDGE_LOG_TARGET` defaults to `stdout`.
+
+**Set `EDGE_LOG_TARGET: none` for high-traffic load tests and production** unless you are actually ingesting these logs somewhere. Access logs are one line per request, so at scale they add real I/O, CPU, and log-storage cost for no benefit if nothing is reading them. Logs are written asynchronously off a buffered channel — if the sink can't keep up, the `edge_access_log_dropped_total` Prometheus metric climbs, which is another signal to switch to `none`.
+
+Note: routing access logs to `syslog` only does something if `rsyslog.forwarder` points at a real downstream collector — the chart default is `discard` (see [SIZING.md](SIZING.md)).
+
 ## How do I configure the edge Service?
 
 The chart exposes its edge pods via a single Service whose type you control. The default is `LoadBalancer`, which works out of the box on every supported managed-Kubernetes provider:
