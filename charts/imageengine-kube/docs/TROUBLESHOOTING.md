@@ -2,6 +2,8 @@
 
 Common failure modes, what they look like, and how to fix them. Symptom-driven — find the section that matches what you're seeing, then run the diagnostic and apply the fix.
 
+The examples below assume you followed [GETTING_STARTED.md](GETTING_STARTED.md) and installed into the `imageengine` namespace with release name `imageengine` (so resources are named `imageengine-kube-imageengine-*`). If you used different names, adjust `-n imageengine` and the resource names accordingly.
+
 If you're stuck, the [commands cheatsheet](#commands-cheatsheet) at the bottom covers the kubectl/helm one-liners you'll use most.
 
 ---
@@ -11,9 +13,9 @@ If you're stuck, the [commands cheatsheet](#commands-cheatsheet) at the bottom c
 **Symptom:**
 
 ```
-$ kubectl get svc -l app=imageengine-kube
+$ kubectl get svc -n imageengine -l 'app=imageengine-kube,tier=edge'
 NAME                                TYPE           EXTERNAL-IP    ...
-imageengine-imageengine-kube-edge   LoadBalancer   <pending>      ...
+imageengine-kube-imageengine-edge   LoadBalancer   <pending>      ...
 ```
 
 By default the chart creates the edge as a `Service type: LoadBalancer`. If nothing in the cluster knows how to satisfy that, the service sits in `<pending>` forever.
@@ -21,7 +23,7 @@ By default the chart creates the edge as a `Service type: LoadBalancer`. If noth
 **Diagnose:**
 
 ```bash
-kubectl describe svc imageengine-imageengine-kube-edge
+kubectl describe svc -n imageengine imageengine-kube-imageengine-edge
 ```
 
 Look at the events at the bottom.
@@ -39,16 +41,16 @@ Look at the events at the bottom.
 **Symptom:**
 
 ```
-$ kubectl get pods
+$ kubectl get pods -n imageengine
 NAME                                          READY   STATUS             ...
-imageengine-imageengine-kube-edge-...         0/1     ImagePullBackOff   ...
-imageengine-imageengine-kube-backend-...      0/1     ErrImagePull       ...
+imageengine-kube-imageengine-edge-...         0/1     ImagePullBackOff   ...
+imageengine-kube-imageengine-backend-...      0/1     ErrImagePull       ...
 ```
 
 **Diagnose:**
 
 ```bash
-kubectl describe pod <one of the failing pods>
+kubectl describe pod -n imageengine <one of the failing pods>
 ```
 
 Look for messages like `pull access denied` or `unauthorized`.
@@ -58,14 +60,14 @@ Look for messages like `pull access denied` or `unauthorized`.
 Confirm the image-pull secret exists in the install namespace:
 
 ```bash
-kubectl get secret ie-kube-image-pull
+kubectl get secret ie-kube-image-pull -n imageengine
 ```
 
 If missing, create it (see [GETTING_STARTED.md](GETTING_STARTED.md) step 2). If present but pull is still failing, the credentials are wrong — recreate it with the correct ImageEngine API key as the password:
 
 ```bash
-kubectl delete secret ie-kube-image-pull
-kubectl create secret docker-registry ie-kube-image-pull \
+kubectl delete secret ie-kube-image-pull -n imageengine
+kubectl create secret docker-registry ie-kube-image-pull -n imageengine \
   --docker-server=https://docker.scientiamobile.com/v2/ \
   --docker-username=<your-email> \
   --docker-password=<your-api-key> \
@@ -84,7 +86,7 @@ If you renamed the secret via `secrets.imagePullSecretName`, the secret name in 
 
 1. Confirm the API key secret exists and has a `KEY` field:
   ```bash
-   kubectl get secret ie-kube-api-key -o jsonpath='{.data.KEY}' | base64 -d
+   kubectl get secret ie-kube-api-key -n imageengine -o jsonpath='{.data.KEY}' | base64 -d
   ```
 2. Confirm the value matches the API key from your ImageEngine Control Panel.
 3. Confirm your ImageEngine Kube subscription or trial is active in the Control Panel — if not, the API rejects the key even if it's syntactically valid.
@@ -92,9 +94,9 @@ If you renamed the secret via `secrets.imagePullSecretName`, the secret name in 
 If the secret is wrong, recreate it:
 
 ```bash
-kubectl delete secret ie-kube-api-key
-kubectl create secret generic ie-kube-api-key --from-literal=KEY=<your-api-key>
-kubectl rollout restart deploy -l app=imageengine-kube
+kubectl delete secret ie-kube-api-key -n imageengine
+kubectl create secret generic ie-kube-api-key -n imageengine --from-literal=KEY=<your-api-key>
+kubectl rollout restart deploy -n imageengine -l app=imageengine-kube
 ```
 
 ---
@@ -104,15 +106,15 @@ kubectl rollout restart deploy -l app=imageengine-kube
 **Symptom:**
 
 ```
-$ kubectl get pvc
+$ kubectl get pvc -n imageengine
 NAME                                STATUS    ...   STORAGECLASS       ...
-imageengine-imageengine-kube-osc-pvc  Pending   ...   <unset>            ...
+imageengine-kube-imageengine-osc-pvc  Pending   ...   <unset>            ...
 ```
 
 **Diagnose:**
 
 ```bash
-kubectl describe pvc imageengine-imageengine-kube-osc-pvc
+kubectl describe pvc -n imageengine imageengine-kube-imageengine-osc-pvc
 ```
 
 Common causes:
@@ -146,10 +148,10 @@ Common causes:
 **Diagnose:**
 
 ```bash
-kubectl get pods -l app=imageengine-kube
-kubectl logs deploy/<release>-imageengine-kube-edge --tail=50
-kubectl logs deploy/<release>-imageengine-kube-varnish --tail=50
-kubectl logs deploy/<release>-imageengine-kube-backend --tail=50
+kubectl get pods -n imageengine -l app=imageengine-kube
+kubectl logs -n imageengine deploy/imageengine-kube-imageengine-edge --tail=50
+kubectl logs -n imageengine deploy/imageengine-kube-imageengine-varnish --tail=50
+kubectl logs -n imageengine deploy/imageengine-kube-imageengine-backend --tail=50
 ```
 
 The edge sits in front of varnish, which sits in front of backend. A 502 means one of the downstream services is not Ready or is returning errors.
@@ -170,7 +172,7 @@ This is a cache miss path — fetcher pulls the original from your origin, proce
 **Diagnose:**
 
 ```bash
-kubectl logs deploy/<release>-imageengine-kube-fetcher --tail=100
+kubectl logs -n imageengine deploy/imageengine-kube-imageengine-fetcher --tail=100
 ```
 
 Look for connection errors, timeouts, or DNS resolution failures pointing at your origin.
@@ -179,7 +181,7 @@ Look for connection errors, timeouts, or DNS resolution failures pointing at you
 
 - Confirm origin reachability from inside the cluster:
   ```bash
-  kubectl run -it --rm dnsutils --image=busybox --restart=Never -- \
+  kubectl run -it --rm dnsutils -n imageengine --image=busybox --restart=Never -- \
     wget -O- http://your-origin.example.com/path/to/image.jpg
   ```
 - If your origin is fine but timeouts happen under load, raise:
@@ -257,8 +259,8 @@ Also confirm the processor pod has enough ephemeral storage in its `resources.li
 **Diagnose:**
 
 ```bash
-kubectl get ingress
-kubectl describe ingress <release>-imageengine-kube-ingress
+kubectl get ingress -n imageengine
+kubectl describe ingress -n imageengine imageengine-kube-imageengine-ingress
 ```
 
 **Fix:**
@@ -289,8 +291,8 @@ ingress:
 **Diagnose:**
 
 ```bash
-kubectl get ingressclass                          # which classes/controllers actually exist
-kubectl describe ingress <release>-imageengine-kube-ingress
+kubectl get ingressclass                          # which classes/controllers actually exist (cluster-scoped)
+kubectl describe ingress -n imageengine imageengine-kube-imageengine-ingress
 ```
 
 **Fix:** make `ingress.className` match a class that exists. On EKS (`provider: aws`) the preset already defaults to `alb`; if you previously pinned `nginx`, either remove that override or install `ingress-nginx`. See [providers/AWS.md](providers/AWS.md#exposing-the-edge--two-paths).
@@ -306,8 +308,8 @@ kubectl describe ingress <release>-imageengine-kube-ingress
 **Diagnose:**
 
 ```bash
-kubectl get events --sort-by=.lastTimestamp | tail -30
-kubectl top pods
+kubectl get events -n imageengine --sort-by=.lastTimestamp | tail -30
+kubectl top pods -n imageengine
 kubectl top nodes
 ```
 
@@ -341,28 +343,28 @@ See [SIZING.md](SIZING.md) for per-component characteristics.
 
 ```bash
 # All chart-managed pods
-kubectl get pods -l app=imageengine-kube -o wide
+kubectl get pods -n imageengine -l app=imageengine-kube -o wide
 
 # Live tail any deployment
-kubectl logs -f deploy/<release>-imageengine-kube-edge
-kubectl logs -f deploy/<release>-imageengine-kube-backend
-kubectl logs -f deploy/<release>-imageengine-kube-fetcher
-kubectl logs -f deploy/<release>-imageengine-kube-processor
-kubectl logs -f deploy/<release>-imageengine-kube-osc
+kubectl logs -f -n imageengine deploy/imageengine-kube-imageengine-edge
+kubectl logs -f -n imageengine deploy/imageengine-kube-imageengine-backend
+kubectl logs -f -n imageengine deploy/imageengine-kube-imageengine-fetcher
+kubectl logs -f -n imageengine deploy/imageengine-kube-imageengine-processor
+kubectl logs -f -n imageengine deploy/imageengine-kube-imageengine-osc
 
 # What helm thinks the release looks like
-helm list
-helm get values <release>
-helm get manifest <release> | less
+helm list -n imageengine
+helm get values imageengine -n imageengine
+helm get manifest imageengine -n imageengine | less
 
 # Render the chart locally without installing (great for diffing values changes)
-helm template <release> imageengine/imageengine-kube -f imageengine-values.yaml
+helm template imageengine imageengine/imageengine-kube -f imageengine-values.yaml
 
 # Force rollout after secret changes (deployments don't auto-restart on secret edits)
-kubectl rollout restart deploy -l app=imageengine-kube
+kubectl rollout restart deploy -n imageengine -l app=imageengine-kube
 
 # Quick resource view
-kubectl top pods
+kubectl top pods -n imageengine
 kubectl top nodes
 ```
 

@@ -16,12 +16,14 @@ For anything beyond the quick-start below, see the docs linked in [Where to next
    helm repo update
    ```
 
-2. **Create the two required secrets** (the chart does not create these for you — they must exist before `helm install`):
+2. **Create the namespace and the two required secrets** (the chart does not create the secrets for you — they must exist in the install namespace before `helm install`):
    ```bash
-   kubectl create secret generic ie-kube-api-key \
+   kubectl create namespace imageengine
+
+   kubectl create secret generic ie-kube-api-key -n imageengine \
      --from-literal=KEY=<your-api-key>
 
-   kubectl create secret docker-registry ie-kube-image-pull \
+   kubectl create secret docker-registry ie-kube-image-pull -n imageengine \
      --docker-server=https://docker.scientiamobile.com/v2/ \
      --docker-username=<your-email> \
      --docker-password=<your-api-key> \
@@ -38,13 +40,15 @@ For anything beyond the quick-start below, see the docs linked in [Where to next
 
 4. **Install**
    ```bash
-   helm install imageengine imageengine/imageengine-kube -f imageengine-values.yaml
+   helm install imageengine imageengine/imageengine-kube \
+     --namespace imageengine \
+     -f imageengine-values.yaml
    ```
 
 5. **Verify** — pods should settle within a minute or two, and the LoadBalancer service gets an external IP from your cloud provider:
    ```bash
-   kubectl get pods
-   kubectl get svc -l app=imageengine-kube
+   kubectl get pods -n imageengine
+   kubectl get svc -n imageengine -l 'app=imageengine-kube,tier=edge'
    ```
 
 For the full step-by-step including a smoke-test `curl`, see [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md).
@@ -73,6 +77,7 @@ gpg --no-default-keyring --no-options \
 
 # Pull, verify, and install in one step
 helm install imageengine imageengine/imageengine-kube \
+  --namespace imageengine \
   --verify --keyring ~/.gnupg/imageengine-pubring.gpg \
   -f imageengine-values.yaml
 ```
@@ -96,7 +101,9 @@ Setting `provider:` auto-configures the right storage class and ingress class fo
 
 ```bash
 helm repo update
-helm upgrade imageengine imageengine/imageengine-kube -f imageengine-values.yaml
+helm upgrade imageengine imageengine/imageengine-kube \
+  --namespace imageengine \
+  -f imageengine-values.yaml
 ```
 
 To pin a specific chart version: `helm upgrade ... --version 1.2.3 -f imageengine-values.yaml`. List available versions with `helm search repo imageengine/imageengine-kube --versions`.

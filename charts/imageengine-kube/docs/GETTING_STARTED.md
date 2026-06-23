@@ -26,23 +26,29 @@ ImageEngine Kube ships with presets for the major managed Kubernetes services. S
 
 Your provider doc will note any platform-specific prep (LB controller, storage CSI, etc.) that you should do before continuing.
 
-## Step 2 — Create the two required secrets
+## Step 2 — Create the namespace and the two required secrets
 
-The chart does **not** create these for you. Both must exist in the namespace you install into, before `helm install` runs.
+These examples install everything into a dedicated `imageengine` namespace. Create it first so the secrets land in the same place the chart installs into:
+
+```bash
+kubectl create namespace imageengine
+```
+
+The chart does **not** create the secrets for you. Both must exist in the install namespace before `helm install` runs.
 
 ### `ie-kube-api-key` (your ImageEngine API key)
 
 Create the API key in the ImageEngine Control Panel and then:
 
 ```bash
-kubectl create secret generic ie-kube-api-key \
+kubectl create secret generic ie-kube-api-key -n imageengine \
   --from-literal=KEY=<your-api-key>
 ```
 
 ### `ie-kube-image-pull` (Docker registry credentials)
 
 ```bash
-kubectl create secret docker-registry ie-kube-image-pull \
+kubectl create secret docker-registry ie-kube-image-pull -n imageengine \
   --docker-server=https://docker.scientiamobile.com/v2/ \
   --docker-username=<your-email> \
   --docker-password=<your-api-key> \
@@ -82,24 +88,26 @@ That's it. Every other setting has a sensible default. When you're ready to scal
 ## Step 5 — Install
 
 ```bash
-helm install imageengine imageengine/imageengine-kube -f imageengine-values.yaml
+helm install imageengine imageengine/imageengine-kube \
+  --namespace imageengine \
+  -f imageengine-values.yaml
 ```
 
 Watch the pods come up:
 
 ```bash
-kubectl get pods -w
+kubectl get pods -n imageengine -w
 ```
 
 You should see seven deployments (edge, varnish, backend, fetcher, processor, osc, rsyslog) settle into `Running` within a minute or two. The OSC pod is the slowest because it has to bind a PersistentVolume.
 
-Get the external IP of the load balancer:
+Get the external IP of the edge load balancer:
 
 ```bash
-kubectl get svc -l 'app=imageengine-kube'
+kubectl get svc -n imageengine -l 'app=imageengine-kube,tier=edge'
 ```
 
-Look for the `*-edge` Service. With the default `service.type: LoadBalancer`, it will get an external IP from your cloud provider — that may take a minute. If it stays `<pending>` for more than a couple minutes, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+This returns just the `*-edge` Service. With the default `service.type: LoadBalancer`, it will get an external IP from your cloud provider — that may take a minute. If it stays `<pending>` for more than a couple minutes, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
 ## Step 6 — Smoke test
 
