@@ -1,3 +1,4 @@
+{{- $docs := printf "https://github.com/imgeng/imageengine-kube-helm/blob/%s-%s/charts/%s/docs" .Chart.Name .Chart.Version .Chart.Name -}}
 Thanks for installing {{ .Chart.Name }} {{ .Chart.Version }}.
 
 Release: {{ .Release.Name }}
@@ -42,15 +43,20 @@ cluster. To expose it, either:
 
 {{- end }}
 
-For a smoke-test curl walkthrough, see step 6 of:
-  docs/GETTING_STARTED.md
+Docs for the version you just installed ({{ .Chart.Name }}-{{ .Chart.Version }}):
 
-Other useful docs:
-  docs/REQUIREMENTS.md     - prerequisites
-  docs/SIZING.md           - capacity planning per traffic tier
-  docs/CUSTOMIZATIONS.md   - the most common overrides
-  docs/TROUBLESHOOTING.md  - when something doesn't work
-  docs/providers/          - platform-specific guidance
+  Getting started (includes the smoke test in step 6):
+    {{ $docs }}/GETTING_STARTED.md
+  Requirements / prerequisites:
+    {{ $docs }}/REQUIREMENTS.md
+  Capacity planning per traffic tier:
+    {{ $docs }}/SIZING.md
+  The most common overrides:
+    {{ $docs }}/CUSTOMIZATIONS.md
+  Troubleshooting:
+    {{ $docs }}/TROUBLESHOOTING.md
+  Platform-specific guidance (AWS / Azure / DigitalOcean / GKE / Linode / custom):
+    {{ $docs }}/providers
 {{- if eq .Values.provider "custom" }}
 
 You're using `provider: custom` (the default). If you're on AWS / Azure /
