@@ -5,13 +5,36 @@ imagePullPolicy: Always
 ###################################################
 # Centralized image tags/versions for all components
 images:
-  edge: "4.1.1"
+  edge: "4.2.0"
   varnish: "7.4.3-1"
-  backend: "2.10.10"
-  fetcher: "1.26.7"
-  processor: "3.20.1"
-  osc: "3.3.7"
+  backend: "2.11.0"
+  fetcher: "1.27.0"
+  processor: "3.21.0"
+  osc: "3.4.0"
   rsyslog: "24.04"
+
+###################################################
+# Prometheus metrics (ADR 0004)
+###################################################
+# Every ImageEngine component exposes Prometheus metrics on a dedicated
+# container port named "metrics" (9464), separate from the data-plane port and
+# kept OFF the customer-facing edge LoadBalancer. See docs/operations/metrics.md.
+metrics:
+  # Container port that each component serves /metrics on. Matches the binary
+  # defaults (EDGE_METRICS_ADDR / IE_*_METRICS_ADDR / OSC_METRICS_ADDR = :9464).
+  port: 9464
+  # Optional Prometheus Operator PodMonitor. Requires the Prometheus Operator
+  # CRDs (monitoring.coreos.com) to be installed in the cluster. Scrapes pods
+  # directly on the "metrics" port, so no extra Service is needed and the
+  # customer LoadBalancer stays clean.
+  podMonitor:
+    enabled: false
+    # Scrape interval and timeout for the generated PodMonitor.
+    interval: 30s
+    scrapeTimeout: 10s
+    # Extra labels to add to the PodMonitor (e.g. to match a Prometheus
+    # instance's podMonitorSelector, such as release: kube-prometheus-stack).
+    labels: {}
 
 ###################################################
 # Provider Configuration

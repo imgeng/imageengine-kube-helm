@@ -2,7 +2,7 @@ apiVersion: v2
 name: imageengine-kube
 description: ImageEngine - cloud-native image optimization
 type: application
-version: 1.1.2
+version: 1.2.0
 appVersion: "2.10.9"
 kubeVersion: ">=1.30.0-0"
 home: https://imageengine.io
@@ -25,3 +25,10 @@ annotations:
   artifacthub.io/signKey: |
     fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
     url: https://kube.imageengine.io/pubkey.asc
+  artifacthub.io/changes: |
+    - kind: added
+      description: "Prometheus metrics port (named metrics, 9464) on all components, kept off the customer-facing edge LoadBalancer (ADR 0004)"
+    - kind: added
+      description: "Optional Prometheus Operator PodMonitor via metrics.podMonitor.enabled (disabled by default)"
+    - kind: changed
+      description: "Edge metrics/admin listener and readiness probe moved from port 9090 to 9464"
