@@ -88,15 +88,18 @@ Useful tunables when CPU is plentiful but throughput is low: `IE_PROCESSOR_PROCE
 
 ### Object Storage Cache (OSC)
 
-**What it does:** Persistent disk cache for everything: origin images/objects and their metadata **plus** every processed variant the platform has produced recently. The only stateful component in the chart — backed by a PVC. Cache hits here mean the backend can answer without touching fetcher or processor at all.
+**What it does:** Persistent disk cache for everything: origin images/objects and their metadata **plus** every processed variant the platform has produced recently. The only stateful component in the chart — backed by a PVC per shard. Cache hits here mean the backend can answer without touching fetcher or processor at all.
 
-**How it scales:** Wants a **big, fast disk.** Sizing is driven by your catalog and how many variants you serve per origin, not by raw req/sec. Variants are typically **~10× smaller than the originals** they came from (smaller dimensions and stronger optimization), so a useful rough formula is:
+**How it's deployed:** A **sharded StatefulSet** of `objectStorageCache.replicaCount` shards (default **4**), each an independent OSC node with its own PVC. Clients consistent-hash the origin key across shards, so each shard owns a disjoint ~`1 / replicaCount` slice of the keyspace. Shard count is a capacity/blast-radius decision, not a throughput knob — losing one shard only costs ~`1 / replicaCount` of cache-miss traffic (which recomputes from origin), and shards reschedule freely.
+
+**How it scales:** Wants a **big, fast disk** — sized by total working set, then divided across shards. Sizing is driven by your catalog and how many variants you serve per origin, not by raw req/sec. Variants are typically **~10× smaller than the originals** they came from (smaller dimensions and stronger optimization), so a useful rough formula is:
 
 ```
-OSC working set ≈ origin_catalog_size × (1 + variants_per_origin / 10)
+OSC total working set ≈ origin_catalog_size × (1 + variants_per_origin / 10)
+per-shard PVC (persistence.size) ≈ OSC total working set / replicaCount  (plus headroom)
 ```
 
-For example, 1 million origin images at ~2 MB average plus ~20 variants per origin works out to about 2 TiB of originals plus ~4 TiB of variants — call it ~6 TiB total — and the same number holds whether you serve it at 10 req/sec or 1000 req/sec. Adjust the `/10` ratio if your real variant-to-origin size ratio is different (e.g. mostly thumbnail variants pull it closer to /20; a few large reformats pull it closer to /5).
+For example, 1 million origin images at ~2 MB average plus ~20 variants per origin works out to about 2 TiB of originals plus ~4 TiB of variants — call it ~6 TiB total — and the same number holds whether you serve it at 10 req/sec or 1000 req/sec. Across 4 shards that's ~1.5 TiB per shard (size up for headroom). Adjust the `/10` ratio if your real variant-to-origin size ratio is different (e.g. mostly thumbnail variants pull it closer to /20; a few large reformats pull it closer to /5).
 
 OSC IO latency is on the hot path for every cache hit, so a slow storage class hurts everywhere — slow OSC shows up as backend memory pressure (because requests buffer longer) and processor queue growth (because the cache doesn't absorb load fast enough). Use the fastest SSD-class storage class your provider offers; cheap rotational disks will starve the rest of the pipeline.
 
@@ -114,9 +117,9 @@ CPU footprint is small. Memory footprint is moderate (caching metadata, in-fligh
 
 If the disk-pressure cleaner is firing regularly in your metrics, you're undersized — give the PVC more room rather than relying on the cleaner as a steady-state mechanism.
 
-**Important:** the OSC must run as **exactly one replica** in this chart. Running multiple OSC pods splits the cache: each pod stores a different subset of images, requests to the "wrong" pod are treated as misses and re-fetched from the origin, and your effective hit ratio collapses. Scale OSC by giving the single pod a bigger, faster PVC and more memory — not by adding replicas. **OSC sharding (multi-replica with consistent hashing) is on the ImageEngine Kube roadmap for 2026.**
+**Choosing shard count:** Default **4** is a good balance for most deployments — small enough to keep overhead modest, large enough that any one shard owns only ~25% of the keyspace and can be rescheduled almost anytime. Increase shard count to bound per-shard blast radius further or when a single volume would be impractically large (e.g. multi-TiB tiers). Drop to **1–2** for tiny/dev installs. `persistence.size` is **per shard**, so remember total capacity is `size × replicaCount`. Scaling shard count is online and near-minimal-disruption (see [CUSTOMIZATIONS.md → How do I size and scale the OSC shards?](CUSTOMIZATIONS.md#how-do-i-size-and-scale-the-osc-shards)).
 
-**Defaults:** 1 replica, 2 GiB / 500m CPU requests, 4 GiB memory limit, 40 GiB PVC. Tunables: `objectStorageCache.persistence.size`, `objectStorageCache.persistence.storageClass`, `OSC_MAX_TTL` (default 90 days), `OSC_FS_DISK_FREE_LIMIT_PERC` / `OSC_FS_DISK_FREE_TARGET_PERC` (cleaner thresholds), `OSC_EXPIRER_LOOP_DELAY` (background scanner cadence).
+**Defaults:** 4 shards, 512 MiB / 250m CPU requests and 1 GiB memory limit **per shard**, 10 GiB PVC **per shard** (40 GiB total). Tunables: `objectStorageCache.replicaCount` (shard count), `objectStorageCache.persistence.size` (per-shard), `objectStorageCache.persistence.storageClass`, `OSC_MAX_TTL` (default 90 days), `OSC_FS_DISK_FREE_LIMIT_PERC` / `OSC_FS_DISK_FREE_TARGET_PERC` (cleaner thresholds), `OSC_EXPIRER_LOOP_DELAY` (background scanner cadence). Protection knobs (`objectStorageCache.pdb`, `priorityClassName`) are covered in [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md#how-do-i-protect-the-cache-tiers-from-disruption).
 
 ### Rsyslog
 
@@ -132,8 +135,8 @@ The chart also disables statsd emission on backend, fetcher, processor, and OSC 
 
 Chart defaults are fine. This is the "evaluate ImageEngine on a free-tier cluster" footprint.
 
-- 1× edge, 1× varnish, 2× backend, 2× fetcher, 2× processor, 1× OSC, 1× rsyslog.
-- OSC PVC: **40 GiB** is enough for a smoke test. If you're actually proving out catalog freshness, jump to 100–200 GiB so you can see realistic 30-day retention behavior.
+- 1× edge, 1× varnish, 2× backend, 2× fetcher, 2× processor, 4× OSC shards (or drop to `objectStorageCache.replicaCount: 1–2` to minimize footprint on a free-tier cluster), 1× rsyslog.
+- OSC PVC: the default **10 GiB per shard** (40 GiB total across 4 shards) is enough for a smoke test. If you're actually proving out catalog freshness, raise `persistence.size` to ~25–50 GiB per shard so you can see realistic 30-day retention behavior.
 - Varnish: default `VARNISH_STORAGE: tiered` with 1 GiB request / 4 GiB limit RAM is plenty.
 - Processor / fetcher: HPA off; defaults are fine.
 - Backend: defaults (1 GiB request, 6 GiB limit) are plenty.
@@ -150,7 +153,7 @@ You're past PoC and serving real traffic. Most of the value here comes from givi
 - Backend: 3–4 replicas. Hold the memory limit at the default 6 GiB (or higher); do not trim it.
 - Fetcher: 3–4 replicas with **HPA enabled** so a miss storm can scale you out automatically.
 - Processor: 3–4 replicas with **HPA enabled** at `targetCPUUtilizationPercentage: 80`. The chart already ships `maxReplicas: 16` for the processor HPA — that ceiling is fine for this tier.
-- OSC PVC: **500 GiB to 2 TiB** depending on your origin catalog size. Use a fast (NVMe-backed) storage class — your provider doc lists the right one.
+- OSC: keep the default **4 shards** (or more); set `persistence.size` per shard so total (`size × replicaCount`) lands at **500 GiB to 2 TiB** depending on your origin catalog size — e.g. ~125–512 GiB per shard across 4. Use a fast (NVMe-backed) storage class — your provider doc lists the right one.
 - Cluster footprint: ~3–5 nodes of 8 vCPU / 16 GiB, or equivalent.
 
 Turn on real metrics now (request rate per pod, Varnish hit ratio, OSC fill, processor CPU saturation). Tune from there.
@@ -164,8 +167,8 @@ At this point you should be making sizing decisions from your own metrics, not f
 - Backend: 4+ replicas with HPA on; keep memory generous (6+ GiB limit) — this is the layer that buffers full images in flight.
 - Fetcher: HPA on, `maxReplicas` raised (e.g. 16+). Bandwidth to your origins becomes a real constraint here.
 - Processor: HPA on, `maxReplicas` 16+ (raise from default if you bench higher). Consider a dedicated CPU-optimized node pool via `nodeSelector` so a miss storm doesn't evict other workloads. Tune `IE_PROCESSOR_PROCESSINGTHREADS_PER_CORE` if you can keep cores busy without context-switch overhead.
-- OSC PVC: **multi-TiB on the fastest storage class your provider offers**. OSC IO latency directly affects every cache hit. Slow OSC disk shows up as backend memory pressure (because everything buffers in backend longer) and processor queue growth.
-- Cluster footprint: heterogeneous — small nodes for edge/varnish/backend, CPU-optimized nodes for processor/fetcher, and a node with a fast attached disk for OSC.
+- OSC: **more shards** (e.g. 6–8+) on the fastest storage class your provider offers, each with a multi-hundred-GiB to TiB PVC so total capacity reaches multi-TiB. More shards both raise aggregate IO throughput and shrink per-shard blast radius. OSC IO latency directly affects every cache hit. Slow OSC disk shows up as backend memory pressure (because everything buffers in backend longer) and processor queue growth.
+- Cluster footprint: heterogeneous — small nodes for edge/varnish/backend, CPU-optimized nodes for processor/fetcher, and nodes with fast attached disks spread across AZs for the OSC shards.
 
 ## Cross-cutting notes
 

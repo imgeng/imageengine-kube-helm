@@ -25,8 +25,8 @@ If a component has autoscaling enabled (see below), `replicaCount` is **ignored*
 
 A few components have important constraints:
 
-- **Varnish** holds the high-performance in-memory cache of optimized images. Restarting it (whether from a chart upgrade, a `replicaCount` change, an `env`/`resources` edit, or a rollout) **empties that cache**, and the next wave of requests has to refill it from the backend. Treat Varnish as a long-lived component — change it only when you actually need to. See [`How do I tune Varnish storage?`](#how-do-i-tune-varnish-storage) below for the same warning in context.
-- **Object Storage Cache** must run as **exactly one replica** in this chart. Running more than one OSC pod splits the cache: each pod stores a different subset of images, and any request that hits the "wrong" pod is treated as a miss and re-fetched from the origin. Don't override `objectStorageCache.replicaCount` above 1. **OSC sharding (multi-replica OSC with consistent hashing) is on the ImageEngine Kube roadmap for 2026.**
+- **Varnish** holds the high-performance in-memory cache of optimized images. Restarting it (whether from a chart upgrade, a `replicaCount` change, an `env`/`resources` edit, or a rollout) **empties that cache**, and the next wave of requests has to refill it from the backend. The edge proxies to a single Varnish endpoint with no consistent hashing, so **adding replicas lowers your hit ratio** (each pod caches an overlapping random subset). Keep `varnish.replicaCount: 1` and treat Varnish as a long-lived component — change it only when you actually need to. Resilience comes from `varnish.priorityClassName` and graceful drain, not replication (see [`How do I protect the cache tiers from disruption?`](#how-do-i-protect-the-cache-tiers-from-disruption)). See also [`How do I tune Varnish storage?`](#how-do-i-tune-varnish-storage).
+- **Object Storage Cache** runs as a **sharded StatefulSet** (`objectStorageCache.replicaCount` = number of shards, default 4). Each shard is an independent OSC node with its own PersistentVolume, and clients consistent-hash the origin key across shards, so each shard owns a disjoint slice of the keyspace. Scaling shards is safe and online — see [`How do I size and scale the OSC shards?`](#how-do-i-size-and-scale-the-osc-shards).
 
 ## How do I autoscale on CPU?
 
@@ -47,7 +47,7 @@ The HPA only scales on CPU utilization. For why those three components are the r
 
 **Don't autoscale Varnish.** Adding pods (or letting an HPA scale them out and back in) means new pods start with an empty cache, and pods that get scaled down take their warm cache with them. Either way you end up with a colder fleet right when you wanted more capacity. Set `varnish.replicaCount` to a steady value sized for your peak traffic instead.
 
-**Don't autoscale the Object Storage Cache.** It has to stay at one replica — see the constraint above.
+**Don't autoscale the Object Storage Cache.** Shard count is a deliberate capacity decision (each shard owns a fixed slice of the keyspace and its own volume), not something to flex automatically on CPU. Set `objectStorageCache.replicaCount` explicitly — see [`How do I size and scale the OSC shards?`](#how-do-i-size-and-scale-the-osc-shards).
 
 ## How do I change resource requests / limits?
 
@@ -76,18 +76,36 @@ Note: **none of the chart's components set a CPU limit** by default — only CPU
 
 ## How do I make the OSC bigger or use a specific storage class?
 
+`persistence.size` is the size of **each shard's** volume. Total cache capacity is roughly `size * replicaCount`.
+
 ```yaml
 objectStorageCache:
+  replicaCount: 4               # number of shards
   persistence:
-    size: "1Ti"
+    size: "256Gi"              # per shard -> ~1Ti total across 4 shards
     storageClass: "gp3"
 ```
 
 If `provider:` is set, the right storage class is picked automatically — `storageClass: ""` keeps the preset. Setting it explicitly always wins. See [SIZING.md](SIZING.md) for OSC sizing guidance (TL;DR: bigger and faster than you think).
 
-The OSC PVC is `ReadWriteOnce`, so OSC pods are pinned to whichever node owns the volume.
+Each shard's PVC is `ReadWriteOnce`, so a shard is pinned to whichever node/AZ owns its volume; on reschedule it reattaches the same volume in that AZ.
 
-**Run exactly one OSC pod.** This chart does not support sharding the OSC across multiple replicas — every request has to land on the same pod for the cache to behave correctly. Running more than one OSC means each pod ends up with a different subset of images, every request to the "wrong" pod is treated as a miss and re-fetched from the origin, and your effective hit ratio collapses. Leave `objectStorageCache.replicaCount` at 1. Sharding support (multi-replica OSC with consistent hashing across pods) is on the ImageEngine Kube roadmap for 2026.
+## How do I size and scale the OSC shards?
+
+OSC runs as a StatefulSet of `objectStorageCache.replicaCount` shards (default **4**). Each shard (`<release>-osc-0`, `-osc-1`, ...) is an independent OSC node with its own volume, and the backend/fetcher/processor use the OSC sharding client to consistent-hash the **origin key** (Google Jump Consistent Hash) across them. Benefits of sharding by default:
+
+- **Bounded blast radius:** losing one shard only affects ~`1 / replicaCount` of *cache-miss* traffic (those keys recompute from origin), not the whole cache. With the default 4, that's ~25%.
+- **No write races:** each shard owns a disjoint slice of the keyspace on its own volume, so there is never more than one writer per object.
+- **Cheap, online scaling.** To change shard count, set `replicaCount` and `helm upgrade`:
+
+```yaml
+objectStorageCache:
+  replicaCount: 6              # was 4
+```
+
+Scaling **up** adds higher ordinals (`osc-4`, `osc-5`) with fresh volumes; existing shards keep their data. Consistent hashing means only ~`added / total` of keys remap to the new shards (the rest stay warm); remapped keys take a one-time miss and refill, and orphaned copies on the old shards age out via the expirer. The client picks up the new topology when the backend/fetcher/processor pods roll during the upgrade. A reschedule or restart of a single shard needs no client restart — the stable headless DNS name plus the client's reconnect/retry handle it.
+
+For tiny or dev installs you can drop to `replicaCount: 1` (single node, equivalent to the legacy layout) or `2`. See [SIZING.md](SIZING.md) for per-tier guidance.
 
 ## How do I trade OSC disk usage against hit ratio?
 
@@ -154,6 +172,52 @@ varnish:
 ```
 
 Full list of varnishd parameters and storage options lives in the comments of [`values.yaml`](https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/values.yaml), in the `varnish:` block.
+
+## How do I protect the cache tiers from disruption?
+
+The cache tiers (OSC and Varnish) support three provider-agnostic controls. These guard against *voluntary* disruptions (node drains, autoscaler scale-down, rolling node upgrades) and speed up rescheduling; they do not — and cannot — prevent hard node failures.
+
+**PodDisruptionBudgets** are honored by `kubectl drain`, cluster-autoscaler, and Karpenter alike:
+
+```yaml
+objectStorageCache:
+  pdb:
+    enabled: true          # default; with >=2 shards, cycles one shard at a time
+    maxUnavailable: 1
+
+varnish:
+  pdb:
+    enabled: false         # default off (see trade-off below)
+    minAvailable: 1
+```
+
+Note the Varnish trade-off: with a single replica, `minAvailable: 1` blocks node drains entirely (a drain will hang until forced). That's strong protection, but enable it deliberately. OSC's `maxUnavailable: 1` only bites once you run 2+ shards.
+
+**Graceful drain** for Varnish lets in-flight requests finish and endpoints deregister before shutdown:
+
+```yaml
+varnish:
+  terminationGracePeriodSeconds: 30
+  drainSeconds: 5          # preStop sleep; set 0 to disable the hook
+```
+
+**PriorityClasses** make the cache tiers preempted-last and rescheduled-first. They're cluster-scoped, so creation is opt-in:
+
+```yaml
+priorityClass:
+  create: true             # creates the two classes below
+  oscValue: 1000000
+  varnishValue: 900000
+
+objectStorageCache:
+  priorityClassName: "imageengine-osc-critical"
+varnish:
+  priorityClassName: "imageengine-varnish-high"
+```
+
+If your org already manages PriorityClasses, leave `priorityClass.create: false` and just set each component's `priorityClassName` to an existing class.
+
+Because ImageEngine recomputes from origin on an OSC miss and the OSC write-back is asynchronous, a shard reschedule is a non-event for end users — so you generally don't need to make OSC drain-blocking. See [TROUBLESHOOTING.md](TROUBLESHOOTING.md#an-osc-shard-restarted--rescheduled).
 
 ## How do I tune the edge cache?
 

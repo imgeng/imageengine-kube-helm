@@ -73,11 +73,8 @@ spec:
           env:
             - name: IE_ORIGINFETCHER_BIND_HOSTPORT
               value: "0.0.0.0:8000"
-            # Sharding is not supported in this chart
-            - name: OSCCLIENT_ENVCONFIG
-              value: "true"
-            - name: OSC0_HOST
-              value: "{{ include "imageengine.fullname" . }}-osc:80"
+            # OSC sharding client: one OSC{N}_HOST per cache shard (see helper)
+            {{- include "imageengine.oscShardEnv" . | nindent 12 }}
             - name: IE_PROCESSOR_URL
               value: "http://{{ include "imageengine.fullname" . }}-processor:80"
             - name: IE_ORIGINFETCHER_STATSD_SYSLOG_ADDRESS

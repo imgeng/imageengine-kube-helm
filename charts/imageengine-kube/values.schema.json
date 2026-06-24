@@ -80,9 +80,10 @@
       "type": "object",
       "properties": {
         "replicaCount": {
-          "description": "OSC must run as exactly 1 replica. Sharded OSC is not supported in this chart; multiple OSC pods would split the cache by hostname and collapse the hit ratio.",
+          "description": "Number of OSC cache shards. Each ordinal is an independent OSC node with its own volume; clients consistent-hash the origin key across shards. Defaults to 4. Use 1 for a single-node (legacy) setup. Max 64 (OSC sharding client limit).",
           "type": "integer",
-          "const": 1
+          "minimum": 1,
+          "maximum": 64
         },
         "persistence": {
           "type": "object",

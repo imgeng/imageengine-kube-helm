@@ -20,6 +20,24 @@
 {{- end -}}
 
 {{/*
+OSC sharding client env vars (used by backend, fetcher, processor).
+Emits OSCCLIENT_ENVCONFIG plus one OSC{i}_HOST per shard ordinal, each pointing
+at the StatefulSet pod's stable headless DNS name on the OSC container port
+(8000). The OSC sharding client consistent-hashes the origin key across these
+nodes. With replicaCount=1 this reproduces the legacy single-node config.
+Usage: {{ include "imageengine.oscShardEnv" . | nindent 12 }}
+*/}}
+{{- define "imageengine.oscShardEnv" -}}
+{{- $full := include "imageengine.fullname" . -}}
+- name: OSCCLIENT_ENVCONFIG
+  value: "true"
+{{- range $i := until (int .Values.objectStorageCache.replicaCount) }}
+- name: OSC{{ $i }}_HOST
+  value: "{{ $full }}-osc-{{ $i }}.{{ $full }}-osc-headless:8000"
+{{- end }}
+{{- end -}}
+
+{{/*
 =============================================================================
 Provider-Aware Helpers
 =============================================================================
