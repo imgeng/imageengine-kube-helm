@@ -1,0 +1,57 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+annotations:
+  artifacthub.io/changes: |
+    - kind: added
+      description: "Prometheus metrics port (named metrics, 9464) on all components, kept off the customer-facing edge LoadBalancer (ADR 0004)"
+    - kind: added
+      description: "Optional Prometheus Operator PodMonitor via metrics.podMonitor.enabled (disabled by default)"
+    - kind: changed
+      description: "Edge metrics/admin listener and readiness probe moved from port 9090 to 9464"
+  artifacthub.io/signKey: |
+    fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+    url: https://kube.imageengine.io/pubkey.asc
+apiVersion: v2
+appVersion: 2.10.9
+description: ImageEngine - cloud-native image optimization
+home: https://imageengine.io
+icon: https://imageengine.io/favicon.ico
+keywords:
+- - image-optimization
+- - image-cdn
+- - cdn
+- - imageengine
+- - varnish
+- - wurfl
+kubeVersion: '>=1.30.0-0'
+maintainers:
+- - email: support@scientiamobile.com
+  name: ScientiaMobile
+  url: https://www.scientiamobile.com
+name: imageengine-kube
+sources:
+- - https://kube.imageengine.io
+- - https://github.com/imgeng/imageengine-kube-helm
+type: application
+version: 1.2.0
+
+...
+files:
+  imageengine-kube-1.2.0.tgz: sha256:5dc4feeb6124bdfd81456764b49b170eee24c16029c3ba598473c74fffc54219
+-----BEGIN PGP SIGNATURE-----
+
+wsFcBAEBCgAQBQJqPFNYCRBGMmYGCVfEswAA2YMQABRSZGy1GsZTlk4Qs7Nywg/P
+vJm+cTQwR+npy0gfCEfF06qB1OJXG7XJZj/vJcT4hyCZ8z1ambw9enh6ZAoLHWP5
+Ii0aSK6BHigL4Ocqh+ZvJBh9pLm2v6qJfdH0zjAabzexsmHbTqYYFGEgATA8hCK5
+2BvSOnUwOJJzHB0kV6yrgKIg0gjaN0fHeoNhRuAhR6VZi9XZRzo7bZct5lK+juI0
+juwJvTHRlwbWrLLihWuLw4d1P75TQV2OdqcETHrnFDyo/NL0f2iyPLldrLuC9hGH
+lILGLDyCHJZdYJsS5BnnTwSnb3/LDquCuy3OOyNeu72YC6vcK0TR3qcAgWIN4Ufi
+Alz9EVdX+frxVG1mZx8wtswimRd8TUXZwbdkZS/Ic3qHn9b5mK/g+wlRjANYMIni
+P4l8DZlebS8TThHyhhvqRSipGzYuLxel97CgokH5ZXc2+fzzXuKUo3Mvly9OHXU6
+EfglJpJJ7X1pG+Lzi49e2nf+uKu4A+D86OCjpXLu7zr5Fg1XA/ZS3HpuMwyVoFbR
+Xy7kf0QTxfKX5hEOBRvFPO3vZJdrutJ9eCF4HSQBxV9CBql1heNkeazsojOEYliB
+guZLxMd+vg11dBGoYysN+2gmjHkfEiSY3jGXLCNYFRFGOKUeuLo4RwMxVejiaXLi
+g5MuNxLgrWsSdDPV3wHD
+=xVnF
+-----END PGP SIGNATURE-----
