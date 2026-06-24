@@ -4,14 +4,14 @@ Helm chart repository for [ImageEngine](https://imageengine.io) Kube — the
 self-hosted, Kubernetes-native image optimization and delivery platform from
 [ScientiaMobile](https://www.scientiamobile.com).
 
-The chart is published to **`https://kube.imageengine.io/charts`** via GitHub
+The chart is published to **`https://kube.imageengine.io`** via GitHub
 Pages, and a copy of the index is also reachable at
-`https://imgeng.github.io/imageengine-kube-helm/charts/`.
+`https://imgeng.github.io/imageengine-kube-helm/`.
 
 ## Install
 
 ```bash
-helm repo add imageengine https://kube.imageengine.io/charts
+helm repo add imageengine https://kube.imageengine.io
 helm repo update
 
 # Everything lives in its own namespace. Create it up front so the secrets
@@ -50,7 +50,7 @@ and the docs under [`charts/imageengine-kube/docs/`](charts/imageengine-kube/doc
 Every chart `.tgz` is GPG-signed with key `releases@imageengine.io`
 (fingerprint `C3A5 5111 ED91 FEDE 4A82 A4B4 4632 6606 0957 C4B3`). The public
 key is published at
-[`https://kube.imageengine.io/charts/pubkey.asc`](https://kube.imageengine.io/charts/pubkey.asc),
+[`https://kube.imageengine.io/pubkey.asc`](https://kube.imageengine.io/pubkey.asc),
 and a `.prov` provenance file is published alongside every release.
 
 See the chart's [Verifying the chart signature](charts/imageengine-kube/README.md#verifying-the-chart-signature-optional)
