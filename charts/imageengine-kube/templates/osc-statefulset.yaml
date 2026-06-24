@@ -46,17 +46,40 @@ spec:
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.objectStorageCache.affinity }}
+      {{- if .Values.objectStorageCache.affinity }}
       affinity:
-        {{- toYaml . | nindent 8 }}
+        {{- toYaml .Values.objectStorageCache.affinity | nindent 8 }}
+      {{- else }}
+      # Default: softly push each shard onto a different node so a single node
+      # loss takes out at most one shard. Soft (preferred) so scheduling
+      # never blocks on small clusters. Override via objectStorageCache.affinity.
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app: {{ include "imageengine.name" . }}
+                    tier: object-storage
       {{- end }}
       {{- with .Values.objectStorageCache.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      # Spread shards across nodes and zones. Soft (ScheduleAnyway) so a
+      # capacity-constrained cluster can still place every shard.
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: {{ include "imageengine.name" . }}
+              tier: object-storage
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
