@@ -7,6 +7,37 @@ entries:
         url: https://kube.imageengine.io/pubkey.asc
     apiVersion: v2
     appVersion: 2.10.9
+    created: "2026-06-24T01:32:45.256483859Z"
+    description: ImageEngine - cloud-native image optimization
+    digest: e61187e05578a4c1fb6c8d7c451217010d0fc07d85d8a9e0864680d8fa5d08ae
+    home: https://imageengine.io
+    icon: https://imageengine.io/favicon.ico
+    keywords:
+    - image-optimization
+    - image-cdn
+    - cdn
+    - imageengine
+    - varnish
+    - wurfl
+    kubeVersion: '>=1.30.0-0'
+    maintainers:
+    - email: support@scientiamobile.com
+      name: ScientiaMobile
+      url: https://www.scientiamobile.com
+    name: imageengine-kube
+    sources:
+    - https://kube.imageengine.io
+    - https://github.com/imgeng/imageengine-kube-helm
+    type: application
+    urls:
+    - imageengine-kube-1.0.0.tgz
+    version: 1.0.0
+  - annotations:
+      artifacthub.io/signKey: |
+        fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+        url: https://kube.imageengine.io/pubkey.asc
+    apiVersion: v2
+    appVersion: 2.10.9
     created: "2026-06-23T17:56:34.123949327Z"
     description: ImageEngine - cloud-native image optimization
     digest: 3c35485ddb763596cdf38068011de52fd3b81c86918257591c45021d5cb5b16a
@@ -294,4 +325,4 @@ entries:
     urls:
     - imageengine-kube-0.8.0.tgz
     version: 0.8.0
-generated: "2026-06-23T17:56:34.123995995Z"
+generated: "2026-06-24T01:32:45.256581987Z"
