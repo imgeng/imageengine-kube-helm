@@ -13,13 +13,33 @@ Pages, and a copy of the index is also reachable at
 ```bash
 helm repo add imageengine https://kube.imageengine.io/charts
 helm repo update
-helm install imageengine imageengine/imageengine-kube -f imageengine-values.yaml
+
+# Everything lives in its own namespace. Create it up front so the secrets
+# below land in the same place the chart installs into.
+kubectl create namespace imageengine
+
+# Create the two required secrets — the chart does NOT create these for you,
+# and `helm install` will fail without them.
+kubectl create secret generic ie-kube-api-key -n imageengine \
+  --from-literal=KEY=<your-api-key>
+
+kubectl create secret docker-registry ie-kube-image-pull -n imageengine \
+  --docker-server=https://docker.scientiamobile.com/v2/ \
+  --docker-username=<your-email> \
+  --docker-password=<your-api-key> \
+  --docker-email=<your-email>
+
+helm install imageengine-kube imageengine/imageengine-kube \
+  --namespace imageengine \
+  -f imageengine-values.yaml
 ```
 
 > An active ImageEngine Kube trial or subscription is required — the chart
 > pulls images from `docker.scientiamobile.com` using your API key and
 > authenticates to the ImageEngine control plane with the same key. Sign up at
-> [imageengine.io](https://imageengine.io).
+> [imageengine.io](https://imageengine.io). See the chart's
+> [Quick start](charts/imageengine-kube/README.md#quick-start) for full details
+> on the required secrets and a minimal values file.
 
 For the full quick-start, provider presets, customization options, and
 troubleshooting, see [`charts/imageengine-kube/README.md`](charts/imageengine-kube/README.md)
@@ -40,10 +60,9 @@ section for a step-by-step.
 
 - **Releases:** see [Releases](../../releases) — each tagged release has a
   signed `.tgz` package as an asset, mirrored to the `gh-pages` branch.
-- **Source of truth:** the canonical chart source is maintained in a private
-  ScientiaMobile monorepo and mirrored here on every release. Issues, feature
-  requests, and pull requests against the chart are still welcome in **this**
-  repo — they will be triaged and ported upstream as appropriate.
+- **Source of truth:** this public repository is the canonical source for the
+  chart. Issues, feature requests, and pull requests against the chart are
+  welcome here.
 
 ## Repository layout
 

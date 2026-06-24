@@ -19,20 +19,62 @@ See [SIZING.md](../SIZING.md) for traffic-tier specific guidance — most import
 ## What `provider: aws` configures for you
 
 - **Storage class:** `gp3` (general-purpose SSD; preferred over `gp2` for performance and cost).
-- **Ingress class:** `nginx`.
+- **Edge LoadBalancer scheme:** `internet-facing`. EKS (especially Auto Mode) provisions `type: LoadBalancer` Services as **internal** by default; the preset adds `service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing` so the edge gets a public address out of the box. Set it back to `internal` via `service.annotations` for private deployments.
+- **Ingress class:** `alb` (only used if you set `ingress.enabled: true`). EKS provides the ALB ingress controller natively in Auto Mode, or via the AWS Load Balancer Controller add-on on standard EKS. The preset also defaults the ALB to `internet-facing` with `target-type: ip`.
 - **External DNS provider:** `aws` (used by metric tagging only — the chart doesn't deploy ExternalDNS itself).
 
 You can override any of these explicitly — see [CUSTOMIZATIONS.md](../CUSTOMIZATIONS.md).
 
+> **This chart assumes your cluster has AWS load balancer support** — i.e. EKS Auto Mode, or standard EKS with the [AWS Load Balancer Controller](https://kubernetes-sigs.github.io/aws-load-balancer-controller/) installed. That's the norm on modern EKS. If yours has neither, see [No ALB/NLB support](#no-albnlb-support-self-managed-ingress) below.
+
 ## Storage
 
-- `gp3` is the default and is the right answer for most deployments. It gives you SSD performance with provisionable IOPS and throughput.
+`provider: aws` sets the storage class to **`gp3`** by default — SSD performance with provisionable IOPS/throughput, and the right answer for most deployments. The OSC PersistentVolumeClaim requests this class, so a `gp3` StorageClass must exist in the cluster or the OSC pod stays `Pending`.
+
+> **EKS does not create a `gp3` StorageClass out of the box.** A fresh cluster typically only has a legacy `gp2` class, so you have to create `gp3` yourself (or override the chart to use an existing class). This catches most first-time deployments.
+
+**Option A — create a `gp3` StorageClass (recommended).** The provisioner differs depending on cluster type:
+
+- **EKS Auto Mode** uses the built-in EBS provisioner `ebs.csi.eks.amazonaws.com` (no add-on to install):
+
+  ```yaml
+  apiVersion: storage.k8s.io/v1
+  kind: StorageClass
+  metadata:
+    name: gp3
+  provisioner: ebs.csi.eks.amazonaws.com
+  volumeBindingMode: WaitForFirstConsumer
+  allowVolumeExpansion: true
+  parameters:
+    type: gp3
+  ```
+
+- **Standard EKS** uses the **AWS EBS CSI driver** managed add-on (provisioner `ebs.csi.aws.com`). Enable the add-on first (EKS console, `eksctl`, or Terraform), then create the same StorageClass with `provisioner: ebs.csi.aws.com`.
+
+Apply it with `kubectl apply -f gp3-storageclass.yaml` before (or right after) `helm install`. Optionally make it the cluster default by adding the `storageclass.kubernetes.io/is-default-class: "true"` annotation.
+
+**Option B — reuse an existing class.** If you'd rather use the class your cluster already has (e.g. the default `gp2`), override the preset:
+
+```yaml
+objectStorageCache:
+  persistence:
+    storageClass: gp2
+```
+
+**Other notes:**
+
 - For very high traffic deployments where OSC is the bottleneck, consider `io2` (provisioned IOPS) or instance-store-backed nodes for OSC pods.
-- Make sure the **AWS EBS CSI driver** is installed on your cluster — it's a managed add-on in EKS (enable it in the EKS console or via `eksctl`). On EKS Auto Mode it's included by default.
+- `WaitForFirstConsumer` binding (as above) is recommended so the volume is created in the same AZ as the pod that mounts it.
 
-## LoadBalancer (the ImageEngine Edge Service)
+## Exposing the edge — two paths
 
-The chart's edge Service defaults to `type: LoadBalancer`. Without further configuration, the legacy in-tree provider creates a Classic Load Balancer — which AWS has deprecated. **Install the [AWS Load Balancer Controller (LBC)](https://kubernetes-sigs.github.io/aws-load-balancer-controller/)** (it's an EKS managed add-on, and is included in EKS Auto Mode) and add the modern annotation set so it provisions an NLB instead:
+There are two ways to give the edge a public address. **You only need one.** The default (and simplest) is the LoadBalancer Service; the Ingress is opt-in.
+
+### Path 1 — LoadBalancer Service / NLB (default, recommended)
+
+This is what you get out of the box: the edge Service is `type: LoadBalancer`, and `provider: aws` adds the `internet-facing` scheme so it's publicly reachable. On EKS Auto Mode (or standard EKS with the AWS Load Balancer Controller) this provisions a Network Load Balancer; no Ingress controller and no extra config required.
+
+Leave `ingress.enabled: false` (the default) and you're done. If you want to tune the NLB further — a stable name, IP targets, cross-zone balancing — add the modern annotation set:
 
 ```yaml
 service:
@@ -40,34 +82,62 @@ service:
   annotations:
     service.beta.kubernetes.io/aws-load-balancer-name: imageengine-prod
     service.beta.kubernetes.io/aws-load-balancer-type: external
-    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing   # already set by the aws preset
     service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
     service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
 ```
 
-If you want internal-only access, drop the `scheme` annotation (defaults to internal) and combine with `service.loadBalancerSourceRanges` to lock down inbound CIDRs.
+For internal-only access, override the scheme back to `internal` and combine with `service.loadBalancerSourceRanges` to lock down inbound CIDRs:
 
-## Ingress options
+```yaml
+service:
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internal
+```
 
-You have two reasonable choices:
+> Without the AWS Load Balancer Controller (and not on Auto Mode), a plain `type: LoadBalancer` falls back to the legacy in-tree provider, which creates a **Classic Load Balancer** (deprecated but functional). Adding `aws-load-balancer-type: external` forces a modern NLB, but **only works if the controller is installed** — otherwise no load balancer is created at all.
 
-1. **nginx-ingress (default preset)** — install the `ingress-nginx` controller. The chart's Ingress resource will route hostnames to the edge service.
-2. **AWS Load Balancer Controller (ALB) for ingress** — set `ingress.className: alb` and add ALB-specific annotations:
-   ```yaml
-   service:
-     type: ClusterIP        # ALB ingress fronts everything; no LB on the Service
+### Path 2 — ALB Ingress
 
-   ingress:
-     enabled: true
-     className: alb
-     annotations:
-       alb.ingress.kubernetes.io/scheme: internet-facing
-       alb.ingress.kubernetes.io/target-type: ip
-       alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
-     hosts:
-       - images.example.com
-   ```
-   ALB ingress is nicer if you want native AWS WAF integration and ACM-managed certificates.
+If you want hostname-based routing, native AWS WAF integration, or ACM-managed certificates, use an ALB Ingress instead. With `provider: aws` the ingress class already defaults to `alb` and the ALB is already set to `internet-facing` / `target-type: ip`, so the minimal config is:
+
+```yaml
+service:
+  type: ClusterIP          # ALB fronts everything; no LB on the Service
+
+ingress:
+  enabled: true
+  hosts:
+    - images.example.com
+  # className defaults to "alb" via the provider preset
+  # annotations default to scheme: internet-facing + target-type: ip
+```
+
+Switch the Service to `ClusterIP` so you don't pay for an NLB *and* an ALB. Add more ALB annotations as needed, e.g.:
+
+```yaml
+ingress:
+  annotations:
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/certificate-arn: <acm-arn>
+```
+
+> **ALB health checks:** the ALB health-checks the edge target and expects a 2xx. Until a matching origin config exists, the edge may answer `/` with a 403 and the ALB will mark targets unhealthy. Point the health check at a path the edge always answers, e.g. `alb.ingress.kubernetes.io/healthcheck-path: /healthz` (or your configured probe path).
+
+### No ALB/NLB support (self-managed ingress)
+
+If your cluster has neither EKS Auto Mode nor the AWS Load Balancer Controller, install [`ingress-nginx`](https://kubernetes.github.io/ingress-nginx/) yourself and override the class explicitly:
+
+```yaml
+service:
+  type: ClusterIP
+
+ingress:
+  enabled: true
+  className: nginx          # override the aws preset's "alb" default
+  hosts:
+    - images.example.com
+```
 
 ## TLS
 
@@ -91,21 +161,10 @@ Both work for ExternalDNS, cert-manager, and the fetcher's optional S3-origin cr
 
 ## Sample minimal values
 
+The smallest config for a publicly reachable deployment — `provider: aws` alone gives you an internet-facing NLB (Path 1), so you don't even need to touch `service` or `ingress`:
+
 ```yaml
 provider: aws
-
-service:
-  type: LoadBalancer
-  annotations:
-    service.beta.kubernetes.io/aws-load-balancer-name: imageengine-prod
-    service.beta.kubernetes.io/aws-load-balancer-type: external
-    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
-    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
-
-ingress:
-  enabled: true
-  hosts:
-    - images.example.com
 
 objectStorageCache:
   persistence:
@@ -117,6 +176,21 @@ processor:
     minReplicas: 3
     maxReplicas: 16
     targetCPUUtilizationPercentage: 80
+```
+
+If you'd rather front the edge with an ALB Ingress (Path 2), swap the exposure to:
+
+```yaml
+provider: aws
+
+service:
+  type: ClusterIP
+
+ingress:
+  enabled: true
+  hosts:
+    - images.example.com
+  # className "alb" + internet-facing ALB come from the provider preset
 ```
 
 ## Next
