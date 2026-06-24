@@ -103,18 +103,21 @@ kubectl rollout restart deploy -n imageengine -l app=imageengine-kube
 
 ## OSC PVC stuck in `Pending`
 
+OSC runs as a StatefulSet of cache shards, so there is one PVC per shard, named
+`osc-storage-imageengine-kube-osc-<N>` (one per ordinal `osc-0`, `osc-1`, ...).
+
 **Symptom:**
 
 ```
 $ kubectl get pvc -n imageengine
-NAME                                STATUS    ...   STORAGECLASS       ...
-imageengine-kube-osc-pvc  Pending   ...   <unset>            ...
+NAME                                       STATUS    ...   STORAGECLASS       ...
+osc-storage-imageengine-kube-osc-0  Pending   ...   <unset>            ...
 ```
 
 **Diagnose:**
 
 ```bash
-kubectl describe pvc -n imageengine imageengine-kube-osc-pvc
+kubectl describe pvc -n imageengine osc-storage-imageengine-kube-osc-0
 ```
 
 Common causes:
@@ -138,6 +141,25 @@ Common causes:
       size: "100Gi"
   ```
 - If you're on bare metal with no CSI yet, install one (local-path-provisioner is the simplest — see [providers/CUSTOM.md](providers/CUSTOM.md)).
+
+---
+
+## An OSC shard restarted / rescheduled
+
+**This is expected and self-healing — usually no action needed.** OSC shards are
+designed to be movable. When a shard pod is rescheduled it reattaches the same
+volume (in its AZ), and during the brief gap the clients consistent-hash that
+shard's keys onto the survivors. The only effect is that ~`1 / replicaCount` of
+*cache-miss* traffic recomputes from origin for a few seconds; end users still
+get their images (the backend re-routes through the fetcher/processor, and the
+write-back to OSC is async). No client restart is required — the stable headless
+DNS name plus the OSC client's reconnect/retry pick up the new pod IP
+automatically.
+
+You only need to investigate if a shard is stuck not-`Ready` (check its PVC
+binding above, node capacity, and `kubectl describe pod`), or if many shards
+churn at once (check node health and that `objectStorageCache.pdb.enabled` is
+true so voluntary disruptions cycle one shard at a time).
 
 ---
 

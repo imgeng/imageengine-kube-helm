@@ -30,6 +30,13 @@ spec:
     spec:
       securityContext:
         fsGroup: 1000
+      # Graceful shutdown: the preStop sleep gives kube-proxy/endpoints time to
+      # stop routing new requests and lets in-flight requests drain before
+      # varnishd receives SIGTERM, so a planned move doesn't error live traffic.
+      terminationGracePeriodSeconds: {{ .Values.varnish.terminationGracePeriodSeconds | default 30 }}
+      {{- with .Values.varnish.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
       imagePullSecrets:
         - name: {{ .Values.secrets.imagePullSecretName }}
       {{- with .Values.varnish.nodeSelector }}
@@ -68,6 +75,12 @@ spec:
               - SETGID
           resources:
             {{- toYaml .Values.varnish.resources | nindent 12 }}
+          {{- if gt (int .Values.varnish.drainSeconds) 0 }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep {{ int .Values.varnish.drainSeconds }}"]
+          {{- end }}
           ports:
             - containerPort: 8080
               name: varnish

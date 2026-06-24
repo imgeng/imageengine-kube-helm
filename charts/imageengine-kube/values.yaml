@@ -73,6 +73,21 @@ providerPresets:
     ingressAnnotations: {}
     serviceAnnotations: {}
     externalDnsProvider: "azure"
+
+###################################################
+# Scheduling Priority (optional)
+###################################################
+# Optionally create cluster-scoped PriorityClasses for the cache tiers and
+# reference them via objectStorageCache.priorityClassName / varnish.priorityClassName.
+# Off by default because PriorityClasses are cluster-wide (not namespaced) and may
+# collide with org-managed classes. Higher value => preempted last, scheduled first.
+priorityClass:
+  create: false
+  oscClassName: "imageengine-osc-critical"
+  oscValue: 1000000
+  varnishClassName: "imageengine-varnish-high"
+  varnishValue: 900000
+
 imageengine:
   # <production|staging|canary|testing|development>
   environment: &appEnv "testing"
@@ -263,8 +278,24 @@ edge:
 # Deployed separately from edge so cache survives edge updates.
 # Traffic flow: edge -> varnish:8080 -> backend
 varnish:
+  # Keep at 1. The edge proxies to a single Varnish endpoint with no consistent
+  # hashing, so each extra replica caches an overlapping random subset and the
+  # effective hit ratio drops. Resilience here comes from priorityClass + graceful
+  # drain (below), not replication; a rare cold loss falls through to OSC, not origin.
   replicaCount: 1
   minReadySeconds: 0
+  # Optional scheduling priority. Requires the class to exist (set
+  # priorityClass.create=true, or reference an externally-managed class).
+  priorityClassName: ""
+  # Graceful shutdown tuning (see varnish-deployment.yaml preStop hook).
+  terminationGracePeriodSeconds: 30
+  drainSeconds: 5
+  # PodDisruptionBudget. Off by default: with a single replica, minAvailable: 1
+  # blocks node drains entirely (drain must be forced). Enable it for strong
+  # protection of voluntary disruptions, accepting that trade-off.
+  pdb:
+    enabled: false
+    minAvailable: 1
   podAnnotations: {}
   nodeSelector: {}
   tolerations: []
@@ -546,7 +577,12 @@ processor:
 # ImageEngine Kube Object Storage Cache Configuration
 ######################################################
 objectStorageCache:
-  replicaCount: 1
+  # Number of cache shards. Each ordinal (osc-0, osc-1, ...) is an independent
+  # OSC node with its own PersistentVolume; clients consistent-hash the origin
+  # key across them. Default 4 keeps blast radius per shard at ~25% so any shard
+  # can be rescheduled almost anytime. Set to 1 for a single-node (legacy) setup.
+  # Sizing below is per shard, so 4 small shards ~= one big shard, not 4x.
+  replicaCount: 4
   minReadySeconds: 0
   image:
     repository: docker.scientiamobile.com/iekube/object-storage-cache.server
@@ -554,15 +590,24 @@ objectStorageCache:
   persistence:
     enabled: true
     storageClass: ""             # Leave empty to use provider preset, or specify explicitly
-    size: "40Gi"                 # Adjust the size as per your need
+    size: "10Gi"                 # Per-shard size; total cache ~= size * replicaCount
   service:
     port: 80
+  # Optional scheduling priority. Requires the class to exist (set
+  # priorityClass.create=true, or reference an externally-managed class).
+  priorityClassName: ""
+  # PodDisruptionBudget. With >=2 shards, maxUnavailable: 1 lets drains/rolls
+  # cycle one shard at a time while protecting the rest. (To pin a minimum
+  # instead, set minAvailable here and it takes precedence.)
+  pdb:
+    enabled: true
+    maxUnavailable: 1
   resources:
     requests:
-      memory: "2Gi"
-      cpu: "500m"
+      memory: "512Mi"
+      cpu: "250m"
     limits:
-      memory: "4Gi"
+      memory: "2Gi"
   podAnnotations: {}
   nodeSelector: {}
   tolerations: []

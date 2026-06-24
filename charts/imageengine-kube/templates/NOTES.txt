@@ -4,10 +4,19 @@ Thanks for installing {{ .Chart.Name }} {{ .Chart.Version }}.
 Release: {{ .Release.Name }}
 Namespace: {{ .Release.Namespace }}
 
-Watch the components come up (about 1-2 minutes; the OSC pod takes longest
-because it has to bind a PersistentVolume):
+Watch the components come up (about 1-2 minutes; the OSC shards take longest
+because each binds its own PersistentVolume):
 
   kubectl --namespace {{ .Release.Namespace }} get pods -l app={{ include "imageengine.name" . }} -w
+
+{{- if gt (int .Values.objectStorageCache.replicaCount) 1 }}
+
+OSC runs as {{ .Values.objectStorageCache.replicaCount }} cache shards
+({{ include "imageengine.fullname" . }}-osc-0 .. -osc-{{ sub (int .Values.objectStorageCache.replicaCount) 1 }}),
+each with its own volume. Clients consistent-hash across them, so losing one
+shard only affects ~{{ div 100 (int .Values.objectStorageCache.replicaCount) }}% of cache-miss traffic
+(which simply recomputes from origin).
+{{- end }}
 
 {{- if eq .Values.service.type "LoadBalancer" }}
 

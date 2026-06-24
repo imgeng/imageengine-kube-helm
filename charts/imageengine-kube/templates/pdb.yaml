@@ -1,0 +1,43 @@
+# PodDisruptionBudgets for the cache tiers. These constrain *voluntary*
+# disruptions (node drains, autoscaler scale-down, rolling node upgrades) and
+# are honored by kubectl, cluster-autoscaler, and Karpenter alike -- the
+# provider-agnostic equivalent of a "do not evict" hint.
+{{- if .Values.objectStorageCache.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "imageengine.fullname" . }}-osc
+  labels:
+    app: {{ include "imageengine.name" . }}
+    tier: object-storage
+spec:
+  {{- if hasKey .Values.objectStorageCache.pdb "minAvailable" }}
+  minAvailable: {{ .Values.objectStorageCache.pdb.minAvailable }}
+  {{- else }}
+  maxUnavailable: {{ .Values.objectStorageCache.pdb.maxUnavailable | default 1 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app: {{ include "imageengine.name" . }}
+      tier: object-storage
+{{- end }}
+{{- if .Values.varnish.pdb.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "imageengine.fullname" . }}-varnish
+  labels:
+    app: {{ include "imageengine.name" . }}
+    tier: varnish
+spec:
+  {{- if hasKey .Values.varnish.pdb "maxUnavailable" }}
+  maxUnavailable: {{ .Values.varnish.pdb.maxUnavailable }}
+  {{- else }}
+  minAvailable: {{ .Values.varnish.pdb.minAvailable | default 1 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app: {{ include "imageengine.name" . }}
+      tier: varnish
+{{- end }}

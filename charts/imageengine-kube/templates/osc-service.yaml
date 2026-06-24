@@ -1,4 +1,7 @@
 # ImageEngine Kube Object Storage Cache Service
+# ClusterIP service kept for ad-hoc/debug access and health checks. Sharded
+# clients do NOT use this (it would round-robin across shards); they address
+# individual shards via the headless service's stable per-pod DNS names below.
 apiVersion: v1
 kind: Service
 metadata:
@@ -10,6 +13,31 @@ spec:
   type: ClusterIP
   ports:
     - port: {{ .Values.objectStorageCache.service.port }}
+      targetPort: 8000
+  selector:
+    app: {{ include "imageengine.name" . }}
+    tier: object-storage
+
+---
+# Headless service governing the OSC StatefulSet. clusterIP: None makes DNS
+# return per-pod A records (e.g. <release>-osc-2.<release>-osc-headless), which
+# are stable across reschedules and used for OSC[N]_HOST shard wiring.
+# publishNotReadyAddresses: true so a shard's name resolves during startup,
+# letting clients establish the pool without waiting for readiness.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "imageengine.fullname" . }}-osc-headless
+  labels:
+    app: {{ include "imageengine.name" . }}
+    tier: object-storage
+spec:
+  type: ClusterIP
+  clusterIP: None
+  publishNotReadyAddresses: true
+  ports:
+    - name: osc
+      port: 8000
       targetPort: 8000
   selector:
     app: {{ include "imageengine.name" . }}

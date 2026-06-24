@@ -1,14 +1,24 @@
-# ImageEngine Kube Object Storage Cache (OSC) Deployment
+# ImageEngine Kube Object Storage Cache (OSC) StatefulSet
+# Each ordinal (osc-0, osc-1, ...) is an independent cache shard with its own
+# PersistentVolume. Clients (backend/fetcher/processor) consistent-hash the
+# origin key across shards via the OSC sharding client, so each shard owns a
+# disjoint slice of the keyspace -- no shared-volume write races, and losing a
+# shard is a 1/N cache dip, not a full miss storm. The governing headless
+# Service gives each pod a stable DNS name used for OSC[N]_HOST wiring.
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: {{ include "imageengine.fullname" . }}-osc
   labels:
     app: {{ include "imageengine.name" . }}
     tier: object-storage
 spec:
+  serviceName: {{ include "imageengine.fullname" . }}-osc-headless
   replicas: {{ .Values.objectStorageCache.replicaCount }}
   minReadySeconds: {{ .Values.objectStorageCache.minReadySeconds | default 0 }}
+  # Shards have no ordering dependency on each other, so bring them up/down in
+  # parallel rather than one ordinal at a time.
+  podManagementPolicy: Parallel
   selector:
     matchLabels:
       app: {{ include "imageengine.name" . }}
@@ -27,6 +37,9 @@ spec:
         runAsUser: 65532
         runAsGroup: 65532
         fsGroup: 65532
+      {{- with .Values.objectStorageCache.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
       imagePullSecrets:
         - name: {{ .Values.secrets.imagePullSecretName }}
       {{- with .Values.objectStorageCache.nodeSelector }}
@@ -101,8 +114,23 @@ spec:
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
-
+      {{- if not .Values.objectStorageCache.persistence.enabled }}
       volumes:
         - name: osc-storage
-          persistentVolumeClaim:
-            claimName: {{ include "imageengine.fullname" . }}-osc-pvc
+          emptyDir: {}
+      {{- end }}
+  {{- if .Values.objectStorageCache.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: osc-storage
+        labels:
+          app: {{ include "imageengine.name" . }}
+          tier: object-storage
+      spec:
+        accessModes:
+          - ReadWriteOnce            # Each shard's volume is mounted by a single pod
+        resources:
+          requests:
+            storage: {{ .Values.objectStorageCache.persistence.size }}
+        storageClassName: {{ include "imageengine.storageClass" . }}
+  {{- end }}

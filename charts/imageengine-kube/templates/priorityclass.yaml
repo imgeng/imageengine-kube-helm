@@ -1,0 +1,26 @@
+# Optional cluster-scoped PriorityClasses for the cache tiers. Off by default
+# because PriorityClasses are cluster-wide objects (not namespaced) and may
+# collide with org-managed classes. Enable with priorityClass.create=true, then
+# reference them via objectStorageCache.priorityClassName / varnish.priorityClassName.
+# Higher priority => preempted last and rescheduled first.
+{{- if .Values.priorityClass.create }}
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: {{ .Values.priorityClass.oscClassName }}
+  labels:
+    app: {{ include "imageengine.name" . }}
+value: {{ int .Values.priorityClass.oscValue }}
+globalDefault: false
+description: "ImageEngine OSC cache shards - keep scheduled and reschedule first."
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: {{ .Values.priorityClass.varnishClassName }}
+  labels:
+    app: {{ include "imageengine.name" . }}
+value: {{ int .Values.priorityClass.varnishValue }}
+globalDefault: false
+description: "ImageEngine Varnish cache - high priority, below OSC."
+{{- end }}
