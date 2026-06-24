@@ -1,0 +1,33 @@
+{{/*
+Optional Prometheus Operator PodMonitor (ADR 0004).
+
+Scrapes every ImageEngine component pod directly on the dedicated "metrics"
+port (9464), so no extra Service is required and the customer-facing edge
+LoadBalancer never exposes metrics. Requires the Prometheus Operator CRDs
+(monitoring.coreos.com/v1) to be installed in the cluster; gated off by default.
+
+Operators who prefer ServiceMonitors or prometheus.io/* pod annotations can
+leave this disabled and use those mechanisms instead (see docs/operations/metrics.md).
+*/}}
+{{- if .Values.metrics.podMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ include "imageengine.fullname" . }}-metrics
+  labels:
+    app: {{ include "imageengine.name" . }}
+    {{- with .Values.metrics.podMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ include "imageengine.name" . }}
+  podMetricsEndpoints:
+    - port: metrics
+      path: /metrics
+      interval: {{ .Values.metrics.podMonitor.interval }}
+      scrapeTimeout: {{ .Values.metrics.podMonitor.scrapeTimeout }}
+  podTargetLabels:
+    - tier
+{{- end }}

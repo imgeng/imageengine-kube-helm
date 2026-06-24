@@ -66,6 +66,9 @@ spec:
             {{- toYaml .Values.processor.resources | nindent 12 }}
           ports:
             - containerPort: 8000
+              name: http
+            - containerPort: 9464
+              name: metrics
           readinessProbe:
             httpGet:
               path: /api/v1/health

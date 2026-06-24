@@ -65,16 +65,16 @@ spec:
           ports:
             - containerPort: 8080
               name: http
-            - containerPort: 9090
+            - containerPort: 9464
               name: metrics
           readinessProbe:
             httpGet:
               # /health lives on the edge admin listener (EDGE_METRICS_ADDR,
-              # default :9090) so the customer-facing port is free to proxy
+              # default :9464) so the customer-facing port is free to proxy
               # /health to customer origins. Coupled to wit-frontend:
               # the legacy /status endpoint was removed in the same release.
               path: /health
-              port: 9090
+              port: 9464
             initialDelaySeconds: 5
             periodSeconds: 10
           env:
