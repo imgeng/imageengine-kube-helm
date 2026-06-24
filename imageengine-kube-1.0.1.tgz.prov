@@ -1,0 +1,50 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+annotations:
+  artifacthub.io/signKey: |
+    fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+    url: https://kube.imageengine.io/pubkey.asc
+apiVersion: v2
+appVersion: 2.10.9
+description: ImageEngine - cloud-native image optimization
+home: https://imageengine.io
+icon: https://imageengine.io/favicon.ico
+keywords:
+- - image-optimization
+- - image-cdn
+- - cdn
+- - imageengine
+- - varnish
+- - wurfl
+kubeVersion: '>=1.30.0-0'
+maintainers:
+- - email: support@scientiamobile.com
+  name: ScientiaMobile
+  url: https://www.scientiamobile.com
+name: imageengine-kube
+sources:
+- - https://kube.imageengine.io
+- - https://github.com/imgeng/imageengine-kube-helm
+type: application
+version: 1.0.1
+
+...
+files:
+  imageengine-kube-1.0.1.tgz: sha256:69f49debf1f11ba051c1eef6a5103f553fe75c1745ca9d5e17e0f1b383942175
+-----BEGIN PGP SIGNATURE-----
+
+wsFcBAEBCgAQBQJqO1WICRBGMmYGCVfEswAAAHgQAEC1bL5kotu8ZefoNyAkFJ6H
+KTKbOL778vINrLCbeTkaus69+xjlKGZYR/7Mn3kH07PKPdAftEZzSUjMvfw1axke
+TcHnDgnpo7/R2UxpfXUSaUbZQkekxBw2QXle8KTSinHB9I1FqmE5kGEEXC/CqbgK
+6viqx/T/IiGtoPqzG7VR58TpkoylEmHPbLcKwZEnQKGJGoOyPq3LFiyMduAcUPQH
+mGfvBPSwpclei7C1IpxVuT2Gs0VsUkS5DCZppzYSP3Dv7Ls6OPpE0U0P+n+w5fiK
+YnXHHyutLkdrkWi9mYLgZtsXBLd7SeBU8aZX8ADDJ8VDdYzJMb0qHoP/fSffRrQH
+bKHvIQei5vlxrgBc8bLiDtSSZpqyc2aS/jShMYp1nyHiu24N6Kv5REtgTRg0IT+f
+9PmuWDvIu2FaSL/9Zhk9OWBv2wX+Qh87ptTkcGNmaHNbb2poz5MhiEhig7k2ULKp
+MexzbP4H2KB9uUAeuKjyemBHo46bF5H7DiUEuvpnrW/Tae2ViPLzKAbsiMGWpBUM
+RbH2S6gMUxGWai1W5P/JabssYFtDXhWKI0He3ADNQq4yzcjc37lbdUprasI2G6/u
+GzHNqjS33FljiVLloUnRGcDOKnFdrz+ygBA7FLiS/2y7ehce7D6BFDaLvz61mSz+
+goW7Krh/LNuQm/fk6NFY
+=bdia
+-----END PGP SIGNATURE-----
