@@ -62,6 +62,15 @@
     }
     ul.links { padding-left: 1.2rem; }
     ul.links li { margin: 0.25rem 0; }
+    .callout {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      margin: 1.5rem 0;
+      font-size: 0.95em;
+    }
     footer { margin-top: 3rem; color: var(--muted); font-size: 0.85rem; text-align: center; }
   </style>
 </head>
@@ -78,13 +87,54 @@
     </a>
   </p>
 
+  <div class="callout">
+    <strong>Active trial or subscription required.</strong> An ImageEngine API key
+    authenticates to the control plane at runtime and pulls container images from
+    <code>docker.scientiamobile.com</code>. Sign up at
+    <a href="https://imageengine.io">imageengine.io</a> to get your key.
+  </div>
+
   <h2>Add the repository</h2>
 <pre><code>helm repo add imageengine https://kube.imageengine.io
 helm repo update
-helm search repo imageengine</code></pre>
+helm search repo imageengine/imageengine-kube --versions</code></pre>
+
+  <h2>Create the namespace and required secrets</h2>
+  <p>The chart does <strong>not</strong> create these for you &mdash; both secrets must exist in the install namespace before <code>helm install</code> runs.</p>
+<pre><code>kubectl create namespace imageengine
+
+kubectl create secret generic ie-kube-api-key -n imageengine \
+  --from-literal=KEY=&lt;your-api-key&gt;
+
+kubectl create secret docker-registry ie-kube-image-pull -n imageengine \
+  --docker-server=https://docker.scientiamobile.com/v2/ \
+  --docker-username=&lt;your-email&gt; \
+  --docker-password=&lt;your-api-key&gt; \
+  --docker-email=&lt;your-email&gt;</code></pre>
+  <p>The Docker password is the same value as the API key.</p>
+
+  <h2>Write a minimal values file</h2>
+  <p>Create <code>imageengine-values.yaml</code>. The only required setting is <code>provider:</code> &mdash; pick the one that matches your cluster (<code>aws</code>, <code>azure</code>, <code>digitalocean</code>, <code>gke</code>, <code>linode</code>, or <code>custom</code>):</p>
+<pre><code>provider: aws
+
+ingress:
+  enabled: true
+  hosts:
+    - images.example.com</code></pre>
+  <p>Every other setting has a sensible default. See the <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/CUSTOMIZATIONS.md">customizations guide</a> when you are ready to tune further.</p>
 
   <h2>Install</h2>
-<pre><code>helm install my-imageengine imageengine/imageengine-kube</code></pre>
+<pre><code>helm install imageengine-kube imageengine/imageengine-kube \
+  --namespace imageengine \
+  -f imageengine-values.yaml</code></pre>
+
+  <h2>Verify</h2>
+  <p>Pods should settle into <code>Running</code> within a minute or two. The edge LoadBalancer gets an external address from your cloud provider:</p>
+<pre><code>kubectl get pods -n imageengine
+kubectl get svc -n imageengine -l 'app=imageengine-kube,tier=edge'</code></pre>
+  <p>For a full end-to-end smoke test with <code>curl</code>, see the
+    <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/GETTING_STARTED.md">Getting started</a>
+    guide.</p>
 
   <h2>Verify signatures</h2>
   <p>Charts published from version <code>0.8.5</code> onward are signed with GPG.</p>
