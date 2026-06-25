@@ -9,7 +9,7 @@ images:
   varnish: "7.4.3-1"
   backend: "2.11.0"
   fetcher: "1.27.0"
-  processor: "3.21.0"
+  processor: "3.21.1"
   osc: "3.4.0"
   rsyslog: "24.04"
 
