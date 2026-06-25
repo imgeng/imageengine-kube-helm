@@ -14,6 +14,44 @@ entries:
         url: https://kube.imageengine.io/pubkey.asc
     apiVersion: v2
     appVersion: 2.10.9
+    created: "2026-06-25T18:17:14.38784753Z"
+    description: ImageEngine - cloud-native image optimization
+    digest: bfc37b0ef271fed58fd2778b358cf11cb37049603b077856c5f7d829d56c8de7
+    home: https://imageengine.io
+    icon: https://imageengine.io/favicon.ico
+    keywords:
+    - image-optimization
+    - image-cdn
+    - cdn
+    - imageengine
+    - varnish
+    - wurfl
+    kubeVersion: '>=1.30.0-0'
+    maintainers:
+    - email: support@scientiamobile.com
+      name: ScientiaMobile
+      url: https://www.scientiamobile.com
+    name: imageengine-kube
+    sources:
+    - https://kube.imageengine.io
+    - https://github.com/imgeng/imageengine-kube-helm
+    type: application
+    urls:
+    - imageengine-kube-1.2.1.tgz
+    version: 1.2.1
+  - annotations:
+      artifacthub.io/changes: |
+        - kind: added
+          description: "Prometheus metrics port (named metrics, 9464) on all components, kept off the customer-facing edge LoadBalancer (ADR 0004)"
+        - kind: added
+          description: "Optional Prometheus Operator PodMonitor via metrics.podMonitor.enabled (disabled by default)"
+        - kind: changed
+          description: "Edge metrics/admin listener and readiness probe moved from port 9090 to 9464"
+      artifacthub.io/signKey: |
+        fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+        url: https://kube.imageengine.io/pubkey.asc
+    apiVersion: v2
+    appVersion: 2.10.9
     created: "2026-06-24T21:59:55.835576498Z"
     description: ImageEngine - cloud-native image optimization
     digest: 5dc4feeb6124bdfd81456764b49b170eee24c16029c3ba598473c74fffc54219
@@ -518,4 +556,4 @@ entries:
     urls:
     - imageengine-kube-0.8.0.tgz
     version: 0.8.0
-generated: "2026-06-24T21:59:55.835675289Z"
+generated: "2026-06-25T18:17:14.387993455Z"
