@@ -73,6 +73,9 @@ spec:
               - CHOWN
               - SETUID
               - SETGID
+              # Varnish 9's unix jail (vju_fixfd) fchmod()s its workdir fds to 0750
+              # on startup; without FOWNER that fails with EPERM and varnishd asserts.
+              - FOWNER
           resources:
             {{- toYaml .Values.varnish.resources | nindent 12 }}
           {{- if gt (int .Values.varnish.drainSeconds) 0 }}
@@ -92,7 +95,7 @@ spec:
             periodSeconds: 10
           env:
             - name: IE_BACKENDS
-              value: "{{ include "imageengine.fullname" . }}-backend"
+              value: {{ default (printf "%s-backend" (include "imageengine.fullname" .)) .Values.varnish.ieBackends | quote }}
             - name: COMPONENT
               value: "varnish"
             - name: VARNISH_LISTEN_PORT
