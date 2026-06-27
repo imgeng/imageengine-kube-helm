@@ -5,11 +5,11 @@ imagePullPolicy: Always
 ###################################################
 # Centralized image tags/versions for all components
 images:
-  edge: "4.2.0"
-  varnish: "7.4.3-1"
+  edge: "4.3.0"
+  varnish: "9.0.3-2"
   backend: "2.11.0"
   fetcher: "1.27.0"
-  processor: "3.21.1"
+  processor: "3.22.0"
   osc: "3.4.0"
   rsyslog: "24.04"
 
@@ -325,6 +325,9 @@ varnish:
   affinity: {}
   image:
     repository: docker.scientiamobile.com/iekube/imageengine-frontend.varnish
+  # DNS name or SRV pool for ie-varnish-autoconfig. Empty uses the in-chart
+  # backend Service (<release>-backend).
+  ieBackends: ""
   resources:
     requests:
       memory: "1Gi"
@@ -335,11 +338,6 @@ varnish:
       ephemeral-storage: "500Gi"
   env:
     APP_ENV: *appEnv
-    GENERATE_ENV: "true"
-    VARNISH_ENV: "dynamic"
-    VARNISH_MAJOR_VER: "7"
-    # This is set dynamically in the deployment
-    # IE_BACKENDS:
     RELOADER_ENABLE: "true"
     # Memory storage
     # VARNISH_STORAGE: "malloc,64G"
