@@ -8,8 +8,8 @@ images:
   edge: "4.3.0"
   varnish: "9.0.3-2"
   backend: "2.11.0"
-  fetcher: "1.27.0"
-  processor: "3.22.0"
+  fetcher: "1.28.0"
+  processor: "3.23.0"
   osc: "3.4.0"
   rsyslog: "24.04"
 
@@ -588,6 +588,14 @@ processor:
     # Controls the CPU effort spent improving compression when encoding to avif
     # using libvips. Defaults to 8. 0 is slowest 9 is fastest.
     # IE_PROCESSOR_SPEED_AVIF_ENCODING: 8
+    # Memory allocator. Default (unset) = glibc. Set to "tcmalloc" to LD_PRELOAD
+    # tcmalloc, which cuts resident memory ~3x under concurrent SVT-AV1 (AVIF)
+    # encodes — useful for memory-constrained pods (e.g. a tighter limit on small
+    # nodes). NOT the default: tcmalloc preloaded into the cgo image stack has
+    # shown an intermittent deadlock under high concurrency (not reproducible on
+    # the current libheif 1.23.1 base, but not proven gone). The single-threaded
+    # SVT-AV1 default already keeps glibc memory bounded. Values: glibc | tcmalloc.
+    # IE_PROCESSOR_MALLOC: tcmalloc
     # VIPS: defines the threshold for large images that are decompressed to
     # temporary random-access files on disc and then processed from there. The value
     # is a simple integer with a unit postfix of "k", "m" or "g" to indicate
