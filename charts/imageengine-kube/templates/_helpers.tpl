@@ -38,6 +38,29 @@ Usage: {{ include "imageengine.oscShardEnv" . | nindent 12 }}
 {{- end -}}
 
 {{/*
+OpenTelemetry tracing env for a component (ADR 0007). Emits nothing when
+otel.enabled is false, so tracing stays fully opt-in. Otherwise sets the
+component's *_OTEL_ENABLED flag, the OTLP endpoint (if configured; leave empty
+to rely on OpenTelemetry-Operator injection), and any shared OTEL_* vars.
+Usage: {{ include "imageengine.otelEnv" (dict "ctx" . "enableVar" "EDGE_OTEL_ENABLED") }}
+*/}}
+{{- define "imageengine.otelEnv" -}}
+{{- $otel := .ctx.Values.otel -}}
+{{- if and $otel $otel.enabled }}
+- name: {{ .enableVar }}
+  value: "true"
+{{- if $otel.endpoint }}
+- name: OTEL_EXPORTER_OTLP_ENDPOINT
+  value: {{ $otel.endpoint | quote }}
+{{- end }}
+{{- range $key, $value := $otel.env }}
+- name: {{ $key }}
+  value: {{ $value | quote }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{/*
 =============================================================================
 Provider-Aware Helpers
 =============================================================================

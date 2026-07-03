@@ -1,0 +1,38 @@
+{{/*
+Optional NetworkPolicy that permits OTLP trace egress from the ImageEngine pods
+(ADR 0007). Gated off by default.
+
+IMPORTANT — additive semantics: Kubernetes NetworkPolicies are additive (a pod's
+allowed egress is the UNION of all policies that select it), but the moment ANY
+Egress policy selects a pod, everything not explicitly allowed is denied. This
+policy only allows DNS + the OTLP collector port, so enable it ONLY in a cluster
+that already runs a default-deny egress posture with separate policies allowing
+the ImageEngine pods' other egress (origins, OSC, emitter, CoreAPI, ...). If this
+were the only Egress policy selecting these pods it would break them. In a
+cluster with no NetworkPolicies at all, leave this disabled (the chart default).
+*/}}
+{{- if and .Values.otel.enabled .Values.otel.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "imageengine.fullname" . }}-otel-egress
+  labels:
+    app: {{ include "imageengine.name" . }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ include "imageengine.name" . }}
+  policyTypes:
+    - Egress
+  egress:
+    # DNS resolution (kube-dns / CoreDNS).
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # OTLP export to the collector.
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.otel.networkPolicy.otlpPort }}
+{{- end }}

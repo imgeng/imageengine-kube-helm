@@ -137,6 +137,31 @@ identity:
   REGION: us-east-1
   AZ: us-east-1a
 
+# OpenTelemetry distributed tracing (ADR 0007). Disabled by default and fully
+# opt-in: when enabled, each component starts the OTel SDK and exports OTLP
+# traces to your collector. ImageEngine is backend-agnostic — it does NOT bundle
+# or require a trace store. Point it at your own OTLP endpoint, or run the
+# OpenTelemetry Operator to inject the endpoint cluster-wide (leave endpoint
+# empty in that case).
+otel:
+  enabled: false
+  # OTLP/gRPC endpoint, e.g. "http://otel-collector.observability:4317". Sets
+  # OTEL_EXPORTER_OTLP_ENDPOINT on every component. Leave empty to rely on
+  # OpenTelemetry-Operator injection or the SDK default (localhost:4317).
+  endpoint: ""
+  # Extra SDK-native OTEL_* env applied to every component. Common knobs:
+  #   OTEL_TRACES_SAMPLER: parentbased_traceidratio
+  #   OTEL_TRACES_SAMPLER_ARG: "0.05"
+  #   OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=prod"
+  env: {}
+  # NetworkPolicy allowing OTLP egress from the ImageEngine pods (default off;
+  # enable only if you run NetworkPolicies). Keeps tracing off the customer-facing
+  # Service/LoadBalancer (same posture as the metrics port, ADR 0004).
+  networkPolicy:
+    enabled: false
+    # Port your OTLP collector listens on (OTLP/gRPC default 4317).
+    otlpPort: 4317
+
 ingress:
   enabled: false     # Enable or disable the ingress controller
   annotations: {}   # Add any annotations for the ingress here (optional)
