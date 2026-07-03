@@ -2,7 +2,7 @@ apiVersion: v2
 name: imageengine-kube
 description: ImageEngine - cloud-native image optimization
 type: application
-version: 1.4.0
+version: 1.4.1
 kubeVersion: ">=1.30.0-0"
 home: https://imageengine.io
 sources:
@@ -26,8 +26,8 @@ annotations:
     url: https://kube.imageengine.io/pubkey.asc
   artifacthub.io/changes: |
     - kind: changed
-      description: "Updated fetcher image to 1.28.0 (local network allowlist support)"
+      description: "Updated processor image to 3.23.1 (fixed OpenCV SIGSEGV on background removals)"
     - kind: changed
-      description: "Updated processor image to 3.23.0 (optimized SVT-AV1 build for AVIF)"
+      description: "Tweaked resource requests/limits for processor and OSC"
     - kind: changed
-      description: "Chart appVersion has been removed (components carry their own versions)"
+      description: "Use tcmalloc in processor by default to improve memory efficiency"
