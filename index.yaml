@@ -4,6 +4,47 @@ entries:
   - annotations:
       artifacthub.io/changes: |
         - kind: changed
+          description: "Updated fetcher image to 1.28.0 (local network allowlist support)"
+        - kind: changed
+          description: "Updated processor image to 3.23.1 (optimized SVT-AV1 build for AVIF; OpenCV SIGSEGV fixed)"
+        - kind: changed
+          description: "Chart appVersion has been removed (components carry their own versions)"
+        - kind: changed
+          description: "Tweaked resource requests/limits for processor and OSC"
+        - kind: changed
+          description: "Use tcmalloc in processor by default to improve memory efficiency"
+      artifacthub.io/signKey: |
+        fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+        url: https://kube.imageengine.io/pubkey.asc
+    apiVersion: v2
+    created: "2026-07-03T01:35:21.757305951Z"
+    description: ImageEngine - cloud-native image optimization
+    digest: 761aec6a1f2e55d10a7eb8ea149417c825cc222b28cf1155db0190069e61eda3
+    home: https://imageengine.io
+    icon: https://imageengine.io/favicon.ico
+    keywords:
+    - image-optimization
+    - image-cdn
+    - cdn
+    - imageengine
+    - varnish
+    - wurfl
+    kubeVersion: '>=1.30.0-0'
+    maintainers:
+    - email: support@scientiamobile.com
+      name: ScientiaMobile
+      url: https://www.scientiamobile.com
+    name: imageengine-kube
+    sources:
+    - https://kube.imageengine.io
+    - https://github.com/imgeng/imageengine-kube-helm
+    type: application
+    urls:
+    - imageengine-kube-1.4.0.tgz
+    version: 1.4.0
+  - annotations:
+      artifacthub.io/changes: |
+        - kind: changed
           description: "Updated edge image to 4.3.0"
         - kind: changed
           description: "Updated varnish image to slim v9.0.3 (major upgrade from 7.x)"
@@ -594,4 +635,4 @@ entries:
     urls:
     - imageengine-kube-0.8.0.tgz
     version: 0.8.0
-generated: "2026-06-27T02:49:05.595093784Z"
+generated: "2026-07-03T01:35:21.75743484Z"
