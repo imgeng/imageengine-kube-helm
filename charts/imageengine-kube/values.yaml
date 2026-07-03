@@ -9,7 +9,7 @@ images:
   varnish: "9.0.3-2"
   backend: "2.11.0"
   fetcher: "1.28.0"
-  processor: "3.23.0"
+  processor: "3.23.1"
   osc: "3.4.0"
   rsyslog: "24.04"
 
@@ -379,10 +379,10 @@ backend:
     repository: docker.scientiamobile.com/iekube/imageengine-backend.server
   resources:
     requests:
-      memory: "1Gi"
+      memory: "500Mi"
       cpu: "250m"
     limits:
-      memory: "6Gi"
+      memory: "2Gi"
   autoscaling:
     enabled: false
     minReplicas: 1
@@ -463,10 +463,10 @@ fetcher:
     repository: docker.scientiamobile.com/iekube/imageengine-origin-fetcher.server
   resources:
     requests:
-      memory: "768Mi"
+      memory: "500Mi"
       cpu: "250m"
     limits:
-      memory: "4Gi"
+      memory: "2Gi"
   autoscaling:
     enabled: false
     minReplicas: 1
@@ -538,8 +538,8 @@ processor:
     repository: docker.scientiamobile.com/iekube/imageengine-processor.server
   resources:
     requests:
-      memory: "1Gi"
-      cpu: "500m"
+      memory: "2400Mi"
+      cpu: "800m"
     limits:
       memory: "6Gi"
   autoscaling:
@@ -588,14 +588,25 @@ processor:
     # Controls the CPU effort spent improving compression when encoding to avif
     # using libvips. Defaults to 8. 0 is slowest 9 is fastest.
     # IE_PROCESSOR_SPEED_AVIF_ENCODING: 8
-    # Memory allocator. Default (unset) = glibc. Set to "tcmalloc" to LD_PRELOAD
-    # tcmalloc, which cuts resident memory ~3x under concurrent SVT-AV1 (AVIF)
-    # encodes — useful for memory-constrained pods (e.g. a tighter limit on small
-    # nodes). NOT the default: tcmalloc preloaded into the cgo image stack has
-    # shown an intermittent deadlock under high concurrency (not reproducible on
-    # the current libheif 1.23.1 base, but not proven gone). The single-threaded
-    # SVT-AV1 default already keeps glibc memory bounded. Values: glibc | tcmalloc.
-    # IE_PROCESSOR_MALLOC: tcmalloc
+    # AVIF SVT-AV1 tune. Default "iq" (Image Quality) — a broad perceptual-quality
+    # win over the older "psnr". Values: psnr | iq | ssim | ms-ssim | vq.
+    # IE_PROCESSOR_AVIF_TUNE: iq
+    # AVIF cmpr -> quality dial (see the processor's avifCompressionQuality). cmpr
+    # is interpolated linearly in SSIMULACRA2 and inverted to a libheif Q, so equal
+    # cmpr steps are ~equal perceptual steps. The dial is anchored on the no-cmpr
+    # default output: cmpr_0 -> Q_MAX (near-lossless), cmpr_<DEFAULT_CMPR> -> the
+    # dpiclass default Q (== the default output), cmpr_100 -> Q_MIN (most compressed).
+    # Defaults below are calibrated for tune=iq; override only to re-tune quality/size.
+    # IE_PROCESSOR_AVIF_Q_MIN: 20
+    # IE_PROCESSOR_AVIF_Q_MAX: 90
+    # IE_PROCESSOR_AVIF_DEFAULT_CMPR: 15
+    # Memory allocator: "glibc" (default when unset) or "tcmalloc" (LD_PRELOAD).
+    # tcmalloc roughly halves resident memory by eliminating glibc's native-heap
+    # fragmentation across the image pipeline (libvips/OpenCV/SVT), most visible
+    # under concurrent AVIF encodes; the gap widens from ~2x toward ~3x as glibc's
+    # heap ramps.
+    # Values: glibc | tcmalloc.
+    IE_PROCESSOR_MALLOC: tcmalloc
     # VIPS: defines the threshold for large images that are decompressed to
     # temporary random-access files on disc and then processed from there. The value
     # is a simple integer with a unit postfix of "k", "m" or "g" to indicate
@@ -634,9 +645,15 @@ objectStorageCache:
   resources:
     requests:
       memory: "512Mi"
-      cpu: "250m"
-    limits:
-      memory: "2Gi"
+      cpu: "900m"
+      # No memory limit, by design (same as Varnish). OSC storage is a disk-backed PV, so the
+      # bulk of RSS you'll see (docker stats / working_set) is reclaimable file cache + dentry/
+      # inode slab, not app memory. A hard limit here doesn't prevent OOM (anon is ~0.5Gi and
+      # stable) — it just forces the kernel to evict page cache to stay under it, destroying
+      # cache warmth and adding reclaim CPU. Size the NODE for cache, not this block.
+      # For a leak backstop only, you may set a generous limit (e.g. several x peak anon):
+      # limits:
+      #   memory: "2Gi"
   podAnnotations: {}
   nodeSelector: {}
   tolerations: []
