@@ -2,7 +2,7 @@ apiVersion: v2
 name: imageengine-kube
 description: ImageEngine - cloud-native image optimization
 type: application
-version: 1.4.0
+version: 1.5.0
 kubeVersion: ">=1.30.0-0"
 home: https://imageengine.io
 sources:
@@ -25,13 +25,5 @@ annotations:
     fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
     url: https://kube.imageengine.io/pubkey.asc
   artifacthub.io/changes: |
-    - kind: changed
-      description: "Updated fetcher image to 1.28.0 (local network allowlist support)"
-    - kind: changed
-      description: "Updated processor image to 3.23.1 (optimized SVT-AV1 build for AVIF; OpenCV SIGSEGV fixed)"
-    - kind: changed
-      description: "Chart appVersion has been removed (components carry their own versions)"
-    - kind: changed
-      description: "Tweaked resource requests/limits for processor and OSC"
-    - kind: changed
-      description: "Use tcmalloc in processor by default to improve memory efficiency"
+    - kind: added
+      description: "OpenTelemetry tracing wiring (ADR 0007): opt-in 'otel' values (enabled/endpoint/shared env), per-component *_OTEL_ENABLED env injection on all five workloads, and an optional NetworkPolicy for OTLP egress. Disabled by default."
