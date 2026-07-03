@@ -1,0 +1,60 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+annotations:
+  artifacthub.io/changes: |
+    - kind: changed
+      description: "Updated fetcher image to 1.28.0 (local network allowlist support)"
+    - kind: changed
+      description: "Updated processor image to 3.23.1 (optimized SVT-AV1 build for AVIF; OpenCV SIGSEGV fixed)"
+    - kind: changed
+      description: "Chart appVersion has been removed (components carry their own versions)"
+    - kind: changed
+      description: "Tweaked resource requests/limits for processor and OSC"
+    - kind: changed
+      description: "Use tcmalloc in processor by default to improve memory efficiency"
+  artifacthub.io/signKey: |
+    fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+    url: https://kube.imageengine.io/pubkey.asc
+apiVersion: v2
+description: ImageEngine - cloud-native image optimization
+home: https://imageengine.io
+icon: https://imageengine.io/favicon.ico
+keywords:
+- - image-optimization
+- - image-cdn
+- - cdn
+- - imageengine
+- - varnish
+- - wurfl
+kubeVersion: '>=1.30.0-0'
+maintainers:
+- - email: support@scientiamobile.com
+  name: ScientiaMobile
+  url: https://www.scientiamobile.com
+name: imageengine-kube
+sources:
+- - https://kube.imageengine.io
+- - https://github.com/imgeng/imageengine-kube-helm
+type: application
+version: 1.4.0
+
+...
+files:
+  imageengine-kube-1.4.0.tgz: sha256:761aec6a1f2e55d10a7eb8ea149417c825cc222b28cf1155db0190069e61eda3
+-----BEGIN PGP SIGNATURE-----
+
+wsFcBAEBCgAQBQJqRxHXCRBGMmYGCVfEswAAJ00QAGflpOQRcpbv88uz2shLyGkF
+XnM0ykKgicUNd5qSpTk9MnYwoX1mCzMekITeyd22UVwEh5TdSNV6rRforoQ4zyrv
+5kwDKoKFaRTebY6kC97G4wVneneYIrB/+nPIi6AHtUJSIf1XmCpU7ZNm7T8DrJqU
+57/VYtwHP28d1b2PpuNGkVHfrDDrLa+ViTfU/JQCyEM8Z0fBuzTE2Iq+sEv9KW83
+Za44OWuNhCh36dL4OG5ZKOnqmQzDNXRKtLllz7G+F07fTx7Yw5AhDu5f6LyzK6gc
+mTecs8cqBcjtic76XBVC3qYDkTW4ofyuAJOlaQkeAixibqLw8tASYd6T2YRvPhBf
+PzpBXoQrHaC4dp1Wk6itV6iXn9HHdj0fGoaTIAFwBeupOdK2bynGfGxsN0RbzmCT
+MlZDLY1i1HNB4B6nfdsFgsdV9NJhUc29heX5NQElOdWrc3Z69XW+1zDnYcTYoDf2
+e7pgMs/WhORDzCfZ1HmMwggmtIQ37bQOVbteLWROcg621vS07ibTbCSyk6sBwEns
+vLAYIFxYh0Ih10WuOZPskhaJLBU+SWkgg804bR9h1ombF5KgmWUlQqtlABIUqRKz
+pkeTBORIJUbzF/OO+jsZPGDcc5PgWAYBGRfVKxauguZ1dQfKrrGjMFh/2LFzJMLY
+kfqAdwp8yDHRgYgr+R1t
+=btA5
+-----END PGP SIGNATURE-----
