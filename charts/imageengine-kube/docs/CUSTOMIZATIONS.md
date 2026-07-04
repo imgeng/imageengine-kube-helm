@@ -368,6 +368,40 @@ sentry:
 
 Empty values disable Sentry reporting for that component.
 
+## How do I enable distributed tracing (OpenTelemetry)?
+
+Tracing is **opt-in and disabled by default** (ADR 0007). When off, every component runs a no-op tracer with zero overhead and no egress. ImageEngine is trace-store-agnostic: it emits standard OTLP and does **not** bundle or require a collector or backend — you point it at your own.
+
+```yaml
+otel:
+  enabled: true
+  # OTLP/gRPC endpoint. Leave empty to rely on the OpenTelemetry Operator's
+  # cluster-wide injection (or the SDK default, localhost:4317).
+  endpoint: "http://otel-collector.observability:4317"
+  env:
+    # ~1-5% is typical in production; non-prod can stay at 100% (the default).
+    OTEL_TRACES_SAMPLER: parentbased_traceidratio
+    OTEL_TRACES_SAMPLER_ARG: "0.05"
+```
+
+This flips on the `*_OTEL_ENABLED` flag for all five Go components (edge, backend, fetcher, processor, OSC), so one client request stitches `edge → backend → {OSC, fetcher, processor}` into a single trace. Varnish is a pure cache and is not instrumented — it passes trace context through on a miss.
+
+`deployment.environment` is set for you from `imageengine.environment`, so traces are tagged with your environment out of the box. Everything under `otel.env` is passed through verbatim as SDK-native `OTEL_*` vars (sampler, resource attributes, etc.); set your own `OTEL_RESOURCE_ATTRIBUTES` there to override the default.
+
+### Restricting OTLP egress with a NetworkPolicy
+
+If your cluster runs a **default-deny egress** posture, enable the bundled NetworkPolicy so the pods can reach your collector:
+
+```yaml
+otel:
+  enabled: true
+  networkPolicy:
+    enabled: true
+    otlpPort: 4317   # OTLP/gRPC default
+```
+
+**Only enable this in a cluster that already has default-deny egress** with separate policies for the pods' other traffic (origins, OSC, emitter, CoreAPI). Kubernetes egress policies are additive, but a pod flips to "deny everything else" the moment *any* egress policy selects it — so if this were the only egress policy on these pods it would break them. In a cluster with no NetworkPolicies at all, leave it disabled (the default).
+
 ## How do I pin pods to specific nodes?
 
 Every component supports the standard Kubernetes scheduling primitives:
