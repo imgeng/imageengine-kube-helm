@@ -99,7 +99,7 @@ Watch the pods come up:
 kubectl get pods -n imageengine -w
 ```
 
-You should see seven deployments (edge, varnish, backend, fetcher, processor, osc, rsyslog) settle into `Running` within a minute or two. The OSC pod is the slowest because it has to bind a PersistentVolume.
+You should see six deployments (edge, varnish, backend, fetcher, processor, osc) settle into `Running` within a minute or two. The OSC pod is the slowest because it has to bind a PersistentVolume.
 
 Get the external address of the edge load balancer:
 

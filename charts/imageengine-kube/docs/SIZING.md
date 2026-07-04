@@ -14,18 +14,21 @@ Re-measure after deploying.
 
 Before picking a tier, it helps to know what each piece of the pipeline does and what it's sensitive to. That's what should drive how you allocate resources.
 
-The chart deploys seven components. They sit on the request path in roughly this order:
+The chart deploys six components. They sit on the request path in roughly this order:
 
 ```
 LoadBalancer -> edge -> varnish -> backend -> fetcher  -> origin
                                            -> processor
                                            -> osc
-                                                       (rsyslog collects logs from all of the above)
 ```
+
+Each component emits its own structured JSON logs to stdout/stderr (ADR 0009) — collect them
+with your cluster's own node agent (Fluent Bit, Vector, Grafana Alloy, Datadog, or an
+OpenTelemetry Collector); the chart no longer bundles a syslog aggregator.
 
 Each section below covers what the component does, how it behaves under load, and the defaults it ships with.
 
-**Chart-wide note on CPU limits:** every component in this chart sets CPU **requests** but not CPU **limits**, by design. For the Go-based components (edge, backend, fetcher, processor, OSC) this avoids the Go GOMAXPROCS / CFS-throttling pitfall — the Go runtime reads the cgroup CFS quota and caps `GOMAXPROCS` to it, artificially limiting concurrency regardless of node capacity. Varnish and rsyslog (C-based) skip CPU limits for the simpler reason that bursty workloads are better served by scheduler fair-share than by hard kernel throttling. **Don't add a CPU limit to any component** unless you have a specific reason and have thought through both effects. See the "Component Resources" comment block at the top of the components section in [`values.yaml`](https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/values.yaml).
+**Chart-wide note on CPU limits:** every component in this chart sets CPU **requests** but not CPU **limits**, by design. For the Go-based components (edge, backend, fetcher, processor, OSC) this avoids the Go GOMAXPROCS / CFS-throttling pitfall — the Go runtime reads the cgroup CFS quota and caps `GOMAXPROCS` to it, artificially limiting concurrency regardless of node capacity. Varnish (C-based) skips CPU limits for the simpler reason that bursty workloads are better served by scheduler fair-share than by hard kernel throttling. **Don't add a CPU limit to any component** unless you have a specific reason and have thought through both effects. See the "Component Resources" comment block at the top of the components section in [`values.yaml`](https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/values.yaml).
 
 ### Edge
 
@@ -121,21 +124,17 @@ If the disk-pressure cleaner is firing regularly in your metrics, you're undersi
 
 **Defaults:** 4 shards, 512 MiB / 250m CPU requests and 1 GiB memory limit **per shard**, 10 GiB PVC **per shard** (40 GiB total). Tunables: `objectStorageCache.replicaCount` (shard count), `objectStorageCache.persistence.size` (per-shard), `objectStorageCache.persistence.storageClass`, `OSC_MAX_TTL` (default 90 days), `OSC_FS_DISK_FREE_LIMIT_PERC` / `OSC_FS_DISK_FREE_TARGET_PERC` (cleaner thresholds), `OSC_EXPIRER_LOOP_DELAY` (background scanner cadence). Protection knobs (`objectStorageCache.pdb`, `priorityClassName`) are covered in [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md#how-do-i-protect-the-cache-tiers-from-disruption).
 
-### Rsyslog
+### Logging
 
-**What it does:** Receives syslog (port 514) from every other component and aggregates it. By default the `forwarder` is `discard`, so logs are silently dropped — set `rsyslog.forwarder` to the IP/host of a downstream log collector to actually do something with them.
+**What changed (ADR 0009):** this chart no longer bundles a syslog aggregator. The edge's access log (ADR 0008) and the origin fetcher's fetch log both default to structured JSON on **stdout**; backend, fetcher, processor, and OSC diagnostics are also structured JSON, on stderr. Collect all of it with your cluster's own node-level agent (Fluent Bit, Vector, Grafana Alloy, Datadog, or an OpenTelemetry Collector) — no ImageEngine-specific sizing to plan for here.
 
-The chart also disables statsd emission on backend, fetcher, processor, and OSC by default (because rsyslog would just discard the metrics). To turn it back on, set `IE_BACKEND_STATSD_ENABLE` / `IE_ORIGINFETCHER_STATSD_ENABLE` / `IE_PROCESSOR_STATSD_ENABLE` / `OSC_STATSD_ENABLE` to `true` in the relevant component's `env:` block, and point `rsyslog.forwarder` at a real statsd-aware collector.
-
-**How it scales:** It doesn't, really. Tiny aggregator with negligible per-request cost. You should never need to touch its sizing.
-
-**Defaults:** 1 replica, 128 MiB / 100m CPU requests, 256 MiB memory limit.
+StatsD emission on backend, fetcher, processor, and OSC is still disabled by default (`*_STATSD_ENABLE: false`). To turn it on, set the relevant `*_STATSD_ENABLE` to `true` and point `*_STATSD_SYSLOG_ADDRESS` at your own syslog-speaking StatsD/metrics receiver — the chart no longer provides one.
 
 ## Tier 1 — Low traffic / PoC (<10 req/sec, 100/sec bursts)
 
 Chart defaults are fine. This is the "evaluate ImageEngine on a free-tier cluster" footprint.
 
-- 1× edge, 1× varnish, 2× backend, 2× fetcher, 2× processor, 4× OSC shards (or drop to `objectStorageCache.replicaCount: 1–2` to minimize footprint on a free-tier cluster), 1× rsyslog.
+- 1× edge, 1× varnish, 2× backend, 2× fetcher, 2× processor, 4× OSC shards (or drop to `objectStorageCache.replicaCount: 1–2` to minimize footprint on a free-tier cluster).
 - OSC PVC: the default **10 GiB per shard** (40 GiB total across 4 shards) is enough for a smoke test. If you're actually proving out catalog freshness, raise `persistence.size` to ~25–50 GiB per shard so you can see realistic 30-day retention behavior.
 - Varnish: default `VARNISH_STORAGE: tiered` with 1 GiB request / 4 GiB limit RAM is plenty.
 - Processor / fetcher: HPA off; defaults are fine.

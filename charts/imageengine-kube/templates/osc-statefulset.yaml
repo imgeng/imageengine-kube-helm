@@ -115,8 +115,6 @@ spec:
           env:
             - name: OSC_BIND_HOSTPORT
               value: "0.0.0.0:8000"
-            - name: OSC_STATSD_SYSLOG_ADDRESS
-              value: "{{ include "imageengine.fullname" . }}-rsyslog:514"
             - name: OSC_SENTRY_DSN
               value: {{ .Values.sentry.OSC_DSN | quote }}
             # Secrets

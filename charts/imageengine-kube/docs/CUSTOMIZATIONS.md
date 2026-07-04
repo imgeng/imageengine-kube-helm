@@ -19,7 +19,7 @@ processor:
   replicaCount: 4
 ```
 
-`replicaCount` applies to `edge`, `varnish`, `backend`, `fetcher`, `processor`, `objectStorageCache`, and `rsyslog`.
+`replicaCount` applies to `edge`, `varnish`, `backend`, `fetcher`, `processor`, and `objectStorageCache`.
 
 If a component has autoscaling enabled (see below), `replicaCount` is **ignored** in favor of `autoscaling.minReplicas`.
 
@@ -72,7 +72,7 @@ backend:
       memory: "8Gi"
 ```
 
-Note: **none of the chart's components set a CPU limit** by default — only CPU requests. This is a chart-wide policy. The Go-based components (edge, backend, fetcher, processor, OSC) would otherwise hit the Go GOMAXPROCS / CFS-throttling pitfall (Go caps concurrency from the cgroup CFS quota); Varnish and rsyslog (C-based) skip CPU limits because bursty workloads are better served by scheduler fair-share than by hard kernel throttling. Don't add a CPU limit to any component unless you have a specific reason — see the "Component Resources" comment block at the top of the components section in [`values.yaml`](https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/values.yaml) for the full rationale.
+Note: **none of the chart's components set a CPU limit** by default — only CPU requests. This is a chart-wide policy. The Go-based components (edge, backend, fetcher, processor, OSC) would otherwise hit the Go GOMAXPROCS / CFS-throttling pitfall (Go caps concurrency from the cgroup CFS quota); Varnish (C-based) skips CPU limits because bursty workloads are better served by scheduler fair-share than by hard kernel throttling. Don't add a CPU limit to any component unless you have a specific reason — see the "Component Resources" comment block at the top of the components section in [`values.yaml`](https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/values.yaml) for the full rationale.
 
 ## How do I make the OSC bigger or use a specific storage class?
 
@@ -248,7 +248,7 @@ edge:
 | `stderr` | The pod's stderr.                                                               |
 | `none`   | Access logging is disabled entirely.                                             |
 | `tcp://host:port?format=ndjson` | Streams newline-delimited JSON to a TCP collector (Vector / Logstash `json_lines` / Fluentd). |
-| `tcp://host:port?format=syslog` | RFC-framed JSON to an rsyslog/syslog-ng TCP listener, e.g. `tcp://<release>-rsyslog:514?format=syslog`. |
+| `tcp://host:port?format=syslog` | RFC-framed JSON to a syslog-speaking TCP listener, e.g. your own rsyslog/syslog-ng Service. |
 
 The hostless values (`stdout`/`stderr`/`none`) may be written bare or with a trailing colon (`stdout` ≡ `stdout:`). This is why you see JSON lines on the edge pod's stdout out of the box: `EDGE_ACCESS_LOG_TARGET` defaults to `stdout`.
 
@@ -263,7 +263,11 @@ Leave the default `ecs` for new deployments; set `legacy` only if you already ha
 
 **Set `EDGE_ACCESS_LOG_TARGET: none` for high-traffic load tests and production** unless you are actually ingesting these logs somewhere. Access logs are one line per request, so at scale they add real I/O, CPU, and log-storage cost for no benefit if nothing is reading them. Logs are written asynchronously off a buffered channel — if the sink can't keep up (or a `tcp` collector is slow/unreachable), the `edge_access_log_dropped_total` Prometheus metric climbs, which is another signal to switch to `none`.
 
-Notes: a malformed target fails edge startup, and a reachable-but-down `tcp` collector disables access logging with a warning (there is **no** stdout fallback, so a collector outage never floods the pod logs). A `tcp://…?format=syslog` target aimed at the chart's bundled rsyslog aggregator only reaches a downstream collector if `rsyslog.forwarder` is set — the chart default is `discard` (see [SIZING.md](SIZING.md)). `otlp` is reserved for a future native OpenTelemetry Logs exporter.
+Notes: a malformed target fails edge startup, and a reachable-but-down `tcp` collector disables access logging with a warning (there is **no** stdout fallback, so a collector outage never floods the pod logs). This chart no longer bundles a syslog aggregator (ADR 0009) — a `tcp://…?format=syslog` target must point at your own syslog-speaking receiver. `otlp` is reserved for a future native OpenTelemetry Logs exporter.
+
+**The origin fetcher has the same DSN + schema pair** for its per-fetch structured log:
+`IE_ORIGINFETCHER_FETCH_LOG_TARGET` (same grammar as `EDGE_ACCESS_LOG_TARGET`, default `stdout`)
+and `IE_ORIGINFETCHER_FETCH_LOG_SCHEMA` (`ecs` | `legacy`, default `ecs`).
 
 ## How do I configure the edge Service?
 
@@ -437,7 +441,7 @@ processor:
                 tier: processor
 ```
 
-`nodeSelector`, `tolerations`, and `affinity` are available on `edge`, `varnish`, `backend`, `fetcher`, `processor`, `objectStorageCache`, and `rsyslog`.
+`nodeSelector`, `tolerations`, and `affinity` are available on `edge`, `varnish`, `backend`, `fetcher`, `processor`, and `objectStorageCache`.
 
 The chart already adds a soft `topologySpreadConstraint` per component so replicas spread across nodes when possible.
 
