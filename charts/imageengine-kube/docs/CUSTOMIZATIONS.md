@@ -234,26 +234,27 @@ Both have sensible defaults; only touch them if you have a specific reason.
 
 ## How do I control the edge access logs?
 
-The edge proxy emits a structured JSON **access log** (one line per request). The sink is controlled by `EDGE_LOG_TARGET`:
+The edge proxy emits a structured JSON **access log** (one line per request). The sink is a single DSN, `EDGE_ACCESS_LOG_TARGET` (ADR 0008) — it governs the access log **only**; diagnostics always go to the pod's stderr regardless:
 
 ```yaml
 edge:
   env:
-    EDGE_LOG_TARGET: stdout   # stdout | syslog | both | none
+    EDGE_ACCESS_LOG_TARGET: stdout   # stdout | stderr | none | tcp://host:port?format=ndjson|syslog
 ```
 
 | Value    | Where access logs go                                                            |
 | -------- | ------------------------------------------------------------------------------- |
-| `stdout` | The pod's stdout/stderr — what you see in `kubectl logs deploy/...-edge`. **Default.** |
-| `syslog` | Shipped to `EDGE_SYSLOG_SERVER` (the in-cluster rsyslog aggregator).            |
-| `both`   | stdout **and** syslog.                                                           |
+| `stdout` | The pod's stdout — what you see in `kubectl logs deploy/...-edge`. **Default.** |
+| `stderr` | The pod's stderr.                                                               |
 | `none`   | Access logging is disabled entirely.                                             |
+| `tcp://host:port?format=ndjson` | Streams newline-delimited JSON to a TCP collector (Vector / Logstash `json_lines` / Fluentd). |
+| `tcp://host:port?format=syslog` | RFC-framed JSON to an rsyslog/syslog-ng TCP listener, e.g. `tcp://<release>-rsyslog:514?format=syslog`. |
 
-This is why you see JSON lines on the edge pod's stdout out of the box: `EDGE_LOG_TARGET` defaults to `stdout`.
+The hostless values (`stdout`/`stderr`/`none`) may be written bare or with a trailing colon (`stdout` ≡ `stdout:`). This is why you see JSON lines on the edge pod's stdout out of the box: `EDGE_ACCESS_LOG_TARGET` defaults to `stdout`.
 
-**Set `EDGE_LOG_TARGET: none` for high-traffic load tests and production** unless you are actually ingesting these logs somewhere. Access logs are one line per request, so at scale they add real I/O, CPU, and log-storage cost for no benefit if nothing is reading them. Logs are written asynchronously off a buffered channel — if the sink can't keep up, the `edge_access_log_dropped_total` Prometheus metric climbs, which is another signal to switch to `none`.
+**Set `EDGE_ACCESS_LOG_TARGET: none` for high-traffic load tests and production** unless you are actually ingesting these logs somewhere. Access logs are one line per request, so at scale they add real I/O, CPU, and log-storage cost for no benefit if nothing is reading them. Logs are written asynchronously off a buffered channel — if the sink can't keep up (or a `tcp` collector is slow/unreachable), the `edge_access_log_dropped_total` Prometheus metric climbs, which is another signal to switch to `none`.
 
-Note: routing access logs to `syslog` only does something if `rsyslog.forwarder` points at a real downstream collector — the chart default is `discard` (see [SIZING.md](SIZING.md)).
+Notes: a malformed target fails edge startup, and a reachable-but-down `tcp` collector disables access logging with a warning (there is **no** stdout fallback, so a collector outage never floods the pod logs). A `tcp://…?format=syslog` target aimed at the chart's bundled rsyslog aggregator only reaches a downstream collector if `rsyslog.forwarder` is set — the chart default is `discard` (see [SIZING.md](SIZING.md)). `otlp` is reserved for a future native OpenTelemetry Logs exporter.
 
 ## How do I configure the edge Service?
 

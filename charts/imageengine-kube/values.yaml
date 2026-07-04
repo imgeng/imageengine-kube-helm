@@ -244,19 +244,21 @@ edge:
     EDGE_MAX_TTL: 604800
     # Natural-width LRU cache size (entries)
     EDGE_WIDTH_CACHE_SIZE: "10000000"
-    # Access log sink for the edge's structured JSON access logs.
-    # One of: stdout | syslog | both | none. Defaults to "stdout".
-    #   stdout -> the pod's stdout/stderr (what you see via `kubectl logs`)
-    #   syslog -> ships to EDGE_SYSLOG_SERVER (the in-cluster rsyslog aggregator)
-    #   both   -> stdout and syslog
-    #   none   -> access logging disabled entirely
+    # Access-log sink for the edge's structured JSON access logs (ADR 0008).
+    # A single DSN; governs the access log only (diagnostics always go to stderr):
+    #   stdout | stderr  -> the pod's stdout/stderr (`kubectl logs`); default stdout
+    #   none             -> access logging disabled entirely
+    #   tcp://host:port?format=ndjson  -> stream JSON lines to a collector (Vector/Logstash/Fluentd)
+    #   tcp://host:port?format=syslog  -> RFC-framed JSON to an rsyslog/syslog-ng TCP listener,
+    #                                     e.g. tcp://<release>-rsyslog:514?format=syslog
+    # (otlp is reserved for a future native OpenTelemetry Logs exporter.)
     # IMPORTANT: access logs are emitted per request and can be very high
     # volume. For high-traffic load tests and production deployments where you
     # are NOT actively ingesting these logs, set this to "none" to avoid the
     # I/O, CPU, and log-storage overhead. Logs are written asynchronously, so a
     # slow/oversubscribed sink shows up as the edge_access_log_dropped_total
     # metric climbing — another sign you should switch to "none".
-    EDGE_LOG_TARGET: stdout
+    EDGE_ACCESS_LOG_TARGET: stdout
     # Origin config source: "file" or "api"
     EDGE_ORIGIN_CONF_SOURCE: api
     # EDGE_ORIGIN_CONF_REFRESH_INTERVAL: 1h

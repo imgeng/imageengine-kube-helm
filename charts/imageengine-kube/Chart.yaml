@@ -2,7 +2,7 @@ apiVersion: v2
 name: imageengine-kube
 description: ImageEngine - cloud-native image optimization
 type: application
-version: 1.5.0
+version: 1.6.0
 kubeVersion: ">=1.30.0-0"
 home: https://imageengine.io
 sources:
@@ -25,5 +25,5 @@ annotations:
     fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
     url: https://kube.imageengine.io/pubkey.asc
   artifacthub.io/changes: |
-    - kind: added
-      description: "OpenTelemetry tracing wiring (ADR 0007): opt-in 'otel' values (enabled/endpoint/shared env), per-component *_OTEL_ENABLED env injection on all five workloads, and an optional NetworkPolicy for OTLP egress. Disabled by default."
+    - kind: changed
+      description: "Edge access-log sink is now a single EDGE_ACCESS_LOG_TARGET DSN (ADR 0008): stdout | stderr | none | tcp://host:port?format=ndjson|syslog. Replaces EDGE_LOG_TARGET and the EDGE_SYSLOG_* wiring (both/UDP dropped; otlp reserved). Requires an edge image built with ADR 0008."

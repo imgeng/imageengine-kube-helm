@@ -37,7 +37,7 @@ Each section below covers what the component does, how it behaves under load, an
 
 **Defaults:** 1 replica, 256 MiB / 250m CPU requests, 1 GiB memory limit. (No CPU limit — chart-wide policy, see the note above.)
 
-**Access logs at scale:** the edge writes a structured JSON access log — one line per request — and `EDGE_LOG_TARGET` defaults to `stdout`. At high request volume this is a real cost (stdout I/O, CPU, and downstream log storage) for no benefit if nothing is ingesting it. **For high-traffic load tests and production, set `edge.env.EDGE_LOG_TARGET: none`** unless you are actively collecting these logs (`stdout`, `syslog`, or `both`). See [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md) for the full breakdown.
+**Access logs at scale:** the edge writes a structured JSON access log — one line per request — and `EDGE_ACCESS_LOG_TARGET` defaults to `stdout`. At high request volume this is a real cost (stdout I/O, CPU, and downstream log storage) for no benefit if nothing is ingesting it. **For high-traffic load tests and production, set `edge.env.EDGE_ACCESS_LOG_TARGET: none`** unless you are actively collecting these logs (`stdout`, `stderr`, or a `tcp://…` collector). See [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md) for the full breakdown.
 
 ### Varnish
 
