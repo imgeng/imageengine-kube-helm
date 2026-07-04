@@ -26,4 +26,6 @@ annotations:
     url: https://kube.imageengine.io/pubkey.asc
   artifacthub.io/changes: |
     - kind: changed
-      description: "Edge access-log sink is now a single EDGE_ACCESS_LOG_TARGET DSN (ADR 0008): stdout | stderr | none | tcp://host:port?format=ndjson|syslog. Replaces EDGE_LOG_TARGET and the EDGE_SYSLOG_* wiring (both/UDP dropped; otlp reserved). Requires an edge image built with ADR 0008."
+      description: "Edge access-log sink is now a single EDGE_ACCESS_LOG_TARGET DSN (ADR 0008): stdout | stderr | none | tcp://host:port?format=ndjson|syslog. Replaces EDGE_LOG_TARGET and the EDGE_SYSLOG_* wiring (both/UDP dropped; otlp reserved)."
+    - kind: changed
+      description: "Edge access-log format now defaults to an ECS-style schema; EDGE_ACCESS_LOG_SCHEMA=ecs|legacy selects it (legacy = the old ie-varnish-logger fields, for SaaS parity during transition). Requires an edge image built with ADR 0008."

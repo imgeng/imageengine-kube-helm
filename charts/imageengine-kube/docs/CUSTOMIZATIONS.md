@@ -252,6 +252,15 @@ edge:
 
 The hostless values (`stdout`/`stderr`/`none`) may be written bare or with a trailing colon (`stdout` ≡ `stdout:`). This is why you see JSON lines on the edge pod's stdout out of the box: `EDGE_ACCESS_LOG_TARGET` defaults to `stdout`.
 
+**Field schema — `EDGE_ACCESS_LOG_SCHEMA`.** Independent of the target above, this selects the record's *field set*:
+
+| Value    | Fields                                                                          |
+| -------- | ------------------------------------------------------------------------------- |
+| `ecs`    | ECS-style record (`@timestamp`, `event.*`, `url.*`, `http.*`, plus an `imageengine.*` namespace) — recognized by Loki/Elastic/Datadog/OTel with no ImageEngine-specific config. **Default.** |
+| `legacy` | The historical ie-varnish-logger field set. Transitional — for parity with the SaaS deployment during migration; slated for removal. |
+
+Leave the default `ecs` for new deployments; set `legacy` only if you already have pipelines built on the old field names. The two axes compose — e.g. `EDGE_ACCESS_LOG_SCHEMA: ecs` with `EDGE_ACCESS_LOG_TARGET: "tcp://collector:5140?format=ndjson"`.
+
 **Set `EDGE_ACCESS_LOG_TARGET: none` for high-traffic load tests and production** unless you are actually ingesting these logs somewhere. Access logs are one line per request, so at scale they add real I/O, CPU, and log-storage cost for no benefit if nothing is reading them. Logs are written asynchronously off a buffered channel — if the sink can't keep up (or a `tcp` collector is slow/unreachable), the `edge_access_log_dropped_total` Prometheus metric climbs, which is another signal to switch to `none`.
 
 Notes: a malformed target fails edge startup, and a reachable-but-down `tcp` collector disables access logging with a warning (there is **no** stdout fallback, so a collector outage never floods the pod logs). A `tcp://…?format=syslog` target aimed at the chart's bundled rsyslog aggregator only reaches a downstream collector if `rsyslog.forwarder` is set — the chart default is `discard` (see [SIZING.md](SIZING.md)). `otlp` is reserved for a future native OpenTelemetry Logs exporter.

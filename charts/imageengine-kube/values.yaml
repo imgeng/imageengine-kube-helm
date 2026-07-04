@@ -259,6 +259,14 @@ edge:
     # slow/oversubscribed sink shows up as the edge_access_log_dropped_total
     # metric climbing — another sign you should switch to "none".
     EDGE_ACCESS_LOG_TARGET: stdout
+    # Access-log field schema (ADR 0008): ecs (default) | legacy. Independent of
+    # the target/framing above.
+    #   ecs    -> ECS-style record, recognized by Loki/Elastic/Datadog/OTel with no
+    #             ImageEngine-specific parser config (the modern default)
+    #   legacy -> the historical ie-varnish-logger field set (transitional; SaaS parity)
+    # Leave "ecs" for new deployments; set "legacy" only if you already depend on the
+    # old field names during migration.
+    EDGE_ACCESS_LOG_SCHEMA: ecs
     # Origin config source: "file" or "api"
     EDGE_ORIGIN_CONF_SOURCE: api
     # EDGE_ORIGIN_CONF_REFRESH_INTERVAL: 1h
