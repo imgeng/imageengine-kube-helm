@@ -3,6 +3,39 @@ entries:
   imageengine-kube:
   - annotations:
       artifacthub.io/changes: |
+        - kind: added
+          description: "OpenTelemetry tracing wiring (ADR 0007): opt-in 'otel' values (enabled/endpoint/shared env), per-component *_OTEL_ENABLED env injection on all five workloads, and an optional NetworkPolicy for OTLP egress. Disabled by default."
+      artifacthub.io/signKey: |
+        fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+        url: https://kube.imageengine.io/pubkey.asc
+    apiVersion: v2
+    created: "2026-07-04T06:48:26.600198476Z"
+    description: ImageEngine - cloud-native image optimization
+    digest: 54ae5593d730f49232ee6371bcd67684f0bc02066aa36e2744f616fbdb27650d
+    home: https://imageengine.io
+    icon: https://imageengine.io/favicon.ico
+    keywords:
+    - image-optimization
+    - image-cdn
+    - cdn
+    - imageengine
+    - varnish
+    - wurfl
+    kubeVersion: '>=1.30.0-0'
+    maintainers:
+    - email: support@scientiamobile.com
+      name: ScientiaMobile
+      url: https://www.scientiamobile.com
+    name: imageengine-kube
+    sources:
+    - https://kube.imageengine.io
+    - https://github.com/imgeng/imageengine-kube-helm
+    type: application
+    urls:
+    - imageengine-kube-1.5.0.tgz
+    version: 1.5.0
+  - annotations:
+      artifacthub.io/changes: |
         - kind: changed
           description: "Updated fetcher image to 1.28.0 (local network allowlist support)"
         - kind: changed
@@ -635,4 +668,4 @@ entries:
     urls:
     - imageengine-kube-0.8.0.tgz
     version: 0.8.0
-generated: "2026-07-03T01:35:21.75743484Z"
+generated: "2026-07-04T06:48:26.600352653Z"
