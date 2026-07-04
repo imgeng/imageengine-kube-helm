@@ -101,6 +101,7 @@ spec:
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
+            {{- include "imageengine.otelEnv" (dict "ctx" $ "enableVar" "EDGE_OTEL_ENABLED") | nindent 12 }}
             {{- if and .Values.edge.carbontxt.enabled .Values.edge.carbontxt.hash }}
             - name: EDGE_CARBONTXT_HASH
               value: {{ .Values.edge.carbontxt.hash | quote }}

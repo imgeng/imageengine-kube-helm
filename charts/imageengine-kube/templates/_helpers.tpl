@@ -38,6 +38,41 @@ Usage: {{ include "imageengine.oscShardEnv" . | nindent 12 }}
 {{- end -}}
 
 {{/*
+OpenTelemetry tracing env for a component (ADR 0007). Emits nothing when
+otel.enabled is false, so tracing stays fully opt-in. Otherwise sets the
+component's *_OTEL_ENABLED flag, the OTLP endpoint (if configured; leave empty
+to rely on OpenTelemetry-Operator injection), a default
+OTEL_RESOURCE_ATTRIBUTES=deployment.environment=<imageengine.environment>
+(unless the caller supplies OTEL_RESOURCE_ATTRIBUTES in otel.env, which then
+wins), and any shared OTEL_* vars.
+Usage: {{ include "imageengine.otelEnv" (dict "ctx" . "enableVar" "EDGE_OTEL_ENABLED") }}
+*/}}
+{{- define "imageengine.otelEnv" -}}
+{{- $otel := .ctx.Values.otel -}}
+{{- if and $otel $otel.enabled }}
+- name: {{ .enableVar }}
+  value: "true"
+{{- if $otel.endpoint }}
+- name: OTEL_EXPORTER_OTLP_ENDPOINT
+  value: {{ $otel.endpoint | quote }}
+{{- end }}
+{{- /* Tag every span with the deployment environment out of the box, sourced
+       from imageengine.environment. Skipped when the caller already sets
+       OTEL_RESOURCE_ATTRIBUTES in otel.env (their value wins, no duplicate). */ -}}
+{{- $ieCfg := .ctx.Values.imageengine | default (dict) -}}
+{{- $env := $ieCfg.environment | default "" -}}
+{{- if and $env (not (hasKey (default (dict) $otel.env) "OTEL_RESOURCE_ATTRIBUTES")) }}
+- name: OTEL_RESOURCE_ATTRIBUTES
+  value: {{ printf "deployment.environment=%s" $env | quote }}
+{{- end }}
+{{- range $key, $value := $otel.env }}
+- name: {{ $key }}
+  value: {{ $value | quote }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{/*
 =============================================================================
 Provider-Aware Helpers
 =============================================================================

@@ -104,6 +104,7 @@ spec:
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
+            {{- include "imageengine.otelEnv" (dict "ctx" $ "enableVar" "IE_BACKEND_OTEL_ENABLED") | nindent 12 }}
             # Env vars below this line are from values.yaml
             {{- range $key, $value := .Values.backend.env }}
             - name: {{ $key }}

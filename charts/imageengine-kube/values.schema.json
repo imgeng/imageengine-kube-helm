@@ -173,6 +173,25 @@
           }
         }
       }
+    },
+    "otel": {
+      "type": "object",
+      "description": "OpenTelemetry distributed tracing (ADR 0007). Opt-in; disabled by default.",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "endpoint": {
+          "type": "string",
+          "description": "OTLP/gRPC collector endpoint (e.g. http://otel-collector.observability:4317). Empty relies on OpenTelemetry-Operator injection or the SDK default."
+        },
+        "env": { "type": "object", "additionalProperties": { "type": "string" } },
+        "networkPolicy": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "otlpPort": { "type": "integer", "minimum": 1, "maximum": 65535 }
+          }
+        }
+      }
     }
   }
 }
