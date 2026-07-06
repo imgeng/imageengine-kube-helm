@@ -56,6 +56,23 @@ and a `.prov` provenance file is published alongside every release.
 See the chart's [Verifying the chart signature](charts/imageengine-kube/README.md#verifying-the-chart-signature-optional)
 section for a step-by-step.
 
+## Verifying image signatures
+
+Beyond the chart, every **container image** it deploys is cosign-signed and ships an SBOM +
+SLSA build provenance. The cosign public key is published at
+[`https://kube.imageengine.io/cosign.pub`](https://kube.imageengine.io/cosign.pub) — separate
+from the GPG chart key above.
+
+```bash
+curl -fsSLO https://kube.imageengine.io/cosign.pub
+cosign verify --key cosign.pub \
+  docker.scientiamobile.com/iekube/imageengine-backend.server:<tag>
+```
+
+See [`charts/imageengine-kube/docs/SECURITY.md`](charts/imageengine-kube/docs/SECURITY.md) for
+verifying every image, inspecting the SBOM/provenance, the vulnerability-scan posture, and
+optional in-cluster signature enforcement (Kyverno / sigstore policy-controller).
+
 ## Releases and source
 
 - **Releases:** see [Releases](../../releases) — each tagged release has a

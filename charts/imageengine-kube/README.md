@@ -84,6 +84,18 @@ helm install imageengine-kube imageengine/imageengine-kube \
 
 `helm install --verify` (or `helm upgrade --verify`) will fail if the chart's signature doesn't match. To verify without installing, use `helm pull --verify imageengine/imageengine-kube --keyring ~/.gnupg/imageengine-pubring.gpg`.
 
+## Verifying image signatures (optional)
+
+The signature above covers the chart; the **container images** it deploys are signed separately with [cosign](https://github.com/sigstore/cosign) and ship an SBOM + SLSA build provenance. The image-signing public key is at [kube.imageengine.io/cosign.pub](https://kube.imageengine.io/cosign.pub) — distinct from the GPG chart key.
+
+```bash
+curl -fsSLO https://kube.imageengine.io/cosign.pub
+cosign verify --key cosign.pub \
+  docker.scientiamobile.com/iekube/imageengine-backend.server:<tag>
+```
+
+Full details — verifying every image, reading the SBOM/provenance, the vulnerability-scan posture, and optional admission enforcement — are in [docs/SECURITY.md](docs/SECURITY.md).
+
 ## Provider presets
 
 Setting `provider:` auto-configures the right storage class and ingress class for that platform. Explicit values in your file always take precedence. Cloud-LB-specific annotations (LB name, NLB type, scheme, etc.) live under `service.annotations` — see your provider doc ([AWS](docs/providers/AWS.md), [Azure](docs/providers/AZURE.md), [DigitalOcean](docs/providers/DIGITALOCEAN.md), [GKE](docs/providers/GKE.md), [Linode](docs/providers/LINODE.md), or [self-managed](docs/providers/CUSTOM.md)) for the right keys.
