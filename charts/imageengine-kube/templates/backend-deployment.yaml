@@ -83,8 +83,6 @@ spec:
               value: "http://{{ include "imageengine.fullname" . }}-processor:80"
             # OSC sharding client: one OSC{N}_HOST per cache shard (see helper)
             {{- include "imageengine.oscShardEnv" . | nindent 12 }}
-            - name: IE_BACKEND_STATSD_SYSLOG_ADDRESS
-              value: "{{ include "imageengine.fullname" . }}-rsyslog:514"
             # Secrets
             - name: IE_BACKEND_IMAGEENGINE_API_KEY
               valueFrom:

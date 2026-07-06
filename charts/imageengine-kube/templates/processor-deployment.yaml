@@ -80,8 +80,6 @@ spec:
               value: "0.0.0.0:8000"
             # OSC sharding client: one OSC{N}_HOST per cache shard (see helper)
             {{- include "imageengine.oscShardEnv" . | nindent 12 }}
-            - name: IE_PROCESSOR_STATSD_SYSLOG_ADDRESS
-              value: "{{ include "imageengine.fullname" . }}-rsyslog:514"
             # Secrets
             - name: IE_PROCESSOR_SENTRY_DSN
               value: {{ .Values.sentry.PROCESSOR_DSN | quote }}

@@ -5,13 +5,12 @@ imagePullPolicy: Always
 ###################################################
 # Centralized image tags/versions for all components
 images:
-  edge: "4.4.3"
-  varnish: "9.0.3-3"
-  backend: "2.12.1"
-  fetcher: "1.29.1"
-  processor: "3.24.0"
-  osc: "3.5.0"
-  rsyslog: "24.04"
+  edge: "4.6.0"
+  varnish: "9.0.3-8"
+  backend: "2.13.0"
+  fetcher: "1.30.0"
+  processor: "3.26.0"
+  osc: "3.6.0"
 
 ###################################################
 # Prometheus metrics (ADR 0004)
@@ -209,8 +208,8 @@ service:
 # The Go-based components (edge, backend, fetcher, processor, OSC) would
 # otherwise hit the GOMAXPROCS/CFS pitfall: the Go runtime reads the
 # cgroup CFS quota and caps GOMAXPROCS to that, artificially limiting
-# concurrency regardless of actual node capacity. Varnish and rsyslog
-# (C-based) avoid CPU limits because bursty workloads are better served
+# concurrency regardless of actual node capacity. Varnish (C-based)
+# avoids CPU limits because bursty workloads are better served
 # by the scheduler's proportional-share than by hard kernel throttling.
 #
 # CPU REQUESTS are still set on every component, which is what guarantees
@@ -244,19 +243,33 @@ edge:
     EDGE_MAX_TTL: 604800
     # Natural-width LRU cache size (entries)
     EDGE_WIDTH_CACHE_SIZE: "10000000"
-    # Access log sink for the edge's structured JSON access logs.
-    # One of: stdout | syslog | both | none. Defaults to "stdout".
-    #   stdout -> the pod's stdout/stderr (what you see via `kubectl logs`)
-    #   syslog -> ships to EDGE_SYSLOG_SERVER (the in-cluster rsyslog aggregator)
-    #   both   -> stdout and syslog
-    #   none   -> access logging disabled entirely
+    # Access-log sink for the edge's structured JSON access logs (ADR 0008).
+    # A single DSN; governs the access log only (diagnostics always go to stderr):
+    #   stdout | stderr  -> the pod's stdout/stderr (`kubectl logs`); default stdout
+    #   none             -> access logging disabled entirely
+    #   tcp://host:port?format=ndjson  -> stream JSON lines to a collector (Vector/Logstash/Fluentd)
+    #   tcp://host:port?format=syslog  -> RFC-framed JSON to a syslog-speaking TCP listener,
+    #                                     e.g. your own rsyslog/syslog-ng Service in-cluster
+    # (otlp is reserved for a future native OpenTelemetry Logs exporter.)
     # IMPORTANT: access logs are emitted per request and can be very high
     # volume. For high-traffic load tests and production deployments where you
     # are NOT actively ingesting these logs, set this to "none" to avoid the
     # I/O, CPU, and log-storage overhead. Logs are written asynchronously, so a
     # slow/oversubscribed sink shows up as the edge_access_log_dropped_total
     # metric climbing — another sign you should switch to "none".
-    EDGE_LOG_TARGET: stdout
+    EDGE_ACCESS_LOG_TARGET: stdout
+    # Access-log field schema (ADR 0008): ecs (default) | legacy. Independent of
+    # the target/framing above.
+    #   ecs    -> ECS-style record, recognized by Loki/Elastic/Datadog/OTel with no
+    #             ImageEngine-specific parser config (the modern default)
+    #   legacy -> the historical ie-varnish-logger field set
+    # Leave "ecs" for new deployments; set "legacy" only if you already depend on the
+    # old field names during migration.
+    EDGE_ACCESS_LOG_SCHEMA: ecs
+    # Diagnostics log level (ADR 0009): debug | info | warn | error. Runtime-adjustable via
+    # GET/POST /api/v1/loglevel on the internal admin listener (EDGE_METRICS_ADDR), never the
+    # customer-facing router.
+    EDGE_LOGLEVEL: info
     # Origin config source: "file" or "api"
     EDGE_ORIGIN_CONF_SOURCE: api
     # EDGE_ORIGIN_CONF_REFRESH_INTERVAL: 1h
@@ -429,7 +442,7 @@ backend:
     # customizable TTL for 4xx response (default 180s)
     # IE_BACKEND_CODE4XX_TTL:
     IE_BACKEND_SENTRY_ENV: *appEnv
-    # default is WARN
+    # default is info (ADR 0009)
     # IE_BACKEND_LOGLEVEL:
     # coreapi
     # IE_BACKEND_COREAPI_CLIENT_SECRET: "<<SECRET: ie-kube-core-api.CLIENT_SECRET>>"
@@ -468,9 +481,11 @@ backend:
     # Default to 50000
     # IE_PROCESSOR_ENQUEUEIMAGE_QUEUE_SIZE:
     ### statsd env variables
-    # Disabled by default: rsyslog ships with forwarder: discard, so statsd
-    # metrics would just be dropped. Set to true (and configure rsyslog) to emit.
+    # Disabled by default: this chart no longer ships a bundled syslog receiver
+    # (ADR 0009). Set to true and point IE_BACKEND_STATSD_SYSLOG_ADDRESS at your
+    # own syslog-speaking StatsD/metrics receiver to emit.
     IE_BACKEND_STATSD_ENABLE: false
+    # IE_BACKEND_STATSD_SYSLOG_ADDRESS: "your-syslog-receiver:514"
     # default:local1
     # IE_BACKEND_STATSD_SYSLOG_FACILITY:
     # default:info
@@ -504,7 +519,7 @@ fetcher:
   tolerations: []
   affinity: {}
   env:
-    # default:WARN
+    # default:info (ADR 0009)
     # IE_ORIGINFETCHER_LOGLEVEL
     # default:false : Writes to OSC are synchronous if true, enqueued if false
     # IE_ORIGINFETCHER_SYNC_OSC_WRITES
@@ -537,9 +552,11 @@ fetcher:
     # IE_ORIGINFETCHER_WASABI_ACCESS_KEY_ID: "<<SECRET: ie-kube-fetcher.WASABI_KEY>>"
     # IE_ORIGINFETCHER_WASABI_SECRET_ACCESS_KEY: "<<SECRET: ie-kube-fetcher.WASABI_SECRET>>"
     # statsd env variables
-    # Disabled by default: rsyslog ships with forwarder: discard, so statsd
-    # metrics would just be dropped. Set to true (and configure rsyslog) to emit.
+    # Disabled by default: this chart no longer ships a bundled syslog receiver
+    # (ADR 0009). Set to true and point IE_ORIGINFETCHER_STATSD_SYSLOG_ADDRESS at
+    # your own syslog-speaking StatsD/metrics receiver to emit.
     IE_ORIGINFETCHER_STATSD_ENABLE: false
+    # IE_ORIGINFETCHER_STATSD_SYSLOG_ADDRESS: "your-syslog-receiver:514"
     # default:local1
     # IE_ORIGINFETCHER_STATSD_SYSLOG_FACILITY
     # default:info
@@ -548,11 +565,16 @@ fetcher:
     # IE_ORIGINFETCHER_STATSD_SAMPLE_RATE
     # default:1s
     # IE_ORIGINFETCHER_STATSD_MIDDLEWARE_DATA_INTERVAL: 1s
-    # Application Log env variables
-    IE_ORIGINFETCHER_APPLICATION_LOG_ENABLE: true
-    # IE_ORIGINFETCHER_APPLICATION_LOG_PROTOCOL: tcp
-    # IE_ORIGINFETCHER_APPLICATION_LOG_FACILITY: local4
-    # IE_ORIGINFETCHER_APPLICATION_LOG_SEVERITY: info
+    # Fetch-log sink for the fetcher's structured per-fetch records (ADR 0009).
+    # A single DSN, same grammar as the edge's EDGE_ACCESS_LOG_TARGET:
+    #   stdout | stderr  -> the pod's stdout/stderr (`kubectl logs`); default stdout
+    #   none             -> fetch logging disabled entirely
+    #   tcp://host:port?format=ndjson  -> stream JSON lines to a collector
+    #   tcp://host:port?format=syslog  -> RFC-framed JSON to a syslog-speaking TCP listener
+    IE_ORIGINFETCHER_FETCH_LOG_TARGET: stdout
+    # Fetch-log field schema (ADR 0009): ecs (default) | legacy. Independent of
+    # the target/framing above; same semantics as EDGE_ACCESS_LOG_SCHEMA.
+    IE_ORIGINFETCHER_FETCH_LOG_SCHEMA: ecs
     # IE_ORIGINFETCHER_APPLICATION_LOG_TAG: origin-fetcher
 
 ###################################################
@@ -582,7 +604,7 @@ processor:
     # HTTP Server timeouts
     IE_PROCESSOR_HTTP_READ_TIMEOUT: 15m
     IE_PROCESSOR_HTTP_WRITE_TIMEOUT: 15m
-    # default:WARN
+    # default:info (ADR 0009)
     # IE_PROCESSOR_LOGLEVEL
     # Object Storage Cache
     # IE_OSC_TIMEOUT
@@ -599,9 +621,11 @@ processor:
     # default:60s Total time to complete an imgproc request
     # IE_PROCESSOR_MAX_PROCESSING_TIME
     IE_PROCESSOR_SENTRY_ENV: *appEnv
-    # Disabled by default: rsyslog ships with forwarder: discard, so statsd
-    # metrics would just be dropped. Set to true (and configure rsyslog) to emit.
+    # Disabled by default: this chart no longer ships a bundled syslog receiver
+    # (ADR 0009). Set to true and point IE_PROCESSOR_STATSD_SYSLOG_ADDRESS at
+    # your own syslog-speaking StatsD/metrics receiver to emit.
     IE_PROCESSOR_STATSD_ENABLE: false
+    # IE_PROCESSOR_STATSD_SYSLOG_ADDRESS: "your-syslog-receiver:514"
     # default:local1
     # IE_PROCESSOR_STATSD_SYSLOG_FACILITY
     # default:info
@@ -687,8 +711,8 @@ objectStorageCache:
   affinity: {}
   storagePath: &oscStoragePath "/u/data"
   env:
-    # Log level : ERROR, WARN, INFO, DEBUG, default WARN
-    OSC_LOGLEVEL: WARN
+    # Log level : ERROR, WARN, INFO, DEBUG, default info (ADR 0009)
+    OSC_LOGLEVEL: info
     # max time in cache, default:2160h (90 days)
     OSC_MAX_TTL: 2160h
     # The maximum number of operating system threads that the OSC can use. Default 20000
@@ -706,9 +730,11 @@ objectStorageCache:
     # OSC_EMITTER_RESULT_CHANNEL_KEY: "<<SECRET: ie-kube-emitter.KEY>>"
     OSC_EMITTER_RESULT_CHANNEL: production/imageengine/origin-cache/purge-result
     # statsd env variables
-    # Disabled by default: rsyslog ships with forwarder: discard, so statsd
-    # metrics would just be dropped. Set to true (and configure rsyslog) to emit.
+    # Disabled by default: this chart no longer ships a bundled syslog receiver
+    # (ADR 0009). Set to true and point OSC_STATSD_SYSLOG_ADDRESS at your own
+    # syslog-speaking StatsD/metrics receiver to emit.
     OSC_STATSD_ENABLE: false
+    # OSC_STATSD_SYSLOG_ADDRESS: "your-syslog-receiver:514"
     # default:local1
     # OSC_STATSD_SYSLOG_FACILITY
     # default:info
@@ -747,23 +773,3 @@ objectStorageCache:
     # default: 5m Defines the sleep interval between subsequent runs for the osc-expirer CLI tool
     # OSC_EXPIRER_LOOP_DELAY
     #
-
-###################################################
-# ImageEngine Kube Logging Configuration
-###################################################
-rsyslog:
-  replicaCount: 1
-  minReadySeconds: 0
-  image:
-    repository: "docker.scientiamobile.com/iekube/base.rsyslog"
-  resources:
-    requests:
-      memory: "128Mi"
-      cpu: "100m"
-    limits:
-      memory: "256Mi"
-  podAnnotations: {}
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  forwarder: "discard"

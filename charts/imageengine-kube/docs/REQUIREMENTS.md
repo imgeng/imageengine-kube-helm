@@ -50,7 +50,7 @@ A third optional secret, `ie-kube-fetcher`, is referenced in [`values.yaml`](htt
 
 ## Compute footprint
 
-At default replica counts (1 edge, 1 varnish, 2 backend, 2 fetcher, 2 processor, 1 OSC, 1 rsyslog), the chart asks for roughly:
+At default replica counts (1 edge, 1 varnish, 2 backend, 2 fetcher, 2 processor, 1 OSC), the chart asks for roughly:
 
 - **CPU requests:** ~3 vCPU total.
 - **Memory requests:** ~10 GiB total.

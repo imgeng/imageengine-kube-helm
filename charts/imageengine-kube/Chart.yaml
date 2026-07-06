@@ -2,7 +2,7 @@ apiVersion: v2
 name: imageengine-kube
 description: ImageEngine - cloud-native image optimization
 type: application
-version: 1.5.0
+version: 1.6.0
 kubeVersion: ">=1.30.0-0"
 home: https://imageengine.io
 sources:
@@ -25,5 +25,15 @@ annotations:
     fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
     url: https://kube.imageengine.io/pubkey.asc
   artifacthub.io/changes: |
+    - kind: changed
+      description: "Edge access-log sink is now a single EDGE_ACCESS_LOG_TARGET DSN (ADR 0008): stdout | stderr | none | tcp://host:port?format=ndjson|syslog. Replaces EDGE_LOG_TARGET and the EDGE_SYSLOG_* wiring (both/UDP dropped; otlp reserved)."
+    - kind: changed
+      description: "Edge access-log format now defaults to an ECS-style schema; EDGE_ACCESS_LOG_SCHEMA=ecs|legacy selects it."
+    - kind: removed
+      description: "Retired the bundled rsyslog aggregator Deployment/Service (ADR 0009) — no ImageEngine component needs it by default anymore: the edge (ADR 0008) and the origin fetcher's fetch log both default to structured JSON on stdout. Collect logs with your cluster's own node agent (Fluent Bit, Vector, Grafana Alloy, Datadog, or an OpenTelemetry Collector) instead. If you had enabled StatsD-over-syslog, point *_STATSD_SYSLOG_ADDRESS at your own syslog-speaking receiver."
     - kind: added
-      description: "OpenTelemetry tracing wiring (ADR 0007): opt-in 'otel' values (enabled/endpoint/shared env), per-component *_OTEL_ENABLED env injection on all five workloads, and an optional NetworkPolicy for OTLP egress. Disabled by default."
+      description: "Origin fetcher's per-fetch structured log gets its own DSN + schema selector (ADR 0009), mirroring the edge: IE_ORIGINFETCHER_FETCH_LOG_TARGET (stdout | stderr | none | tcp://host:port?format=ndjson|syslog; default stdout) and IE_ORIGINFETCHER_FETCH_LOG_SCHEMA (ecs | legacy; default ecs). Replaces the six IE_ORIGINFETCHER_APPLICATION_LOG_* vars."
+    - kind: added
+      description: "Edge gains EDGE_LOGLEVEL for its structured diagnostics, with a runtime GET/POST /api/v1/loglevel on the internal admin listener (EDGE_METRICS_ADDR) — never the customer-facing router."
+    - kind: changed
+      description: "Backend, origin fetcher, processor, and OSC diagnostics move from plain-text stderr to structured JSON (ADR 0009); the unified default log level changes from WARN to info across all four (OSC_LOGLEVEL explicitly set to info in this chart; the others rely on the new code default)."

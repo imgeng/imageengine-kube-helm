@@ -80,8 +80,6 @@ spec:
           env:
             - name: EDGE_VARNISH_URL
               value: "http://{{ include "imageengine.fullname" . }}-varnish:80"
-            - name: EDGE_SYSLOG_SERVER
-              value: "{{ include "imageengine.fullname" . }}-rsyslog:514"
             - name: COMPONENT
               value: "edge"
             - name: EDGE_SENTRY_DSN

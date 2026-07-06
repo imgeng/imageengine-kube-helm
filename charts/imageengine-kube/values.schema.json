@@ -152,12 +152,6 @@
         }
       }
     },
-    "rsyslog": {
-      "type": "object",
-      "properties": {
-        "replicaCount": { "type": "integer", "minimum": 0 }
-      }
-    },
     "metrics": {
       "type": "object",
       "description": "Prometheus metrics exposure (ADR 0004).",

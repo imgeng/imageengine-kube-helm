@@ -80,10 +80,6 @@ spec:
             {{- include "imageengine.oscShardEnv" . | nindent 12 }}
             - name: IE_PROCESSOR_URL
               value: "http://{{ include "imageengine.fullname" . }}-processor:80"
-            - name: IE_ORIGINFETCHER_STATSD_SYSLOG_ADDRESS
-              value: "{{ include "imageengine.fullname" . }}-rsyslog:514"
-            - name: IE_ORIGINFETCHER_APPLICATION_LOG_HOST
-              value: "{{ include "imageengine.fullname" . }}-rsyslog:514"
             - name: IE_ORIGINFETCHER_SENTRY_DSN
               value: {{ .Values.sentry.FETCHER_DSN | quote }}
             # Secrets
