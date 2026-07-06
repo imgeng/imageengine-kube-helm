@@ -262,7 +262,7 @@ edge:
     # the target/framing above.
     #   ecs    -> ECS-style record, recognized by Loki/Elastic/Datadog/OTel with no
     #             ImageEngine-specific parser config (the modern default)
-    #   legacy -> the historical ie-varnish-logger field set (transitional; SaaS parity)
+    #   legacy -> the historical ie-varnish-logger field set
     # Leave "ecs" for new deployments; set "legacy" only if you already depend on the
     # old field names during migration.
     EDGE_ACCESS_LOG_SCHEMA: ecs

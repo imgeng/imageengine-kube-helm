@@ -257,7 +257,7 @@ The hostless values (`stdout`/`stderr`/`none`) may be written bare or with a tra
 | Value    | Fields                                                                          |
 | -------- | ------------------------------------------------------------------------------- |
 | `ecs`    | ECS-style record (`@timestamp`, `event.*`, `url.*`, `http.*`, plus an `imageengine.*` namespace) — recognized by Loki/Elastic/Datadog/OTel with no ImageEngine-specific config. **Default.** |
-| `legacy` | The historical ie-varnish-logger field set. Transitional — for parity with the SaaS deployment during migration; slated for removal. |
+| `legacy` | The historical ie-varnish-logger field set. |
 
 Leave the default `ecs` for new deployments; set `legacy` only if you already have pipelines built on the old field names. The two axes compose — e.g. `EDGE_ACCESS_LOG_SCHEMA: ecs` with `EDGE_ACCESS_LOG_TARGET: "tcp://collector:5140?format=ndjson"`.
 

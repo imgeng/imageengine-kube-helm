@@ -2,7 +2,7 @@ apiVersion: v2
 name: imageengine-kube
 description: ImageEngine - cloud-native image optimization
 type: application
-version: 1.7.0
+version: 1.6.0
 kubeVersion: ">=1.30.0-0"
 home: https://imageengine.io
 sources:
@@ -28,7 +28,7 @@ annotations:
     - kind: changed
       description: "Edge access-log sink is now a single EDGE_ACCESS_LOG_TARGET DSN (ADR 0008): stdout | stderr | none | tcp://host:port?format=ndjson|syslog. Replaces EDGE_LOG_TARGET and the EDGE_SYSLOG_* wiring (both/UDP dropped; otlp reserved)."
     - kind: changed
-      description: "Edge access-log format now defaults to an ECS-style schema; EDGE_ACCESS_LOG_SCHEMA=ecs|legacy selects it (legacy = the old ie-varnish-logger fields, for SaaS parity during transition). Requires an edge image built with ADR 0008."
+      description: "Edge access-log format now defaults to an ECS-style schema; EDGE_ACCESS_LOG_SCHEMA=ecs|legacy selects it."
     - kind: removed
       description: "Retired the bundled rsyslog aggregator Deployment/Service (ADR 0009) — no ImageEngine component needs it by default anymore: the edge (ADR 0008) and the origin fetcher's fetch log both default to structured JSON on stdout. Collect logs with your cluster's own node agent (Fluent Bit, Vector, Grafana Alloy, Datadog, or an OpenTelemetry Collector) instead. If you had enabled StatsD-over-syslog, point *_STATSD_SYSLOG_ADDRESS at your own syslog-speaking receiver."
     - kind: added
