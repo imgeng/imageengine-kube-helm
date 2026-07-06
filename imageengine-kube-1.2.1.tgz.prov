@@ -1,0 +1,57 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+annotations:
+  artifacthub.io/changes: |
+    - kind: added
+      description: "Prometheus metrics port (named metrics, 9464) on all components, kept off the customer-facing edge LoadBalancer (ADR 0004)"
+    - kind: added
+      description: "Optional Prometheus Operator PodMonitor via metrics.podMonitor.enabled (disabled by default)"
+    - kind: changed
+      description: "Edge metrics/admin listener and readiness probe moved from port 9090 to 9464"
+  artifacthub.io/signKey: |
+    fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+    url: https://kube.imageengine.io/pubkey.asc
+apiVersion: v2
+appVersion: 2.10.9
+description: ImageEngine - cloud-native image optimization
+home: https://imageengine.io
+icon: https://imageengine.io/favicon.ico
+keywords:
+- - image-optimization
+- - image-cdn
+- - cdn
+- - imageengine
+- - varnish
+- - wurfl
+kubeVersion: '>=1.30.0-0'
+maintainers:
+- - email: support@scientiamobile.com
+  name: ScientiaMobile
+  url: https://www.scientiamobile.com
+name: imageengine-kube
+sources:
+- - https://kube.imageengine.io
+- - https://github.com/imgeng/imageengine-kube-helm
+type: application
+version: 1.2.1
+
+...
+files:
+  imageengine-kube-1.2.1.tgz: sha256:bfc37b0ef271fed58fd2778b358cf11cb37049603b077856c5f7d829d56c8de7
+-----BEGIN PGP SIGNATURE-----
+
+wsFcBAEBCgAQBQJqPXCnCRBGMmYGCVfEswAAYEsQABaFeWxZRl7sF20i6RoaTkyG
+S9Fx2OQ2u7Ad7kRfpkPG6N1taex2aVd35+gCyhb5oHgsLYD7+On7lX6uAl16UU9i
+1UVs79kw/Bj3UpLzEaXwzfO2GPUwbtQfbhkFmKcehEtORt7KHkcAtcxFjT6oNgWe
+P/CLFUvSZDReF9EBzipdSCDmroNupnALBrNhzrsG6IyI959qDxR27rdOdgXBnBf4
+tc4LeUSByUNPI/BmdBPose2pHLf8en4I8eS5OoT/rH3YRP7bJofhPDXQ7RwvSvsi
+hJCQnyCNZitl0juhud9uxuiUpueG3/zmcH5/pcle8Qp+RRGNGai9Iv9ZfQnRO1xJ
+rvQrlobArSJodRhLXIZNhuWWMbWJN5MxpINTO8aSPmfQl4OeNkdgpC33xGbBFZqD
+1VzbT15hCv3qeRwhlKTcPw+GqJUjvbxm5YpjTa9hSh4PCaaJZ1bFQ1quZruB42yU
+A6YOPnbXWPMI/XHlyciXYmsDoTCushOwzllbycjVxm+42yxYmvyu+3rZPcrSNC1H
+E5lsB1xAl4/phVfV+aa5OU8+Vzm46M60ZsbiNE0G2h4ROJpMT9sXMZcAcsciitv3
+yh/E/OaQ/ajyVANfcczLWb62HZ0a7gwUv43avnc2ip3XELn62dxrJYwevOOLXics
+ZKJgAxHkUJvoo32YB/VF
+=cjg9
+-----END PGP SIGNATURE-----
