@@ -1,0 +1,62 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+annotations:
+  artifacthub.io/changes: |
+    - kind: changed
+      description: "Edge access-log sink is now a single EDGE_ACCESS_LOG_TARGET DSN (ADR 0008): stdout | stderr | none | tcp://host:port?format=ndjson|syslog. Replaces EDGE_LOG_TARGET and the EDGE_SYSLOG_* wiring (both/UDP dropped; otlp reserved)."
+    - kind: changed
+      description: "Edge access-log format now defaults to an ECS-style schema; EDGE_ACCESS_LOG_SCHEMA=ecs|legacy selects it."
+    - kind: removed
+      description: "Retired the bundled rsyslog aggregator Deployment/Service (ADR 0009) — no ImageEngine component needs it by default anymore: the edge (ADR 0008) and the origin fetcher's fetch log both default to structured JSON on stdout. Collect logs with your cluster's own node agent (Fluent Bit, Vector, Grafana Alloy, Datadog, or an OpenTelemetry Collector) instead. If you had enabled StatsD-over-syslog, point *_STATSD_SYSLOG_ADDRESS at your own syslog-speaking receiver."
+    - kind: added
+      description: "Origin fetcher's per-fetch structured log gets its own DSN + schema selector (ADR 0009), mirroring the edge: IE_ORIGINFETCHER_FETCH_LOG_TARGET (stdout | stderr | none | tcp://host:port?format=ndjson|syslog; default stdout) and IE_ORIGINFETCHER_FETCH_LOG_SCHEMA (ecs | legacy; default ecs). Replaces the six IE_ORIGINFETCHER_APPLICATION_LOG_* vars."
+    - kind: added
+      description: "Edge gains EDGE_LOGLEVEL for its structured diagnostics, with a runtime GET/POST /api/v1/loglevel on the internal admin listener (EDGE_METRICS_ADDR) — never the customer-facing router."
+    - kind: changed
+      description: "Backend, origin fetcher, processor, and OSC diagnostics move from plain-text stderr to structured JSON (ADR 0009); the unified default log level changes from WARN to info across all four (OSC_LOGLEVEL explicitly set to info in this chart; the others rely on the new code default)."
+  artifacthub.io/signKey: |
+    fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+    url: https://kube.imageengine.io/pubkey.asc
+apiVersion: v2
+description: ImageEngine - cloud-native image optimization
+home: https://imageengine.io
+icon: https://imageengine.io/favicon.ico
+keywords:
+- - image-optimization
+- - image-cdn
+- - cdn
+- - imageengine
+- - varnish
+- - wurfl
+kubeVersion: '>=1.30.0-0'
+maintainers:
+- - email: support@scientiamobile.com
+  name: ScientiaMobile
+  url: https://www.scientiamobile.com
+name: imageengine-kube
+sources:
+- - https://kube.imageengine.io
+- - https://github.com/imgeng/imageengine-kube-helm
+type: application
+version: 1.6.0
+
+...
+files:
+  imageengine-kube-1.6.0.tgz: sha256:c614bd90db22b18fd9e170205e7c2609eb4d097382fc748fa1a6ca6338435315
+-----BEGIN PGP SIGNATURE-----
+
+wsFcBAEBCgAQBQJqS19sCRBGMmYGCVfEswAAw9MQAFf95mUKNnEtQwd0qQ1dCcuz
+s3uyp5kATvOU283DbnTNTlgomXg8b08NswnJuweTW9/2gagAeOrdwlM4tg5Cwri5
+en3xpdzrJj7WGsJHg97UOZblaI+VlTlq24xyjDI3T7T+6toDESO8AbtGRxM4rrig
+Q3eQHD/T7n7EIWV4+D8LQ5MIyUnMd8NB0NhgMMGnC3c1fxMRdpfYXThRlsNvex1U
+NFNJ4o+LUPXSep3d68Fha6XQKFu6M0EnzqNvifCv5WJDx3DC7UT+7/CH3NfmWsT3
+4eYs4fREMysyeysecuC1WSTXglLuYKOL4ldmNtgLXdnv/91HxfXuaDiJEhhUfbLn
+qdSdRtK4luVtr8srLiyOlqpYD4XLkAOKq5eTEGBi66ZScFMq0fb/Crpqy/YQW/TK
+J+H5IKZ9nlPctzYQTlKJIV+GpTiUqwt0VgbOOjPUvdloCnxfiR2q9osSiPbCxwbz
+1CQ4g58JrA6OCCXGbnl9wu6lweoWDbx8MYOHoOkAJrPxg5V3ZutqqE0hPs0+mFG9
+1HxIlLMLZTPW/Nk42CuUncYSwebK2+sz4BTgMbWfdvLHDo9zXzCcfXgxVl4Zn+Jo
+QxgkrWSkCVzofG0vucnxl6bT7T1GWr+oNUmMHhvZFhwoS/bYRs162PCYbUo+nHK5
+qKfFhHW9ar4W484DDyqr
+=OmFF
+-----END PGP SIGNATURE-----
