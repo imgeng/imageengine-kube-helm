@@ -78,8 +78,12 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
           env:
-            - name: EDGE_VARNISH_URL
-              value: "http://{{ include "imageengine.fullname" . }}-varnish:80"
+            # Varnish sharding (ADR 0018): the edge discovers Varnish shards via
+            # the headless Service's SRV records and routes each image to its
+            # owning shard (rendezvous hashing). Requires a sharding-capable edge
+            # image; scale shards with varnish.replicaCount (no edge redeploy).
+            - name: EDGE_VARNISH_HEADLESS
+              value: "{{ include "imageengine.fullname" . }}-varnish-headless.{{ .Release.Namespace }}.svc.cluster.local"
             - name: COMPONENT
               value: "edge"
             - name: EDGE_SENTRY_DSN

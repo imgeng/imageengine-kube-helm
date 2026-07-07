@@ -341,24 +341,25 @@ edge:
 # Deployed separately from edge so cache survives edge updates.
 # Traffic flow: edge -> varnish:8080 -> backend
 varnish:
-  # Keep at 1. The edge proxies to a single Varnish endpoint with no consistent
-  # hashing, so each extra replica caches an overlapping random subset and the
-  # effective hit ratio drops. Resilience here comes from priorityClass + graceful
-  # drain (below), not replication; a rare cold loss falls through to OSC, not origin.
-  replicaCount: 1
+  # Number of Varnish cache shards (ADR 0018). Each ordinal (varnish-0, varnish-1,
+  # ...) is an independent shard; the edge discovers them via the headless Service's
+  # SRV records and consistent-hashes each image to one shard, so raising this scales
+  # cache capacity and throughput without duplicating objects across replicas. Default
+  # 3 keeps blast radius per shard at ~33%. Set to 1 for a single-node (legacy) setup.
+  # Do NOT put this behind an HPA — changing the count reshards ~1/N of the cache.
+  replicaCount: 3
   minReadySeconds: 0
   # Optional scheduling priority. Requires the class to exist (set
   # priorityClass.create=true, or reference an externally-managed class).
   priorityClassName: ""
-  # Graceful shutdown tuning (see varnish-deployment.yaml preStop hook).
+  # Graceful shutdown tuning (see varnish-statefulset.yaml preStop hook).
   terminationGracePeriodSeconds: 30
   drainSeconds: 5
-  # PodDisruptionBudget. Off by default: with a single replica, minAvailable: 1
-  # blocks node drains entirely (drain must be forced). Enable it for strong
-  # protection of voluntary disruptions, accepting that trade-off.
+  # PodDisruptionBudget. With multiple shards, maxUnavailable: 1 lets drains/rolls
+  # cycle one shard at a time while protecting the rest (mirrors the OSC tier).
   pdb:
-    enabled: false
-    minAvailable: 1
+    enabled: true
+    maxUnavailable: 1
   podAnnotations: {}
   nodeSelector: {}
   tolerations: []
