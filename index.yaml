@@ -4,6 +4,49 @@ entries:
   - annotations:
       artifacthub.io/changes: |
         - kind: changed
+          description: "Varnish is now a sharded StatefulSet (ADR 0018): the edge discovers Varnish shards via a headless Service's SRV records and routes every permutation of an image to the same shard using rendezvous (HRW) hashing, so each image is cached on exactly one shard — no cross-replica duplication, ~Nx effective cache and hit ratio. Replaces the single-replica Varnish Deployment; varnish.replicaCount now defaults to 3. Do NOT put varnish.replicaCount behind an HPA (changing it reshards ~1/N of the cache). Requires a sharding-capable edge image."
+        - kind: added
+          description: "Varnish headless Service (<release>-varnish-headless; clusterIP: None, publishNotReadyAddresses: true) governs the StatefulSet and provides stable per-pod SRV/A records for shard discovery. The edge is wired to it via EDGE_VARNISH_HEADLESS; the plain ClusterIP Service is kept for debug/health only."
+        - kind: added
+          description: "varnish PodDisruptionBudget is enabled by default (maxUnavailable: 1) so shard rolls/drains cycle one shard at a time."
+        - kind: fixed
+          description: "varnish.pdb.minAvailable was silently ignored (the template always keyed on the default maxUnavailable); it now takes precedence when set, matching the OSC PDB."
+        - kind: added
+          description: "Per-component topologySpreadConstraints override (edge/varnish/backend/fetcher/processor/objectStorageCache); previously hardcoded and non-overridable. Set e.g. varnish.topologySpreadConstraints with whenUnsatisfiable: DoNotSchedule to force each cache shard onto a distinct node."
+        - kind: changed
+          description: "Consistent values interface for deployment identity: all identity labels now use friendly camelCase keys under `identity:` (environment, region, availabilityZone, deploy, product, hostId, provider, hostname, hostType, hostImage) which the chart maps to the underlying env vars — replacing the raw UPPERCASE env-var pass-through. The deployment environment moved from `imageengine.environment` to `identity.environment` (still the single source of truth for logs/Sentry/OTel). `provider` stays top-level (infra presets + default provider label). BREAKING for anyone who set `identity.*` or `imageengine.environment` — pre-release, no compatibility shim; update your -f overrides."
+      artifacthub.io/signKey: |
+        fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+        url: https://kube.imageengine.io/pubkey.asc
+    apiVersion: v2
+    created: "2026-07-08T07:02:57.317511856Z"
+    description: ImageEngine - cloud-native image optimization
+    digest: 228a93bd2df4005982438d82a35b1e95564b75be1b2971241dc9407ccc6bbbe8
+    home: https://imageengine.io
+    icon: https://imageengine.io/favicon.ico
+    keywords:
+    - image-optimization
+    - image-cdn
+    - cdn
+    - imageengine
+    - varnish
+    - wurfl
+    kubeVersion: '>=1.30.0-0'
+    maintainers:
+    - email: support@scientiamobile.com
+      name: ScientiaMobile
+      url: https://www.scientiamobile.com
+    name: imageengine-kube
+    sources:
+    - https://kube.imageengine.io
+    - https://github.com/imgeng/imageengine-kube-helm
+    type: application
+    urls:
+    - imageengine-kube-1.7.0.tgz
+    version: 1.7.0
+  - annotations:
+      artifacthub.io/changes: |
+        - kind: changed
           description: "Edge access-log sink is now a single EDGE_ACCESS_LOG_TARGET DSN (ADR 0008): stdout | stderr | none | tcp://host:port?format=ndjson|syslog. Replaces EDGE_LOG_TARGET and the EDGE_SYSLOG_* wiring (both/UDP dropped; otlp reserved)."
         - kind: changed
           description: "Edge access-log format now defaults to an ECS-style schema; EDGE_ACCESS_LOG_SCHEMA=ecs|legacy selects it."
@@ -711,4 +754,4 @@ entries:
     urls:
     - imageengine-kube-0.8.0.tgz
     version: 0.8.0
-generated: "2026-07-06T07:55:28.763251065Z"
+generated: "2026-07-08T07:02:57.317680858Z"
