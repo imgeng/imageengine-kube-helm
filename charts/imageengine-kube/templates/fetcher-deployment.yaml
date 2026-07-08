@@ -42,6 +42,10 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.fetcher.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- else }}
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
@@ -50,6 +54,7 @@ spec:
             matchLabels:
               app: {{ include "imageengine.name" . }}
               tier: fetcher
+      {{- end }}
       containers:
         - name: fetcher
           image: "{{ .Values.fetcher.image.repository }}:{{ .Values.images.fetcher }}"
@@ -108,10 +113,8 @@ spec:
                   key: WASABI_SECRET
                   optional: true
             # Env vars for statistics
-            {{- range $key, $value := .Values.identity }}
-            - name: {{ $key }}
-              value: {{ $value | quote }}
-            {{- end }}
+            {{- include "imageengine.identityEnv" $ | nindent 12 }}
+            {{- include "imageengine.derivedEnv" (dict "name" "IE_ORIGINFETCHER_SENTRY_ENV" "value" (include "imageengine.appEnv" $) "env" $.Values.fetcher.env) | nindent 12 }}
             {{- include "imageengine.otelEnv" (dict "ctx" $ "enableVar" "IE_ORIGINFETCHER_OTEL_ENABLED") | nindent 12 }}
             # Env vars below this line are from values.yaml
             {{- range $key, $value := .Values.fetcher.env }}

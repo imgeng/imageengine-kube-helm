@@ -198,8 +198,8 @@ processor:
     targetCPUUtilizationPercentage: 80
 
 identity:
-  PROVIDER: on-prem
-  REGION: rack-1
+  provider: on-prem
+  region: rack-1
 ```
 
 ## Next

@@ -69,8 +69,14 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.varnish.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- else }}
       # Spread shards across nodes and zones. Soft (ScheduleAnyway) so a
-      # capacity-constrained cluster can still place every shard.
+      # capacity-constrained cluster can still place every shard. Override via
+      # varnish.topologySpreadConstraints (e.g. DoNotSchedule to force each shard
+      # onto a distinct node for node-failure resilience testing).
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
@@ -86,6 +92,7 @@ spec:
             matchLabels:
               app: {{ include "imageengine.name" . }}
               tier: varnish
+      {{- end }}
       containers:
         - name: varnish
           image: "{{ .Values.varnish.image.repository }}:{{ .Values.images.varnish }}"
@@ -129,10 +136,8 @@ spec:
               value: "varnish"
             - name: VARNISH_LISTEN_PORT
               value: "8080"
-            {{- range $key, $value := .Values.identity }}
-            - name: {{ $key }}
-              value: {{ $value | quote }}
-            {{- end }}
+            {{- include "imageengine.identityEnv" $ | nindent 12 }}
+            {{- include "imageengine.derivedEnv" (dict "name" "APP_ENV" "value" (include "imageengine.appEnv" $) "env" $.Values.varnish.env) | nindent 12 }}
             {{- range $key, $value := .Values.varnish.env }}
             - name: {{ $key }}
               value: {{ $value | quote }}

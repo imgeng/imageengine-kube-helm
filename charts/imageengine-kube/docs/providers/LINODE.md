@@ -85,8 +85,7 @@ processor:
     targetCPUUtilizationPercentage: 80
 
 identity:
-  PROVIDER: linode
-  REGION: us-east
+  region: us-east   # provider label follows the top-level `provider: linode`
 ```
 
 ## Next

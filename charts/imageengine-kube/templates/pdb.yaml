@@ -31,10 +31,10 @@ metadata:
     app: {{ include "imageengine.name" . }}
     tier: varnish
 spec:
-  {{- if hasKey .Values.varnish.pdb "maxUnavailable" }}
-  maxUnavailable: {{ .Values.varnish.pdb.maxUnavailable }}
+  {{- if hasKey .Values.varnish.pdb "minAvailable" }}
+  minAvailable: {{ .Values.varnish.pdb.minAvailable }}
   {{- else }}
-  minAvailable: {{ .Values.varnish.pdb.minAvailable | default 1 }}
+  maxUnavailable: {{ .Values.varnish.pdb.maxUnavailable | default 1 }}
   {{- end }}
   selector:
     matchLabels:

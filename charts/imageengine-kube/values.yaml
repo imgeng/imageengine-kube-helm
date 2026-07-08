@@ -5,11 +5,11 @@ imagePullPolicy: Always
 ###################################################
 # Centralized image tags/versions for all components
 images:
-  edge: "4.6.0"
+  edge: "4.7.0"
   varnish: "9.0.3-8"
   backend: "2.13.0"
   fetcher: "1.30.0"
-  processor: "3.26.0"
+  processor: "3.26.1"
   osc: "3.6.0"
 
 ###################################################
@@ -19,9 +19,9 @@ images:
 # container port named "metrics" (9464), separate from the data-plane port and
 # kept OFF the customer-facing edge LoadBalancer. See docs/operations/metrics.md.
 metrics:
-  # Container port that each component serves /metrics on. Matches the binary
-  # defaults (EDGE_METRICS_ADDR / IE_*_METRICS_ADDR / OSC_METRICS_ADDR = :9464).
-  port: 9464
+  # The metrics port is fixed at 9464 (the binary defaults for
+  # EDGE_METRICS_ADDR / IE_*_METRICS_ADDR / OSC_METRICS_ADDR), exposed as the
+  # container port named "metrics" and scraped by the PodMonitor by name.
   # Optional Prometheus Operator PodMonitor. Requires the Prometheus Operator
   # CRDs (monitoring.coreos.com) to be installed in the cluster. Scrapes pods
   # directly on the "metrics" port, so no extra Service is needed and the
@@ -43,7 +43,6 @@ metrics:
 # When set, provider-specific defaults are applied for:
 #   - Storage classes
 #   - Ingress annotations
-#   - External DNS configuration
 # You can still override any value explicitly. The default `custom` applies
 # no presets — use this for bare metal, on-prem, or any self-managed cluster.
 provider: "custom"
@@ -70,31 +69,26 @@ providerPresets:
     # scheme back to "internal") for private deployments.
     serviceAnnotations:
       service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
-    externalDnsProvider: "aws"
   digitalocean:
     storageClass: "do-block-storage"
     ingressClass: "nginx"
     ingressAnnotations: {}
     serviceAnnotations: {}
-    externalDnsProvider: "digitalocean"
   linode:
     storageClass: "linode-block-storage-retain"
     ingressClass: "nginx"
     ingressAnnotations: {}
     serviceAnnotations: {}
-    externalDnsProvider: "linode"
   gke:
     storageClass: "standard-rwo"
     ingressClass: "gce"
     ingressAnnotations: {}
     serviceAnnotations: {}
-    externalDnsProvider: "google"
   azure:
     storageClass: "managed-csi-premium"
     ingressClass: "nginx"
     ingressAnnotations: {}
     serviceAnnotations: {}
-    externalDnsProvider: "azure"
 
 ###################################################
 # Scheduling Priority (optional)
@@ -111,9 +105,11 @@ priorityClass:
   varnishValue: 900000
 
 imageengine:
-  # <production|staging|canary|testing|development>
-  environment: &appEnv "testing"
-  emitterServer: &emitterServer "wss://emitter.eleven45.net:443"
+  # Single source of truth for the emitter (MQTT/websocket) broker. The chart
+  # derives EDGE_EMITTER_SERVER / ORIGINCONF_EMITTER_SERVER / OSC_EMITTER_SERVER
+  # from this. Kube customers should keep the ScientiaMobile default so
+  # control-plane account changes propagate down into the cluster.
+  emitterServer: "wss://emitter.eleven45.net:443"
   imageEngineApiUrl: "https://control-api.imageengine.io"
 
 sentry:
@@ -126,15 +122,28 @@ sentry:
 secrets:
   imagePullSecretName: "ie-kube-image-pull"
 
+# Deployment identity — labels stamped on every structured log record and trace
+# span (mapped to ECS service.* / cloud.* / host.*). Friendly camelCase keys; the
+# chart maps each to the env var the binaries read at template time
+# (environment->ENVIRONMENT, region->REGION, availabilityZone->AZ, deploy->DEPLOY,
+# product->PRODUCT, hostId->HOST_ID, hostname->HOSTNAME, ...). Empty labels are
+# omitted. Arbitrary per-component env still goes under <component>.env.
 identity:
-  DEPLOY: blue
-  PRODUCT: imageengine
-  ENVIRONMENT: *appEnv
-  # hostname: <FQDN>
-  HOST_ID: k8s-pod
-  PROVIDER: kube-testing
-  REGION: us-east-1
-  AZ: us-east-1a
+  # Deployment environment <production|staging|canary|testing|development>. THE
+  # single source of truth for the environment: drives service.environment in
+  # logs, every component's *_SENTRY_ENV / APP_ENV, and OTel deployment.environment.
+  environment: "testing"
+  deploy: ""
+  product: "imageengine"
+  region: ""
+  availabilityZone: ""
+  hostId: "k8s-pod"
+  # cloud.provider label. Empty => follows the top-level `provider` (which also
+  # selects infra presets); set here to override just the telemetry label.
+  provider: ""
+  # hostname: "<fqdn>"       # host.name; unset => the pod hostname is used
+  # hostType: "<instance>"   # host.type (e.g. m7i.xlarge), optional
+  # hostImage: "<image-id>"  # host image id, optional
 
 # OpenTelemetry distributed tracing (ADR 0007). Disabled by default and fully
 # opt-in: when enabled, each component starts the OTel SDK and exports OTLP
@@ -273,8 +282,7 @@ edge:
     # Origin config source: "file" or "api"
     EDGE_ORIGIN_CONF_SOURCE: api
     # EDGE_ORIGIN_CONF_REFRESH_INTERVAL: 1h
-    # Emitter
-    EDGE_EMITTER_SERVER: *emitterServer
+    # Emitter. EDGE_EMITTER_SERVER is derived from imageengine.emitterServer.
     # EDGE_EMITTER_SERVER_KEY: "<<SECRET: ie-kube-emitter.KEY>>"
     EDGE_EMITTER_CHANNEL: production/imageengine/frontend/settings
     # EDGE_EMITTER_BAN_KEY: "<<SECRET: ie-kube-emitter.KEY>>"
@@ -295,10 +303,11 @@ edge:
   # HOW IT WORKS:
   # When enabled, a cryptographic signature is added to HTTP Via headers,
   # allowing GWF to verify that requests passed through your green-certified
-  # infrastructure. The edge proxy has a built-in default carbon.txt from
-  # ScientiaMobile. If you provide custom content below, it will override
-  # the built-in default via the EDGE_CARBONTXT_FILE mechanism. If content
-  # is left empty, the edge proxy's embedded carbon.txt is used.
+  # infrastructure. carbon.txt is served ONLY when you supply BOTH your own
+  # hash AND content below; if either is empty the feature stays fully off and
+  # nothing is served. (The edge binary carries a ScientiaMobile default
+  # carbon.txt, but this chart intentionally never exposes it for a customer
+  # deployment — you must provide your own.)
   #
   # IMPORTANT - EACH ORGANIZATION NEEDS THEIR OWN CREDENTIALS:
   # You must register your own infrastructure with the Green Web Foundation
@@ -310,7 +319,7 @@ edge:
   # 2. Declare your infrastructure providers and obtain your hash
   # 3. Set enabled: true below
   # 4. Set hash: to your GWF verification hash (starts with "GWF-")
-  # 5. Optionally update the content: section to override the built-in carbon.txt
+  # 5. Set content: to your own carbon.txt (REQUIRED — with no content, nothing is served)
   #
   # REFERENCE: https://carbontxt.org/
   carbontxt:
@@ -319,20 +328,20 @@ edge:
     # Your organization's GWF verification hash (obtain from Green Web Foundation)
     # Example: "GWF-B0edNtZrBWXhj6INCwgNq95hy3P4OMyorcduGb4..."
     hash: ""
-    # Your carbon.txt file content - customize with your organization's details
-    # See https://carbontxt.org/ for the specification
-    content: |
-      [upstream]
-      providers = [
-          # List your infrastructure providers here
-          # { domain='your-cloud-provider.com', service = 'vps' },
-          # { domain='your-cloud-provider.com', service = 'object-storage' },
-      ]
-      [org]
-      credentials = [
-          # Link to your sustainability documentation
-          # { domain = 'your-domain.com', doctype = 'webpage', url = "https://your-domain.com/sustainability/" },
-      ]
+    # Your carbon.txt file content — REQUIRED to serve carbon.txt. Empty (the
+    # default) keeps the feature off so nothing is served. See
+    # https://carbontxt.org/ for the specification. Example:
+    #   content: |
+    #     [upstream]
+    #     providers = [
+    #         { domain='your-cloud-provider.com', service = 'vps' },
+    #         { domain='your-cloud-provider.com', service = 'object-storage' },
+    #     ]
+    #     [org]
+    #     credentials = [
+    #         { domain = 'your-domain.com', doctype = 'webpage', url = "https://your-domain.com/sustainability/" },
+    #     ]
+    content: ""
 
 ###################################################
 # ImageEngine Kube Varnish Cache Configuration
@@ -378,7 +387,7 @@ varnish:
       memory: "4Gi"
       ephemeral-storage: "500Gi"
   env:
-    APP_ENV: *appEnv
+    # APP_ENV is derived from imageengine.environment.
     RELOADER_ENABLE: "true"
     # Memory storage
     # VARNISH_STORAGE: "malloc,64G"
@@ -442,12 +451,12 @@ backend:
     IE_BACKEND_ORIGINRETURNABLE_TTL: 30s
     # customizable TTL for 4xx response (default 180s)
     # IE_BACKEND_CODE4XX_TTL:
-    IE_BACKEND_SENTRY_ENV: *appEnv
+    # IE_BACKEND_SENTRY_ENV is derived from imageengine.environment.
     # default is info (ADR 0009)
     # IE_BACKEND_LOGLEVEL:
     # coreapi
     # IE_BACKEND_COREAPI_CLIENT_SECRET: "<<SECRET: ie-kube-core-api.CLIENT_SECRET>>"
-    # CORE_API_HOST: *coreApiUrl
+    # CORE_API_HOST: "https://control-api.imageengine.io"
     ### coredata
     # intervel between coredata data refresh operations, 15 mins
     COREDATA_REFRESH_INTERVAL: 300s
@@ -455,13 +464,13 @@ backend:
     ### OriginConf
     # Use the ImageEngine API to fetch origin configurations
     IE_BACKEND_ORIGINCONFFILE_USE_API: true
-    # IE_BACKEND_ORIGINCONFFILE_1: *originConfFile1
-    # IE_BACKEND_ORIGINCONFFILE_2: *originConfFile2
+    # IE_BACKEND_ORIGINCONFFILE_1: "s3://your-bucket/origin-configs.json"
+    # IE_BACKEND_ORIGINCONFFILE_2: "s3://your-bucket/origin-configs-fallback.json"
     ### Emitter env variables
     # default is true
     # ORIGINCONF_EMITTER_SERVER_ENABLE:
-    ORIGINCONF_EMITTER_SERVER: *emitterServer
     ORIGINCONF_EMITTER_CHANNEL: production/imageengine/origin-conf/changes
+    # ORIGINCONF_EMITTER_SERVER is derived from imageengine.emitterServer.
     # default empty
     # ORIGINCONF_EMITTER_CHANNEL_KEY: "<<SECRET: ie-kube-emitter.KEY>>"
     # default:1000
@@ -544,8 +553,7 @@ fetcher:
     # Imageengine Processor
     # default:0 = autotune : 20 * numcore
     # IE_PROCESSOR_MAX_CONN
-    # Sentry
-    IE_ORIGINFETCHER_SENTRY_ENV: &appEnv
+    # Sentry. IE_ORIGINFETCHER_SENTRY_ENV is derived from imageengine.environment.
     # AWS
     # IE_ORIGINFETCHER_AWS_ACCESS_KEY_ID: "<<SECRET: ie-kube-fetcher.AWS_KEY>>"
     # IE_ORIGINFETCHER_AWS_SECRET_ACCESS_KEY: "<<SECRET: ie-kube-fetcher.AWS_SECRET>>"
@@ -621,7 +629,7 @@ processor:
     # IE_PROCESSOR_IMG_PER_SEC_PER_CORE
     # default:60s Total time to complete an imgproc request
     # IE_PROCESSOR_MAX_PROCESSING_TIME
-    IE_PROCESSOR_SENTRY_ENV: *appEnv
+    # IE_PROCESSOR_SENTRY_ENV is derived from imageengine.environment.
     # Disabled by default: this chart no longer ships a bundled syslog receiver
     # (ADR 0009). Set to true and point IE_PROCESSOR_STATSD_SYSLOG_ADDRESS at
     # your own syslog-speaking StatsD/metrics receiver to emit.
@@ -710,7 +718,9 @@ objectStorageCache:
   nodeSelector: {}
   tolerations: []
   affinity: {}
-  storagePath: &oscStoragePath "/u/data"
+  # OSC filesystem path — single source of truth for both the PV mount path and
+  # the OSC binary's OSC_FS_STORAGE_PATH (derived at template time).
+  storagePath: "/u/data"
   env:
     # Log level : ERROR, WARN, INFO, DEBUG, default info (ADR 0009)
     OSC_LOGLEVEL: info
@@ -718,14 +728,11 @@ objectStorageCache:
     OSC_MAX_TTL: 2160h
     # The maximum number of operating system threads that the OSC can use. Default 20000
     # OSC_MAXTHREADS: 20000
-    # FileSystem env variables
-    # default:/data/osc
-    OSC_FS_STORAGE_PATH: *oscStoragePath
+    # FileSystem env variables. OSC_FS_STORAGE_PATH is derived from
+    # objectStorageCache.storagePath (which also sets the volume mount path).
     #OSC_FS_STORAGE_SHARD_PATH_DEPTH: 2
-    # Sentry env variables
-    OSC_SENTRY_ENV: *appEnv
-    # Emitter env variables
-    OSC_EMITTER_SERVER: *emitterServer
+    # Sentry env variables. OSC_SENTRY_ENV is derived from imageengine.environment.
+    # Emitter env variables. OSC_EMITTER_SERVER is derived from imageengine.emitterServer.
     # OSC_EMITTER_CHANNEL_KEY: "<<SECRET: ie-kube-emitter.KEY>>"
     OSC_EMITTER_CHANNEL: production/imageengine/origin-cache/purge
     # OSC_EMITTER_RESULT_CHANNEL_KEY: "<<SECRET: ie-kube-emitter.KEY>>"

@@ -43,6 +43,10 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.edge.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- else }}
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
@@ -51,6 +55,7 @@ spec:
             matchLabels:
               app: {{ include "imageengine.name" . }}
               tier: edge
+      {{- end }}
       containers:
         - name: edge
           image: "{{ .Values.edge.image.repository }}:{{ .Values.images.edge }}"
@@ -99,16 +104,15 @@ spec:
               value: "api-key:$(EDGE_API_KEY)"
             - name: EDGE_API_URL
               value: {{ .Values.imageengine.imageEngineApiUrl | quote }}
-            {{- range $key, $value := .Values.identity }}
-            - name: {{ $key }}
-              value: {{ $value | quote }}
-            {{- end }}
+            {{- include "imageengine.identityEnv" $ | nindent 12 }}
+            {{- include "imageengine.derivedEnv" (dict "name" "EDGE_EMITTER_SERVER" "value" $.Values.imageengine.emitterServer "env" $.Values.edge.env) | nindent 12 }}
             {{- include "imageengine.otelEnv" (dict "ctx" $ "enableVar" "EDGE_OTEL_ENABLED") | nindent 12 }}
-            {{- if and .Values.edge.carbontxt.enabled .Values.edge.carbontxt.hash }}
+            {{- /* carbon.txt is served ONLY with BOTH a hash AND customer content;
+                   without content we must not set the hash gate, or the edge would
+                   serve its embedded ScientiaMobile default. See values.yaml. */}}
+            {{- if and .Values.edge.carbontxt.enabled .Values.edge.carbontxt.hash .Values.edge.carbontxt.content }}
             - name: EDGE_CARBONTXT_HASH
               value: {{ .Values.edge.carbontxt.hash | quote }}
-            {{- end }}
-            {{- if and .Values.edge.carbontxt.enabled .Values.edge.carbontxt.content }}
             - name: EDGE_CARBONTXT_FILE
               value: "/usr/share/iee/carbon.txt"
             {{- end }}
@@ -117,14 +121,14 @@ spec:
               value: {{ $value | quote }}
             {{- end }}
           volumeMounts:
-            {{- if and .Values.edge.carbontxt.enabled .Values.edge.carbontxt.content }}
+            {{- if and .Values.edge.carbontxt.enabled .Values.edge.carbontxt.hash .Values.edge.carbontxt.content }}
             - name: carbontxt
               mountPath: /usr/share/iee/carbon.txt
               subPath: carbon.txt
               readOnly: true
             {{- end }}
       volumes:
-        {{- if and .Values.edge.carbontxt.enabled .Values.edge.carbontxt.content }}
+        {{- if and .Values.edge.carbontxt.enabled .Values.edge.carbontxt.hash .Values.edge.carbontxt.content }}
         - name: carbontxt
           configMap:
             name: {{ include "imageengine.fullname" . }}-carbontxt

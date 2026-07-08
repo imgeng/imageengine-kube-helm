@@ -102,9 +102,8 @@ processor:
     targetCPUUtilizationPercentage: 80
 
 identity:
-  PROVIDER: azure
-  REGION: eastus
-  AZ: eastus-1
+  region: eastus         # provider label follows the top-level `provider: azure`
+  availabilityZone: eastus-1
 ```
 
 ## Next

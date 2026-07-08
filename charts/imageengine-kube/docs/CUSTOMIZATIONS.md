@@ -354,20 +354,20 @@ You're still responsible for creating the secret with `kubectl create secret doc
 
 ## How do I tag traffic with my deployment identity?
 
-Every component receives the values under `identity` as environment variables. They flow into stats, logs, and Sentry tags so you can slice telemetry by deployment:
+Set your deployment identity under `identity:`. These labels flow into stats, logs, traces, and Sentry (as ECS `service.*` / `cloud.*` / `host.*`) so you can slice telemetry by deployment:
 
 ```yaml
 identity:
-  DEPLOY: blue
-  PRODUCT: imageengine
-  ENVIRONMENT: production
-  HOST_ID: k8s-pod
-  PROVIDER: aws
-  REGION: us-east-1
-  AZ: us-east-1a
+  environment: production   # single source of truth: also drives Sentry env + OTel deployment.environment
+  deploy: blue
+  region: us-east-1
+  availabilityZone: us-east-1a
+  # product / hostId default to imageengine / k8s-pod
+  # provider — follows the top-level `provider` unless set here
+  # hostname / hostType / hostImage — optional host.* labels
 ```
 
-Add or remove keys freely — anything you put under `identity` becomes an env var on every container.
+The keys are friendly camelCase names; the chart maps each to the env var the binaries read (`environment` → `ENVIRONMENT`, `availabilityZone` → `AZ`, `hostId` → `HOST_ID`, …). `environment` is the single source of truth for the deployment environment (logs `service.environment`, every component's Sentry env, and OTel `deployment.environment`). `provider` lives at the top level because it also selects infra presets; the provider label follows it unless you override `identity.provider`. For an arbitrary env var on one component, use `<component>.env`.
 
 ## How do I send errors to my own Sentry?
 
@@ -400,7 +400,7 @@ otel:
 
 This flips on the `*_OTEL_ENABLED` flag for all five Go components (edge, backend, fetcher, processor, OSC), so one client request stitches `edge → backend → {OSC, fetcher, processor}` into a single trace. Varnish is a pure cache and is not instrumented — it passes trace context through on a miss.
 
-`deployment.environment` is set for you from `imageengine.environment`, so traces are tagged with your environment out of the box. Everything under `otel.env` is passed through verbatim as SDK-native `OTEL_*` vars (sampler, resource attributes, etc.); set your own `OTEL_RESOURCE_ATTRIBUTES` there to override the default.
+`deployment.environment` is set for you from `identity.environment`, so traces are tagged with your environment out of the box. Everything under `otel.env` is passed through verbatim as SDK-native `OTEL_*` vars (sampler, resource attributes, etc.); set your own `OTEL_RESOURCE_ATTRIBUTES` there to override the default.
 
 ### Restricting OTLP egress with a NetworkPolicy
 
