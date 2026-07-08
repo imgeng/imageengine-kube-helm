@@ -68,8 +68,14 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.objectStorageCache.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- else }}
       # Spread shards across nodes and zones. Soft (ScheduleAnyway) so a
-      # capacity-constrained cluster can still place every shard.
+      # capacity-constrained cluster can still place every shard. Override via
+      # objectStorageCache.topologySpreadConstraints (e.g. DoNotSchedule to force
+      # each shard onto a distinct node).
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
@@ -85,6 +91,7 @@ spec:
             matchLabels:
               app: {{ include "imageengine.name" . }}
               tier: object-storage
+      {{- end }}
       containers:
         - name: object-storage-cache
           image: "{{ .Values.objectStorageCache.image.repository }}:{{ .Values.images.osc }}"
@@ -129,10 +136,10 @@ spec:
             - name: OSC_EMITTER_RESULT_CHANNEL_KEY
               value: "api-key:$(IE_KUBE_API_KEY_RAW)"
             # Env vars for statistics
-            {{- range $key, $value := .Values.identity }}
-            - name: {{ $key }}
-              value: {{ $value | quote }}
-            {{- end }}
+            {{- include "imageengine.identityEnv" $ | nindent 12 }}
+            {{- include "imageengine.derivedEnv" (dict "name" "OSC_SENTRY_ENV" "value" (include "imageengine.appEnv" $) "env" $.Values.objectStorageCache.env) | nindent 12 }}
+            {{- include "imageengine.derivedEnv" (dict "name" "OSC_EMITTER_SERVER" "value" $.Values.imageengine.emitterServer "env" $.Values.objectStorageCache.env) | nindent 12 }}
+            {{- include "imageengine.derivedEnv" (dict "name" "OSC_FS_STORAGE_PATH" "value" $.Values.objectStorageCache.storagePath "env" $.Values.objectStorageCache.env) | nindent 12 }}
             {{- include "imageengine.otelEnv" (dict "ctx" $ "enableVar" "OSC_OTEL_ENABLED") | nindent 12 }}
             # Env vars below this line are from values.yaml
             {{- range $key, $value := .Values.objectStorageCache.env }}

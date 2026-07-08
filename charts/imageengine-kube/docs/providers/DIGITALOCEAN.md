@@ -83,8 +83,7 @@ processor:
     targetCPUUtilizationPercentage: 80
 
 identity:
-  PROVIDER: digitalocean
-  REGION: nyc3
+  region: nyc3   # provider label follows the top-level `provider: digitalocean`
 ```
 
 ## Next

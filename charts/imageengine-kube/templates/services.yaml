@@ -52,6 +52,33 @@ spec:
     tier: varnish
 
 ---
+# Headless Service governing the Varnish StatefulSet (ADR 0018). clusterIP: None
+# makes DNS return per-pod SRV/A records with stable ordinal names
+# (<release>-varnish-<n>.<release>-varnish-headless), which the edge discovers
+# via _varnish._tcp.<this-name> and shards across. The ClusterIP above is kept
+# only for debug/health — sharded clients must NOT use it (it round-robins).
+# publishNotReadyAddresses: true so a shard resolves during startup, keeping the
+# ring at full size while a pod warms (the edge fails over to a peer meanwhile).
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "imageengine.fullname" . }}-varnish-headless
+  labels:
+    app: {{ include "imageengine.name" . }}
+    tier: varnish
+spec:
+  type: ClusterIP
+  clusterIP: None
+  publishNotReadyAddresses: true
+  ports:
+    - name: varnish
+      port: 8080
+      targetPort: 8080
+  selector:
+    app: {{ include "imageengine.name" . }}
+    tier: varnish
+
+---
 apiVersion: v1
 kind: Service
 metadata:

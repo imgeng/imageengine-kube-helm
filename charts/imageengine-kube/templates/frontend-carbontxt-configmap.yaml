@@ -1,6 +1,7 @@
-# ConfigMap for custom carbon.txt content
-# Only created when GWF verification is enabled
-{{- if .Values.edge.carbontxt.enabled }}
+# ConfigMap for custom carbon.txt content. Only created when GWF verification is
+# enabled AND the customer supplied both a hash and their own content — the edge
+# never serves its embedded ScientiaMobile default for a customer deployment.
+{{- if and .Values.edge.carbontxt.enabled .Values.edge.carbontxt.hash .Values.edge.carbontxt.content }}
 apiVersion: v1
 kind: ConfigMap
 metadata:

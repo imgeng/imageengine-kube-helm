@@ -2,7 +2,7 @@ apiVersion: v2
 name: imageengine-kube
 description: ImageEngine - cloud-native image optimization
 type: application
-version: 1.6.0
+version: 1.7.0
 kubeVersion: ">=1.30.0-0"
 home: https://imageengine.io
 sources:
@@ -26,14 +26,14 @@ annotations:
     url: https://kube.imageengine.io/pubkey.asc
   artifacthub.io/changes: |
     - kind: changed
-      description: "Edge access-log sink is now a single EDGE_ACCESS_LOG_TARGET DSN (ADR 0008): stdout | stderr | none | tcp://host:port?format=ndjson|syslog. Replaces EDGE_LOG_TARGET and the EDGE_SYSLOG_* wiring (both/UDP dropped; otlp reserved)."
-    - kind: changed
-      description: "Edge access-log format now defaults to an ECS-style schema; EDGE_ACCESS_LOG_SCHEMA=ecs|legacy selects it."
-    - kind: removed
-      description: "Retired the bundled rsyslog aggregator Deployment/Service (ADR 0009) — no ImageEngine component needs it by default anymore: the edge (ADR 0008) and the origin fetcher's fetch log both default to structured JSON on stdout. Collect logs with your cluster's own node agent (Fluent Bit, Vector, Grafana Alloy, Datadog, or an OpenTelemetry Collector) instead. If you had enabled StatsD-over-syslog, point *_STATSD_SYSLOG_ADDRESS at your own syslog-speaking receiver."
+      description: "Varnish is now a sharded StatefulSet (ADR 0018): the edge discovers Varnish shards via a headless Service's SRV records and routes every permutation of an image to the same shard using rendezvous (HRW) hashing, so each image is cached on exactly one shard — no cross-replica duplication, ~Nx effective cache and hit ratio. Replaces the single-replica Varnish Deployment; varnish.replicaCount now defaults to 3. Do NOT put varnish.replicaCount behind an HPA (changing it reshards ~1/N of the cache). Requires a sharding-capable edge image."
     - kind: added
-      description: "Origin fetcher's per-fetch structured log gets its own DSN + schema selector (ADR 0009), mirroring the edge: IE_ORIGINFETCHER_FETCH_LOG_TARGET (stdout | stderr | none | tcp://host:port?format=ndjson|syslog; default stdout) and IE_ORIGINFETCHER_FETCH_LOG_SCHEMA (ecs | legacy; default ecs). Replaces the six IE_ORIGINFETCHER_APPLICATION_LOG_* vars."
+      description: "Varnish headless Service (<release>-varnish-headless; clusterIP: None, publishNotReadyAddresses: true) governs the StatefulSet and provides stable per-pod SRV/A records for shard discovery. The edge is wired to it via EDGE_VARNISH_HEADLESS; the plain ClusterIP Service is kept for debug/health only."
     - kind: added
-      description: "Edge gains EDGE_LOGLEVEL for its structured diagnostics, with a runtime GET/POST /api/v1/loglevel on the internal admin listener (EDGE_METRICS_ADDR) — never the customer-facing router."
+      description: "varnish PodDisruptionBudget is enabled by default (maxUnavailable: 1) so shard rolls/drains cycle one shard at a time."
+    - kind: fixed
+      description: "varnish.pdb.minAvailable was silently ignored (the template always keyed on the default maxUnavailable); it now takes precedence when set, matching the OSC PDB."
+    - kind: added
+      description: "Per-component topologySpreadConstraints override (edge/varnish/backend/fetcher/processor/objectStorageCache); previously hardcoded and non-overridable. Set e.g. varnish.topologySpreadConstraints with whenUnsatisfiable: DoNotSchedule to force each cache shard onto a distinct node."
     - kind: changed
-      description: "Backend, origin fetcher, processor, and OSC diagnostics move from plain-text stderr to structured JSON (ADR 0009); the unified default log level changes from WARN to info across all four (OSC_LOGLEVEL explicitly set to info in this chart; the others rely on the new code default)."
+      description: "Consistent values interface for deployment identity: all identity labels now use friendly camelCase keys under `identity:` (environment, region, availabilityZone, deploy, product, hostId, provider, hostname, hostType, hostImage) which the chart maps to the underlying env vars — replacing the raw UPPERCASE env-var pass-through. The deployment environment moved from `imageengine.environment` to `identity.environment` (still the single source of truth for logs/Sentry/OTel). `provider` stays top-level (infra presets + default provider label). BREAKING for anyone who set `identity.*` or `imageengine.environment` — pre-release, no compatibility shim; update your -f overrides."

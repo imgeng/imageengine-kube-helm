@@ -1,19 +1,23 @@
-# ImageEngine Kube Varnish Cache Deployment
-# Varnish HTTP cache: sits between the edge proxy and the backend
-# Deployed separately from edge so cache survives edge updates
-# Traffic flow: edge -> varnish:8080 -> backend
+# ImageEngine Kube Varnish Cache StatefulSet (ADR 0018)
+# Each ordinal (varnish-0, varnish-1, ...) is an independent cache shard. The
+# edge discovers shards via the governing headless Service's SRV records and
+# routes every permutation of an image to the same shard using rendezvous (HRW)
+# hashing, so each image is cached on exactly one shard -- no cross-replica
+# duplication, and losing a shard is a 1/N cache dip (refilled from OSC), not a
+# full miss storm. No PersistentVolume: open-source Varnish cannot reuse its
+# on-disk cache across restart, so stable identity (not storage) is why this is
+# a StatefulSet.
+# Traffic flow: edge -> varnish-<n>:8080 -> backend
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: {{ include "imageengine.fullname" . }}-varnish
 spec:
+  serviceName: {{ include "imageengine.fullname" . }}-varnish-headless
   replicas: {{ .Values.varnish.replicaCount }}
   minReadySeconds: {{ .Values.varnish.minReadySeconds | default 0 }}
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 1
-      maxSurge: 1
+  # Shards have no ordering dependency, so cycle them in parallel.
+  podManagementPolicy: Parallel
   selector:
     matchLabels:
       app: {{ include "imageengine.name" . }}
@@ -43,14 +47,36 @@ spec:
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.varnish.affinity }}
+      {{- if .Values.varnish.affinity }}
       affinity:
-        {{- toYaml . | nindent 8 }}
+        {{- toYaml .Values.varnish.affinity | nindent 8 }}
+      {{- else }}
+      # Default: softly push each shard onto a different node so a single node
+      # loss takes out at most one shard. Soft (preferred) so scheduling never
+      # blocks on small clusters. Override via varnish.affinity.
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app: {{ include "imageengine.name" . }}
+                    tier: varnish
       {{- end }}
       {{- with .Values.varnish.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.varnish.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- else }}
+      # Spread shards across nodes and zones. Soft (ScheduleAnyway) so a
+      # capacity-constrained cluster can still place every shard. Override via
+      # varnish.topologySpreadConstraints (e.g. DoNotSchedule to force each shard
+      # onto a distinct node for node-failure resilience testing).
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
@@ -59,6 +85,14 @@ spec:
             matchLabels:
               app: {{ include "imageengine.name" . }}
               tier: varnish
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: {{ include "imageengine.name" . }}
+              tier: varnish
+      {{- end }}
       containers:
         - name: varnish
           image: "{{ .Values.varnish.image.repository }}:{{ .Values.images.varnish }}"
@@ -85,6 +119,8 @@ spec:
                 command: ["/bin/sh", "-c", "sleep {{ int .Values.varnish.drainSeconds }}"]
           {{- end }}
           ports:
+            # The port NAME ("varnish") is what the headless Service publishes as
+            # an SRV record (_varnish._tcp.<headless>), which the edge queries.
             - containerPort: 8080
               name: varnish
           readinessProbe:
@@ -100,10 +136,8 @@ spec:
               value: "varnish"
             - name: VARNISH_LISTEN_PORT
               value: "8080"
-            {{- range $key, $value := .Values.identity }}
-            - name: {{ $key }}
-              value: {{ $value | quote }}
-            {{- end }}
+            {{- include "imageengine.identityEnv" $ | nindent 12 }}
+            {{- include "imageengine.derivedEnv" (dict "name" "APP_ENV" "value" (include "imageengine.appEnv" $) "env" $.Values.varnish.env) | nindent 12 }}
             {{- range $key, $value := .Values.varnish.env }}
             - name: {{ $key }}
               value: {{ $value | quote }}

@@ -42,7 +42,7 @@ OpenTelemetry tracing env for a component (ADR 0007). Emits nothing when
 otel.enabled is false, so tracing stays fully opt-in. Otherwise sets the
 component's *_OTEL_ENABLED flag, the OTLP endpoint (if configured; leave empty
 to rely on OpenTelemetry-Operator injection), a default
-OTEL_RESOURCE_ATTRIBUTES=deployment.environment=<imageengine.environment>
+OTEL_RESOURCE_ATTRIBUTES=deployment.environment=<identity.environment>
 (unless the caller supplies OTEL_RESOURCE_ATTRIBUTES in otel.env, which then
 wins), and any shared OTEL_* vars.
 Usage: {{ include "imageengine.otelEnv" (dict "ctx" . "enableVar" "EDGE_OTEL_ENABLED") }}
@@ -57,10 +57,9 @@ Usage: {{ include "imageengine.otelEnv" (dict "ctx" . "enableVar" "EDGE_OTEL_ENA
   value: {{ $otel.endpoint | quote }}
 {{- end }}
 {{- /* Tag every span with the deployment environment out of the box, sourced
-       from imageengine.environment. Skipped when the caller already sets
+       from identity.environment. Skipped when the caller already sets
        OTEL_RESOURCE_ATTRIBUTES in otel.env (their value wins, no duplicate). */ -}}
-{{- $ieCfg := .ctx.Values.imageengine | default (dict) -}}
-{{- $env := $ieCfg.environment | default "" -}}
+{{- $env := include "imageengine.appEnv" .ctx -}}
 {{- if and $env (not (hasKey (default (dict) $otel.env) "OTEL_RESOURCE_ATTRIBUTES")) }}
 - name: OTEL_RESOURCE_ATTRIBUTES
   value: {{ printf "deployment.environment=%s" $env | quote }}
@@ -166,33 +165,98 @@ Usage: {{ include "imageengine.serviceAnnotations" . | nindent 4 }}
 {{- end -}}
 
 {{/*
-Get the external DNS provider based on provider or explicit setting.
-Priority: explicit value > provider preset > ""
-Usage: {{ include "imageengine.externalDnsProvider" . }}
+Deployment environment name (identity.environment) — the single source of truth,
+resolved nil-safely at template time. Feeds the ENVIRONMENT label, every
+component's *_SENTRY_ENV / APP_ENV, and the OTel deployment.environment attribute.
+Usage: {{ include "imageengine.appEnv" $ }}
 */}}
-{{- define "imageengine.externalDnsProvider" -}}
-{{- if .Values.externalDns.provider -}}
-{{- .Values.externalDns.provider -}}
-{{- else if and .Values.provider (hasKey .Values.providerPresets .Values.provider) -}}
-{{- $preset := index .Values.providerPresets .Values.provider -}}
-{{- $preset.externalDnsProvider | default "" -}}
-{{- else -}}
-{{- "" -}}
-{{- end -}}
+{{- define "imageengine.appEnv" -}}
+{{- (.Values.identity | default dict).environment | default "" -}}
 {{- end -}}
 
 {{/*
-Get the effective provider name for identity/logging.
-Uses identity.PROVIDER if set, otherwise falls back to provider.
+Effective provider name for the telemetry/logging PROVIDER label.
+Uses identity.provider if set, otherwise the top-level provider.
 Usage: {{ include "imageengine.providerName" . }}
 */}}
 {{- define "imageengine.providerName" -}}
-{{- if .Values.identity.PROVIDER -}}
-{{- .Values.identity.PROVIDER -}}
+{{- $identity := .Values.identity | default dict -}}
+{{- if $identity.provider -}}
+{{- $identity.provider -}}
 {{- else if .Values.provider -}}
 {{- .Values.provider -}}
 {{- else -}}
 unknown
 {{- end -}}
+{{- end -}}
+
+{{/*
+Deployment-identity env, emitted on every component. Users set friendly camelCase
+keys under `identity:` (environment, region, availabilityZone, deploy, product,
+hostId, hostname, hostType, hostImage, provider); this helper maps each to the
+env var the binaries actually read (ENVIRONMENT, REGION, AZ, DEPLOY, PRODUCT,
+HOST_ID, HOSTNAME, HOST_TYPE, HOST_IMAGE) at template time, so the values
+interface stays idiomatic and the env-var names are an implementation detail.
+Empty labels are omitted. PROVIDER always resolves via providerName. ENVIRONMENT
+is the single source of truth (imageengine.appEnv) that also drives *_SENTRY_ENV /
+APP_ENV / OTel. Do NOT reintroduce raw UPPERCASE env-var keys under identity.
+Usage: {{ include "imageengine.identityEnv" $ | nindent 12 }}
+*/}}
+{{- define "imageengine.identityEnv" -}}
+{{- $id := .Values.identity | default dict -}}
+{{- with include "imageengine.appEnv" . }}
+- name: ENVIRONMENT
+  value: {{ . | quote }}
+{{- end }}
+- name: PROVIDER
+  value: {{ include "imageengine.providerName" . | quote }}
+{{- with $id.region }}
+- name: REGION
+  value: {{ . | quote }}
+{{- end }}
+{{- with $id.availabilityZone }}
+- name: AZ
+  value: {{ . | quote }}
+{{- end }}
+{{- with $id.deploy }}
+- name: DEPLOY
+  value: {{ . | quote }}
+{{- end }}
+{{- with $id.product }}
+- name: PRODUCT
+  value: {{ . | quote }}
+{{- end }}
+{{- with $id.hostId }}
+- name: HOST_ID
+  value: {{ . | quote }}
+{{- end }}
+{{- with $id.hostname }}
+- name: HOSTNAME
+  value: {{ . | quote }}
+{{- end }}
+{{- with $id.hostType }}
+- name: HOST_TYPE
+  value: {{ . | quote }}
+{{- end }}
+{{- with $id.hostImage }}
+- name: HOST_IMAGE
+  value: {{ . | quote }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Emit a single env var whose value must track ONE chart-level source of truth
+(identity.environment, imageengine.emitterServer, objectStorageCache.storagePath)
+resolved at template time — the correct replacement for the values.yaml YAML
+anchors that used to freeze these. Skipped when the component's own env map
+already defines the key, so an explicit per-component override still wins with no
+duplicate key.
+Usage: {{ include "imageengine.derivedEnv" (dict "name" "EDGE_EMITTER_SERVER" "value" $.Values.imageengine.emitterServer "env" $.Values.edge.env) | nindent 12 }}
+*/}}
+{{- define "imageengine.derivedEnv" -}}
+{{- if not (hasKey (default (dict) .env) .name) }}
+- name: {{ .name }}
+  value: {{ .value | default "" | quote }}
+{{- end }}
 {{- end -}}
 

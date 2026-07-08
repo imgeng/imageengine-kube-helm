@@ -41,6 +41,10 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.processor.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- else }}
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
@@ -49,6 +53,7 @@ spec:
             matchLabels:
               app: {{ include "imageengine.name" . }}
               tier: processor
+      {{- end }}
       containers:
         - name: processor
           image: "{{ .Values.processor.image.repository }}:{{ .Values.images.processor }}"
@@ -84,10 +89,8 @@ spec:
             - name: IE_PROCESSOR_SENTRY_DSN
               value: {{ .Values.sentry.PROCESSOR_DSN | quote }}
             # Env vars for statistics
-            {{- range $key, $value := .Values.identity }}
-            - name: {{ $key }}
-              value: {{ $value | quote }}
-            {{- end }}
+            {{- include "imageengine.identityEnv" $ | nindent 12 }}
+            {{- include "imageengine.derivedEnv" (dict "name" "IE_PROCESSOR_SENTRY_ENV" "value" (include "imageengine.appEnv" $) "env" $.Values.processor.env) | nindent 12 }}
             {{- include "imageengine.otelEnv" (dict "ctx" $ "enableVar" "IE_PROCESSOR_OTEL_ENABLED") | nindent 12 }}
             # Env vars below this line are from values.yaml
             {{- range $key, $value := .Values.processor.env }}
