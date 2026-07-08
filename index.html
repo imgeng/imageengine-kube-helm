@@ -1,193 +1,441 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>ImageEngine Kube Helm Charts</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" href="https://imageengine.io/favicon.ico">
-  <style>
-    :root {
-      --fg: #1a1a1f;
-      --muted: #6b6b78;
-      --bg: #ffffff;
-      --code-bg: #f4f4f7;
-      --border: #e5e5ec;
-      --accent: #0a66c2;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --fg: #e8e8ee;
-        --muted: #9a9aa6;
-        --bg: #14141a;
-        --code-bg: #1f1f27;
-        --border: #2a2a35;
-        --accent: #6aa9ff;
-      }
-    }
-    * { box-sizing: border-box; }
-    body {
-      font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-      max-width: 760px;
-      margin: 0 auto;
-      padding: 3rem 1.25rem 5rem;
-      color: var(--fg);
-      background: var(--bg);
-    }
-    header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.25rem; }
-    header img { width: 36px; height: 36px; }
-    h1 { margin: 0; font-size: 1.65rem; }
-    .sub { color: var(--muted); margin: 0.25rem 0 2rem; }
-    h2 { margin-top: 2.25rem; font-size: 1.2rem; border-bottom: 1px solid var(--border); padding-bottom: 0.35rem; }
-    h3 { margin-top: 1.5rem; margin-bottom: 0.4rem; font-size: 1.02rem; }
-    code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.92em; }
-    code { background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 4px; }
-    pre {
-      background: var(--code-bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 0.9rem 1rem;
-      overflow-x: auto;
-    }
-    pre code { background: none; padding: 0; }
-    a { color: var(--accent); text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    .fp {
-      font-family: ui-monospace, "SF Mono", Menlo, monospace;
-      background: var(--code-bg);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 0.35rem 0.6rem;
-      display: inline-block;
-      letter-spacing: 0.02em;
-      word-break: break-all;
-    }
-    ul.links { padding-left: 1.2rem; }
-    ul.links li { margin: 0.25rem 0; }
-    .callout {
-      background: var(--code-bg);
-      border: 1px solid var(--border);
-      border-left: 3px solid var(--accent);
-      border-radius: 6px;
-      padding: 0.75rem 1rem;
-      margin: 1.5rem 0;
-      font-size: 0.95em;
-    }
-    footer { margin-top: 3rem; color: var(--muted); font-size: 0.85rem; text-align: center; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ImageEngine Kube — cloud-native image optimization for Kubernetes</title>
+<meta name="description" content="Enterprise-grade, self-hosted image optimization packaged as a signed Helm chart that runs in your own Kubernetes cluster. Install on any major provider in a handful of commands.">
+<link rel="icon" href="assets/ie-mark-v3.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0A0E17; }
+  a { color: #17C4B6; text-decoration: none; }
+  a:hover { color: #4CE0D3; }
+  pre { margin: 0; }
+  [data-tabstrip]::-webkit-scrollbar { display: none; }
+  ::selection { background: #17C4B6; color: #06121B; }
+  .copy-btn:hover { border-color: #17C4B6 !important; color: #17C4B6 !important; }
+  .tab-btn:hover { color: #B7ECE6 !important; }
+  @media (max-width: 900px) {
+    [data-wrap] { padding-left: 28px !important; padding-right: 28px !important; }
+    [data-hero] { grid-template-columns: 1fr !important; gap: 40px !important; }
+    [data-hero] h1 { font-size: 40px !important; }
+    [data-grid3] { grid-template-columns: 1fr 1fr !important; }
+    [data-grid2] { grid-template-columns: 1fr !important; }
+  }
+  @media (max-width: 600px) {
+    [data-wrap] { padding-left: 20px !important; padding-right: 20px !important; }
+    [data-grid3] { grid-template-columns: 1fr !important; }
+    [data-hero] h1 { font-size: 32px !important; }
+    [data-nav] { flex-wrap: wrap !important; gap: 14px !important; }
+    [data-nav-links] { gap: 14px !important; flex-wrap: wrap !important; }
+  }
+</style>
 </head>
 <body>
-  <header>
-    <img src="https://imageengine.io/favicon.ico" alt="">
-    <h1>ImageEngine Helm Charts</h1>
-  </header>
-  <p class="sub">Cloud-native image optimization, packaged for Kubernetes.</p>
 
-  <p>
-    <a href="https://artifacthub.io/packages/helm/imageengine-kube/imageengine-kube">
-      <img src="https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/imageengine-kube" alt="Artifact Hub">
-    </a>
-  </p>
+<div style="background:#0A0E17; color:#E6EDF5; font-family:'IBM Plex Sans',sans-serif; overflow:hidden;">
 
-  <div class="callout">
-    <strong>Active trial or subscription required.</strong> An ImageEngine API key
-    authenticates to the control plane at runtime and pulls container images from
-    <code>docker.scientiamobile.com</code>. Sign up at
-    <a href="https://imageengine.io">imageengine.io</a> to get your key.
+  <!-- nav -->
+  <div style="border-bottom:1px solid #141C2A;">
+    <div data-wrap="" data-nav="" style="max-width:1200px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:20px 48px;">
+      <div style="display:flex; align-items:center; gap:11px;">
+        <span style="width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center;"><img src="assets/ie-mark-v3.svg" alt="ImageEngine" style="width:30px; height:30px; display:block;"></span>
+        <span style="font-weight: 700; font-size: 22px; letter-spacing: -.01em; font-family: 'Space Grotesk', sans-serif;">ImageEngine Kube</span>
+      </div>
+      <div data-nav-links="" style="display:flex; align-items:center; gap:26px; font-size:14px;">
+        <a href="#features" style="color:#9FB0C4;">Features</a>
+        <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/GETTING_STARTED.md" style="color:#9FB0C4;">Docs</a>
+        <a href="https://artifacthub.io/packages/helm/imageengine-kube/imageengine-kube" style="color:#9FB0C4;">ArtifactHub</a>
+        <a href="https://github.com/imgeng/imageengine-kube-helm" style="color:#9FB0C4;">GitHub</a>
+        <a href="https://imageengine.io" style="background:#17C4B6; color:#06121B; padding:9px 16px; border-radius:9px; font-weight:600;">Get API key</a>
+      </div>
+    </div>
   </div>
 
-  <h2>Add the repository</h2>
-<pre><code>helm repo add imageengine https://kube.imageengine.io
-helm repo update
-helm search repo imageengine/imageengine-kube --versions</code></pre>
+  <!-- hero -->
+  <div data-wrap="" data-hero="" style="max-width:1200px; margin:0 auto; display:grid; grid-template-columns:1.02fr 1fr; gap:52px; align-items:center; padding:72px 48px 64px;">
+    <div>
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:#17C4B6; margin-bottom:18px;">Enterprise · self-hosted · imageengine-kube</div>
+      <h1 style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:52px; line-height:1.04; letter-spacing:-.02em; margin:0 0 20px;">Cloud-native image optimization, running in your Kubernetes cluster.</h1>
+      <p style="font-size:18px; line-height:1.6; color:#9FB0C4; margin:0 0 30px; max-width:520px;">Enterprise-grade and self-hosted, packaged as a signed Helm chart that runs on the infrastructure you already own. Install on any major provider in a handful of commands — scale on your own terms, without per-request SaaS pricing.</p>
+      <div style="display:flex; gap:14px; flex-wrap:wrap;">
+        <a href="https://imageengine.io" style="background:#17C4B6; color:#06121B; padding:13px 22px; border-radius:11px; font-weight:600; font-size:15px;">Get your API key →</a>
+        <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/GETTING_STARTED.md" style="border:1px solid #26344A; color:#E6EDF5; padding:13px 22px; border-radius:11px; font-weight:600; font-size:15px;">Read the docs</a>
+      </div>
+      <div style="display:flex; align-items:center; gap:18px; margin-top:30px; font-size:13px; color:#6C7C92;">
+        <span style="display:inline-flex; align-items:center; gap:7px;"><span style="width:7px; height:7px; border-radius:50%; background:#17C4B6;"></span>Signed with GPG &amp; cosign</span>
+        <span style="width:1px; height:14px; background:#26344A;"></span>
+        <span>SBOM + SLSA provenance</span>
+      </div>
+    </div>
 
-  <h2>Create the namespace and required secrets</h2>
-  <p>The chart does <strong>not</strong> create these for you &mdash; both secrets must exist in the install namespace before <code>helm install</code> runs.</p>
-<pre><code>kubectl create namespace imageengine
+    <!-- code panel -->
+    <div style="border:1px solid #1E2A3A; border-radius:14px; background:#0D1420; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,.35);">
+      <div style="display:flex; align-items:center; gap:8px; padding:12px 16px; border-bottom:1px solid #1E2A3A; background:#0B111C;">
+        <span style="width:11px; height:11px; border-radius:50%; background:#FF5F57;"></span>
+        <span style="width:11px; height:11px; border-radius:50%; background:#FEBC2E;"></span>
+        <span style="width:11px; height:11px; border-radius:50%; background:#28C840;"></span>
+        <span style="margin-left:8px; color:#6C7C92; font-family:'IBM Plex Mono',monospace; font-size:12.5px;">install&nbsp;·&nbsp;imageengine-kube</span>
+      </div>
+      <div style="padding:16px; display:flex; flex-direction:column; gap:13px;">
+
+        <div style="border:1px solid #1E2A3A; border-radius:10px; background:#080D16; overflow:hidden;">
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:9px 12px; border-bottom:1px solid #16202F;">
+            <span style="color:#6C7C92; font-weight:600; font-size:11px; letter-spacing:.08em; text-transform:uppercase;">1 · Namespace &amp; secrets</span>
+            <button id="copy-ns" class="copy-btn" style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border:1px solid #26344A; border-radius:7px; background:#0E1726; color:#9FB0C4; font-family:'IBM Plex Sans',sans-serif; font-weight:600; font-size:11px; cursor:pointer;"><span class="copy-label">Copy</span></button>
+          </div>
+          <pre style="padding:14px; overflow:auto; color:#C7D3E3; font-family:'IBM Plex Mono',monospace; font-size:12.5px; line-height:1.65;">kubectl create namespace imageengine
 
 kubectl create secret generic ie-kube-api-key -n imageengine \
-  --from-literal=KEY=&lt;your-api-key&gt;
+  --from-literal=KEY=<span style="color:#7CA9E8;">&lt;your-api-key&gt;</span>
 
 kubectl create secret docker-registry ie-kube-image-pull -n imageengine \
   --docker-server=https://docker.scientiamobile.com/v2/ \
-  --docker-username=&lt;your-email&gt; \
-  --docker-password=&lt;your-api-key&gt; \
-  --docker-email=&lt;your-email&gt;</code></pre>
-  <p>The Docker password is the same value as the API key.</p>
+  --docker-username=<span style="color:#7CA9E8;">&lt;your-email&gt;</span> \
+  --docker-password=<span style="color:#7CA9E8;">&lt;your-api-key&gt;</span> \
+  --docker-email=<span style="color:#7CA9E8;">&lt;your-email&gt;</span></pre>
+        </div>
 
-  <h2>Write a minimal values file</h2>
-  <p>Create <code>imageengine-values.yaml</code>. The only required setting is <code>provider:</code> &mdash; pick the one that matches your cluster (<code>aws</code>, <code>azure</code>, <code>digitalocean</code>, <code>gke</code>, <code>linode</code>, or <code>custom</code>):</p>
-<pre><code>provider: aws
+        <div style="border:1px solid #1E2A3A; border-radius:10px; background:#080D16; overflow:hidden;">
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:9px 12px; border-bottom:1px solid #16202F;">
+            <span style="color:#6C7C92; font-weight:600; font-size:11px; letter-spacing:.08em; text-transform:uppercase;">2 · Add the Helm repo</span>
+            <button id="copy-repo" class="copy-btn" style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border:1px solid #26344A; border-radius:7px; background:#0E1726; color:#9FB0C4; font-family:'IBM Plex Sans',sans-serif; font-weight:600; font-size:11px; cursor:pointer;"><span class="copy-label">Copy</span></button>
+          </div>
+          <pre style="padding:14px; overflow:auto; color:#C7D3E3; font-family:'IBM Plex Mono',monospace; font-size:12.5px; line-height:1.65;">helm repo add imageengine https://kube.imageengine.io
+helm repo update</pre>
+        </div>
 
-ingress:
-  enabled: true
-  hosts:
-    - images.example.com</code></pre>
-  <p>Every other setting has a sensible default. See the <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/CUSTOMIZATIONS.md">customizations guide</a> when you are ready to tune further.</p>
+        <div style="border:1px solid #234642; border-radius:10px; background:#081512; overflow:hidden;">
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:9px 12px; border-bottom:1px solid #16302C;">
+            <span style="color:#5FBFB4; font-weight:600; font-size:11px; letter-spacing:.08em; text-transform:uppercase;">3 · Install</span>
+            <button id="copy-install" class="copy-btn" style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border:1px solid #2A5751; border-radius:7px; background:#0C201C; color:#5FBFB4; font-family:'IBM Plex Sans',sans-serif; font-weight:600; font-size:11px; cursor:pointer;"><span class="copy-label">Copy</span></button>
+          </div>
+          <div data-tabstrip="" id="provider-tabs" style="display:flex; gap:2px; padding:0 6px; border-bottom:1px solid #16302C; overflow-x:auto; overflow-y:hidden; scrollbar-width:none;">
+            <button class="tab-btn" data-id="aws" style="padding:9px 12px; font-family:'IBM Plex Sans',sans-serif; font-size:12.5px; cursor:pointer; white-space:nowrap; background:transparent; border:none; border-bottom:2px solid #17C4B6; margin-bottom:-1px; transition:color .15s ease, border-color .15s ease; color:#17C4B6; font-weight:600;">AWS</button>
+            <button class="tab-btn" data-id="azure" style="padding:9px 12px; font-family:'IBM Plex Sans',sans-serif; font-size:12.5px; cursor:pointer; white-space:nowrap; background:transparent; border:none; border-bottom:2px solid transparent; margin-bottom:-1px; transition:color .15s ease, border-color .15s ease; color:#6C7C92; font-weight:500;">Azure</button>
+            <button class="tab-btn" data-id="digitalocean" style="padding:9px 12px; font-family:'IBM Plex Sans',sans-serif; font-size:12.5px; cursor:pointer; white-space:nowrap; background:transparent; border:none; border-bottom:2px solid transparent; margin-bottom:-1px; transition:color .15s ease, border-color .15s ease; color:#6C7C92; font-weight:500;">DigitalOcean</button>
+            <button class="tab-btn" data-id="gke" style="padding:9px 12px; font-family:'IBM Plex Sans',sans-serif; font-size:12.5px; cursor:pointer; white-space:nowrap; background:transparent; border:none; border-bottom:2px solid transparent; margin-bottom:-1px; transition:color .15s ease, border-color .15s ease; color:#6C7C92; font-weight:500;">Google</button>
+            <button class="tab-btn" data-id="linode" style="padding:9px 12px; font-family:'IBM Plex Sans',sans-serif; font-size:12.5px; cursor:pointer; white-space:nowrap; background:transparent; border:none; border-bottom:2px solid transparent; margin-bottom:-1px; transition:color .15s ease, border-color .15s ease; color:#6C7C92; font-weight:500;">Linode</button>
+            <button class="tab-btn" data-id="custom" style="padding:9px 12px; font-family:'IBM Plex Sans',sans-serif; font-size:12.5px; cursor:pointer; white-space:nowrap; background:transparent; border:none; border-bottom:2px solid transparent; margin-bottom:-1px; transition:color .15s ease, border-color .15s ease; color:#6C7C92; font-weight:500;">Custom</button>
+          </div>
+          <pre style="padding:14px; overflow:auto; color:#C7D3E3; font-family:'IBM Plex Mono',monospace; font-size:12.5px; line-height:1.65;">helm install imageengine-kube imageengine/imageengine-kube \
+  -n imageengine --set provider=<span id="install-provider" style="color:#17C4B6; font-weight:600;">aws</span></pre>
+        </div>
 
-  <h2>Install</h2>
-<pre><code>helm install imageengine-kube imageengine/imageengine-kube \
-  --namespace imageengine \
-  -f imageengine-values.yaml</code></pre>
+        <div style="display:flex; gap:11px; align-items:flex-start; padding:12px 14px; border:1px solid #1E2A3A; border-radius:10px; background:#0B1420;">
+          <span style="flex:none; width:7px; height:7px; border-radius:50%; background:#17C4B6; margin-top:6px;"></span>
+          <span id="provider-note" style="color:#9FB0C4; font-size:12.5px; line-height:1.55;">EKS provisions an AWS Network Load Balancer for the edge service — make sure the AWS Load Balancer Controller is installed in your cluster.</span>
+        </div>
+      </div>
+    </div>
+  </div>
 
-  <h2>Verify</h2>
-  <p>Pods should settle into <code>Running</code> within a minute or two. The edge LoadBalancer gets an external address from your cloud provider:</p>
-<pre><code>kubectl get pods -n imageengine
-kubectl get svc -n imageengine -l 'app=imageengine-kube,tier=edge'</code></pre>
-  <p>For a full end-to-end smoke test with <code>curl</code>, see the
-    <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/GETTING_STARTED.md">Getting started</a>
-    guide.</p>
+  <!-- features -->
+  <div id="features" style="background:#070B12; border-top:1px solid #141C2A; border-bottom:1px solid #141C2A;">
+    <div data-wrap="" style="max-width:1200px; margin:0 auto; padding:72px 48px;">
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:#17C4B6; margin-bottom:14px;">Built for the enterprise</div>
+      <h2 style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:38px; line-height:1.08; letter-spacing:-.02em; margin:0 0 12px; max-width:640px;">Enterprise-grade from the first install.</h2>
+      <p style="font-size:17px; line-height:1.6; color:#9FB0C4; margin:0 0 44px; max-width:600px;">Everything a large team needs to run image optimization in-house: a supply chain you can verify, a footprint that scales with your traffic, and telemetry that plugs straight into your existing stack — all under your own cost controls.</p>
 
-  <h2>Verify signatures</h2>
+      <div data-grid3="" style="display:grid; grid-template-columns:repeat(3,1fr); gap:20px;">
 
-  <h3>Chart</h3>
-  <p>Charts published from version <code>0.8.5</code> onward are signed with GPG.</p>
-<pre><code>curl -fsSL https://kube.imageengine.io/pubkey.asc \
+        <!-- security -->
+        <div style="border:1px solid #1A2432; border-radius:16px; background:#0C121C; padding:28px; display:flex; flex-direction:column;">
+          <span style="width:44px; height:44px; border-radius:11px; background:#0E1F1D; border:1px solid #1E3A38; display:inline-flex; align-items:center; justify-content:center; margin-bottom:20px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#17C4B6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"></path><path d="M9 12l2 2 4-4"></path></svg>
+          </span>
+          <h3 style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:20px; margin:0 0 8px;">Verifiable supply chain</h3>
+          <p style="color:#8A98AD; font-size:14px; line-height:1.6; margin:0 0 20px;">Every artifact the chart ships is signed and auditable before it ever runs.</p>
+          <div style="display:flex; flex-direction:column; gap:11px; margin-top:auto;">
+            <div style="display:flex; gap:10px; align-items:flex-start;"><span style="flex:none; color:#17C4B6; font-size:13px; margin-top:1px;">✓</span><span style="color:#C7D3E3; font-size:13.5px; line-height:1.5;"><strong style="color:#E6EDF5; font-weight:600;">GPG-signed charts</strong> from v0.8.5 onward</span></div>
+            <div style="display:flex; gap:10px; align-items:flex-start;"><span style="flex:none; color:#17C4B6; font-size:13px; margin-top:1px;">✓</span><span style="color:#C7D3E3; font-size:13.5px; line-height:1.5;"><strong style="color:#E6EDF5; font-weight:600;">cosign-signed images</strong> for every container</span></div>
+            <div style="display:flex; gap:10px; align-items:flex-start;"><span style="flex:none; color:#17C4B6; font-size:13px; margin-top:1px;">✓</span><span style="color:#C7D3E3; font-size:13.5px; line-height:1.5;"><strong style="color:#E6EDF5; font-weight:600;">SBOM + SLSA provenance</strong> shipped alongside</span></div>
+            <div style="display:flex; gap:10px; align-items:flex-start;"><span style="flex:none; color:#17C4B6; font-size:13px; margin-top:1px;">✓</span><span style="color:#C7D3E3; font-size:13.5px; line-height:1.5;">Optional <strong style="color:#E6EDF5; font-weight:600;">Kyverno / sigstore</strong> admission enforcement</span></div>
+            <div style="display:flex; gap:10px; align-items:flex-start;"><span style="flex:none; color:#17C4B6; font-size:13px; margin-top:1px;">✓</span><span style="color:#C7D3E3; font-size:13.5px; line-height:1.5;"><strong style="color:#E6EDF5; font-weight:600;">Zero critical vulnerabilities</strong> — every image scanned before release</span></div>
+          </div>
+        </div>
+
+        <!-- scalability -->
+        <div style="border:1px solid #1A2432; border-radius:16px; background:#0C121C; padding:28px; display:flex; flex-direction:column;">
+          <span style="width:44px; height:44px; border-radius:11px; background:#0E1F1D; border:1px solid #1E3A38; display:inline-flex; align-items:center; justify-content:center; margin-bottom:20px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#17C4B6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4-8 4-8-4 8-4z"></path><path d="M4 12l8 4 8-4"></path><path d="M4 17l8 4 8-4"></path></svg>
+          </span>
+          <h3 style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:20px; margin:0 0 8px;">Built to scale</h3>
+          <p style="color:#8A98AD; font-size:14px; line-height:1.6; margin:0 0 20px;">From a small PoC cluster to a sharded, 3-tier caching layer — the footprint follows your traffic.</p>
+          <div style="display:flex; flex-direction:column; gap:11px; margin-top:auto;">
+            <div style="display:flex; gap:10px; align-items:flex-start;"><span style="flex:none; color:#17C4B6; font-size:13px; margin-top:1px;">✓</span><span style="color:#C7D3E3; font-size:13.5px; line-height:1.5;"><strong style="color:#E6EDF5; font-weight:600;">Horizontal autoscaling</strong> out of the box</span></div>
+            <div style="display:flex; gap:10px; align-items:flex-start;"><span style="flex:none; color:#17C4B6; font-size:13px; margin-top:1px;">✓</span><span style="color:#C7D3E3; font-size:13.5px; line-height:1.5;"><strong style="color:#E6EDF5; font-weight:600;">Sharded cache layers</strong> for high hit rates</span></div>
+            <div style="display:flex; gap:10px; align-items:flex-start;"><span style="flex:none; color:#17C4B6; font-size:13px; margin-top:1px;">✓</span><span style="color:#C7D3E3; font-size:13.5px; line-height:1.5;">Runs comfortably on <strong style="color:#E6EDF5; font-weight:600;">small pods</strong></span></div>
+            <div style="display:flex; gap:10px; align-items:flex-start;"><span style="flex:none; color:#17C4B6; font-size:13px; margin-top:1px;">✓</span><span style="color:#C7D3E3; font-size:13.5px; line-height:1.5;">Tunable <strong style="color:#E6EDF5; font-weight:600;">replicas &amp; cache</strong> sizing</span></div>
+          </div>
+        </div>
+
+        <!-- observability -->
+        <div style="border:1px solid #1A2432; border-radius:16px; background:#0C121C; padding:28px; display:flex; flex-direction:column;">
+          <span style="width:44px; height:44px; border-radius:11px; background:#0E1F1D; border:1px solid #1E3A38; display:inline-flex; align-items:center; justify-content:center; margin-bottom:20px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#17C4B6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2 6 4-14 2 8 2-3h4"></path></svg>
+          </span>
+          <h3 style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:20px; margin:0 0 8px;">Observable by default</h3>
+          <p style="color:#8A98AD; font-size:14px; line-height:1.6; margin:0 0 20px;">See exactly what the edge is doing — telemetry that drops straight into your stack.</p>
+          <div style="display:flex; flex-direction:column; gap:11px; margin-top:auto;">
+            <div style="display:flex; gap:10px; align-items:flex-start;"><span style="flex:none; color:#17C4B6; font-size:13px; margin-top:1px;">✓</span><span style="color:#C7D3E3; font-size:13.5px; line-height:1.5;"><strong style="color:#E6EDF5; font-weight:600;">Prometheus metrics</strong> from every pod</span></div>
+            <div style="display:flex; gap:10px; align-items:flex-start;"><span style="flex:none; color:#17C4B6; font-size:13px; margin-top:1px;">✓</span><span style="color:#C7D3E3; font-size:13.5px; line-height:1.5;"><strong style="color:#E6EDF5; font-weight:600;">OpenTelemetry traces</strong> end to end</span></div>
+            <div style="display:flex; gap:10px; align-items:flex-start;"><span style="flex:none; color:#17C4B6; font-size:13px; margin-top:1px;">✓</span><span style="color:#C7D3E3; font-size:13.5px; line-height:1.5;"><strong style="color:#E6EDF5; font-weight:600;">Sentry error reporting</strong> built in</span></div>
+            <div style="display:flex; gap:10px; align-items:flex-start;"><span style="flex:none; color:#17C4B6; font-size:13px; margin-top:1px;">✓</span><span style="color:#C7D3E3; font-size:13.5px; line-height:1.5;"><strong style="color:#E6EDF5; font-weight:600;">ECS structured logs</strong> in JSON</span></div>
+          </div>
+        </div>
+
+      </div>
+
+      <div style="margin-top:20px; padding-top:44px; border-top:1px solid #141C2A;">
+        <h3 style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:24px; letter-spacing:-.01em; margin:0 0 8px;">Optimization, built in.</h3>
+        <p style="font-size:15px; line-height:1.6; color:#9FB0C4; margin:0 0 28px; max-width:600px;">The full ImageEngine optimization pipeline ships inside the chart — no separate service to wire up.</p>
+        <div data-grid3="" style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px;">
+
+          <div style="border:1px solid #1A2432; border-radius:13px; background:#0C121C; padding:22px;">
+            <div style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:16px; margin-bottom:7px;">Instant global cache purging</div>
+            <div style="color:#8A98AD; font-size:13.5px; line-height:1.55;">Flush optimized assets everywhere the moment your source changes.</div>
+          </div>
+
+          <div style="border:1px solid #1A2432; border-radius:13px; background:#0C121C; padding:22px;">
+            <div style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:16px; margin-bottom:7px;">Rules engine</div>
+            <div style="color:#8A98AD; font-size:13.5px; line-height:1.55;">Codify optimization tweaks once and apply them across your whole library.</div>
+          </div>
+
+          <div style="border:1px solid #1A2432; border-radius:13px; background:#0C121C; padding:22px;">
+            <div style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:16px; margin-bottom:7px;">ImageEngine Directives</div>
+            <div style="color:#8A98AD; font-size:13.5px; line-height:1.55;">Resize, crop and tune straight from the URL — <span style="font-family:'IBM Plex Mono',monospace; color:#17C4B6;">?imgeng=/w_1200/h_600</span>.</div>
+          </div>
+
+          <div style="border:1px solid #1A2432; border-radius:13px; background:#0C121C; padding:22px;">
+            <div style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:16px; margin-bottom:7px;">Modern formats, automatically</div>
+            <div style="color:#8A98AD; font-size:13.5px; line-height:1.55;">AVIF, HEIF and WebP served to every device that supports them.</div>
+          </div>
+
+          <div style="border:1px solid #1A2432; border-radius:13px; background:#0C121C; padding:22px;">
+            <div style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:16px; margin-bottom:7px;">Client hints</div>
+            <div style="color:#8A98AD; font-size:13.5px; line-height:1.55;">Perfect sizing from the browser's own viewport and DPR signals.</div>
+          </div>
+
+          <div style="border:1px solid #1A2432; border-radius:13px; background:#0C121C; padding:22px;">
+            <div style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:16px; margin-bottom:7px;">Works with every major CDN</div>
+            <div style="color:#8A98AD; font-size:13.5px; line-height:1.55;">Drop it in front of CloudFront, Fastly, Akamai and the rest.</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+  <div data-wrap="" style="max-width:1200px; margin:0 auto; padding:64px 48px;">
+    <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:#6C7C92; margin-bottom:20px;">Before you install</div>
+    <div data-grid3="" style="display:grid; grid-template-columns:repeat(3,1fr); gap:20px;">
+      <div style="border:1px solid #1A2432; border-radius:14px; background:#0D1420; padding:24px;">
+        <div style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:17px; margin-bottom:9px;">Active trial or subscription</div>
+        <div style="color:#8A98AD; font-size:14px; line-height:1.6;">Your ImageEngine API key authenticates to the control plane and pulls images from <span style="font-family:'IBM Plex Mono',monospace; color:#9FB0C4;">docker.scientiamobile.com</span>.</div>
+      </div>
+      <div style="border:1px solid #1A2432; border-radius:14px; background:#0D1420; padding:24px;">
+        <div style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:17px; margin-bottom:9px;">Two Kubernetes secrets</div>
+        <div style="color:#8A98AD; font-size:14px; line-height:1.6;">The chart won't create them for you — an API-key secret and a docker-registry pull secret, both in the install namespace.</div>
+      </div>
+      <div style="border:1px solid #1A2432; border-radius:14px; background:#0D1420; padding:24px;">
+        <div style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:17px; margin-bottom:9px;">Helm 3 + a supported cluster</div>
+        <div style="color:#8A98AD; font-size:14px; line-height:1.6;">AWS EKS, Azure AKS, DigitalOcean, GKE, Akamai Linode, or any conformant self-managed Kubernetes.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- verify signatures -->
+  <div style="background:#070B12; border-top:1px solid #141C2A;">
+    <div data-wrap="" style="max-width:1200px; margin:0 auto; padding:72px 48px;">
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:#17C4B6; margin-bottom:14px;">Verify signatures</div>
+      <h2 style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:38px; line-height:1.08; letter-spacing:-.02em; margin:0 0 12px; max-width:640px;">Trust, but verify.</h2>
+      <p style="font-size:17px; line-height:1.6; color:#9FB0C4; margin:0 0 44px; max-width:600px;">Every chart and every container image is cryptographically signed. Check them yourself, against our published keys, before anything runs in your cluster.</p>
+
+      <div data-grid2="" style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+
+        <!-- chart / GPG -->
+        <div style="border:1px solid #1E2A3A; border-radius:12px; background:#080D16; overflow:hidden; display:flex; flex-direction:column;">
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:9px 12px; border-bottom:1px solid #16202F;">
+            <span style="color:#6C7C92; font-weight:600; font-size:11px; letter-spacing:.08em; text-transform:uppercase;">Chart · GPG</span>
+            <button id="copy-gpg" class="copy-btn" style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border:1px solid #26344A; border-radius:7px; background:#0E1726; color:#9FB0C4; font-family:'IBM Plex Sans',sans-serif; font-weight:600; font-size:11px; cursor:pointer;"><span class="copy-label">Copy</span></button>
+          </div>
+          <pre style="padding:14px; overflow:auto; color:#C7D3E3; font-family:'IBM Plex Mono',monospace; font-size:12.5px; line-height:1.65;">curl -fsSL https://kube.imageengine.io/pubkey.asc \
   | gpg --dearmor &gt; ~/.gnupg/imageengine-kube.kbx
 
-helm install my-imageengine imageengine/imageengine-kube \
-  --verify --keyring ~/.gnupg/imageengine-kube.kbx</code></pre>
-  <p>Signing key fingerprint:</p>
-  <p><span class="fp">C3A5 5111 ED91 FEDE 4A82&nbsp; A4B4 4632 6606 0957 C4B3</span></p>
+helm install imageengine-kube imageengine/imageengine-kube \
+  --verify --keyring ~/.gnupg/imageengine-kube.kbx</pre>
+          <div style="margin-top:auto; padding:12px 14px; border-top:1px solid #16202F;">
+            <div style="color:#6C7C92; font-weight:600; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; margin-bottom:6px;">Key fingerprint</div>
+            <div style="font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:#C7D3E3; letter-spacing:.02em; word-break:break-all;">C3A5 5111 ED91 FEDE 4A82&nbsp; A4B4 4632 6606 0957 C4B3</div>
+            <div style="color:#8A98AD; font-size:12.5px; line-height:1.55; margin-top:10px;">Charts published from <span style="font-family:'IBM Plex Mono',monospace; color:#9FB0C4;">v0.8.5</span> onward are signed.</div>
+          </div>
+        </div>
 
-  <h3>Container images</h3>
-  <p>Every image the chart deploys is signed with <a href="https://github.com/sigstore/cosign">cosign</a> and ships an SBOM and SLSA build provenance. Verify any image against our published key (separate from the GPG chart key above):</p>
-<pre><code>curl -fsSLO https://kube.imageengine.io/cosign.pub
+        <!-- container images / cosign -->
+        <div style="border:1px solid #1E2A3A; border-radius:12px; background:#080D16; overflow:hidden; display:flex; flex-direction:column;">
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:9px 12px; border-bottom:1px solid #16202F;">
+            <span style="color:#6C7C92; font-weight:600; font-size:11px; letter-spacing:.08em; text-transform:uppercase;">Container images · cosign</span>
+            <button id="copy-cosign" class="copy-btn" style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border:1px solid #26344A; border-radius:7px; background:#0E1726; color:#9FB0C4; font-family:'IBM Plex Sans',sans-serif; font-weight:600; font-size:11px; cursor:pointer;"><span class="copy-label">Copy</span></button>
+          </div>
+          <pre style="padding:14px; overflow:auto; color:#C7D3E3; font-family:'IBM Plex Mono',monospace; font-size:12.5px; line-height:1.65;">curl -fsSLO https://kube.imageengine.io/cosign.pub
 
 cosign verify --key cosign.pub \
-  docker.scientiamobile.com/iekube/imageengine-backend.server:&lt;tag&gt;</code></pre>
-  <p>See the <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/SECURITY.md">security guide</a> for verifying every image, reading the SBOM and provenance, and optional in-cluster signature enforcement (Kyverno / sigstore policy-controller).</p>
+  docker.scientiamobile.com/iekube/imageengine-backend.server:<span style="color:#7CA9E8;">&lt;tag&gt;</span></pre>
+          <div style="margin-top:auto; padding:12px 14px; border-top:1px solid #16202F;">
+            <div style="color:#8A98AD; font-size:12.5px; line-height:1.55;">Every image ships an <strong style="color:#C7D3E3; font-weight:600;">SBOM</strong> and <strong style="color:#C7D3E3; font-weight:600;">SLSA build provenance</strong> alongside its signature.</div>
+          </div>
+        </div>
 
-  <h2>Documentation</h2>
-  <p>Full chart documentation lives alongside the source on GitHub:</p>
-  <ul class="links">
-    <li><a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/README.md">Chart README</a> &mdash; quick start, signature verification, provider presets</li>
-    <li><a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/GETTING_STARTED.md">Getting started</a> &mdash; full first-deployment walkthrough</li>
-    <li><a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/REQUIREMENTS.md">Requirements</a> &mdash; Kubernetes version, storage, network, compute</li>
-    <li><a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/SIZING.md">Sizing</a> &mdash; recommended footprints by traffic level</li>
-    <li><a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/CUSTOMIZATIONS.md">Customizations</a> &mdash; replicas, autoscaling, ingress, TLS, OSC, Varnish tuning</li>
-    <li><a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/TROUBLESHOOTING.md">Troubleshooting</a> &mdash; common issues and fixes</li>
-    <li><a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/SECURITY.md">Security</a> &mdash; image signatures, SBOM, provenance, and admission enforcement</li>
-    <li>Provider guides:
-      <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/providers/AWS.md">AWS</a>,
-      <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/providers/AZURE.md">Azure</a>,
-      <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/providers/DIGITALOCEAN.md">DigitalOcean</a>,
-      <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/providers/GKE.md">GKE</a>,
-      <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/providers/LINODE.md">Linode</a>,
-      <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/providers/CUSTOM.md">self-managed / bare metal</a></li>
-  </ul>
+      </div>
+      <p style="color:#8A98AD; font-size:13.5px; line-height:1.6; margin:20px 0 0;">Verifying every image, reading the SBOM and provenance, and optional in-cluster admission enforcement (Kyverno / sigstore policy-controller) are covered in the <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/SECURITY.md">security guide</a>.</p>
+    </div>
+  </div>
 
-  <h2>Resources</h2>
-  <ul class="links">
-    <li><a href="https://imageengine.io">imageengine.io</a> &mdash; product home</li>
-    <li><a href="https://github.com/imgeng/imageengine-kube-helm">Chart source on GitHub</a> &mdash; issues and pull requests welcome</li>
-    <li><a href="https://artifacthub.io/packages/search?repo=imageengine-kube">ArtifactHub listing</a></li>
-    <li><a href="./index.yaml">index.yaml</a> &mdash; Helm repository manifest</li>
-    <li><a href="./pubkey.asc">pubkey.asc</a> &mdash; GPG public key for chart signatures (ASCII-armored)</li>
-    <li><a href="./cosign.pub">cosign.pub</a> &mdash; cosign public key for container image signatures</li>
-  </ul>
+  <!-- docs -->
+  <div style="padding:72px 0; background:#070B12; border-top:1px solid #141C2A;">
+    <div data-wrap="" style="max-width:1200px; margin:0 auto; padding:0 48px;">
+      <h2 style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:28px; letter-spacing:-.01em; margin:0 0 6px;">Documentation &amp; resources</h2>
+      <p style="color:#8A98AD; font-size:15px; margin:0 0 28px;">Everything lives alongside the source on GitHub.</p>
+      <div data-grid3="" style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px;">
+        <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/GETTING_STARTED.md" style="border:1px solid #1A2432; border-radius:13px; background:#0C121C; padding:22px; display:block;"><div style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:16px; color:#E6EDF5; margin-bottom:6px;">Getting started →</div><div style="color:#8A98AD; font-size:13.5px; line-height:1.55;">The full first-deployment walkthrough, start to finish.</div></a>
+        <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/CUSTOMIZATIONS.md" style="border:1px solid #1A2432; border-radius:13px; background:#0C121C; padding:22px; display:block;"><div style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:16px; color:#E6EDF5; margin-bottom:6px;">Customizations →</div><div style="color:#8A98AD; font-size:13.5px; line-height:1.55;">Replicas, autoscaling, ingress, TLS, OSC and Varnish tuning.</div></a>
+        <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/REQUIREMENTS.md" style="border:1px solid #1A2432; border-radius:13px; background:#0C121C; padding:22px; display:block;"><div style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:16px; color:#E6EDF5; margin-bottom:6px;">Requirements &amp; sizing →</div><div style="color:#8A98AD; font-size:13.5px; line-height:1.55;">Kubernetes version, storage, network and recommended footprints.</div></a>
+        <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/SECURITY.md" style="border:1px solid #1A2432; border-radius:13px; background:#0C121C; padding:22px; display:block;"><div style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:16px; color:#E6EDF5; margin-bottom:6px;">Security →</div><div style="color:#8A98AD; font-size:13.5px; line-height:1.55;">Image signatures, SBOM, provenance and in-cluster enforcement.</div></a>
+        <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/TROUBLESHOOTING.md" style="border:1px solid #1A2432; border-radius:13px; background:#0C121C; padding:22px; display:block;"><div style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:16px; color:#E6EDF5; margin-bottom:6px;">Troubleshooting →</div><div style="color:#8A98AD; font-size:13.5px; line-height:1.55;">Common issues and how to get pods back to Running.</div></a>
+        <a href="https://github.com/imgeng/imageengine-kube-helm/tree/main/charts/imageengine-kube/docs/providers" style="border:1px solid #1A2432; border-radius:13px; background:#0C121C; padding:22px; display:block;"><div style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:16px; color:#E6EDF5; margin-bottom:6px;">Provider guides →</div><div style="color:#8A98AD; font-size:13.5px; line-height:1.55;">AWS, Azure, DigitalOcean, GKE, Linode and self-managed presets.</div></a>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:20px;">
+        <a href="https://artifacthub.io/packages/helm/imageengine-kube/imageengine-kube" style="font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:#9FB0C4; border:1px solid #1E2A3A; padding:7px 13px; border-radius:999px;">ArtifactHub listing</a>
+        <a href="https://kube.imageengine.io/index.yaml" style="font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:#9FB0C4; border:1px solid #1E2A3A; padding:7px 13px; border-radius:999px;">index.yaml</a>
+        <a href="https://kube.imageengine.io/pubkey.asc" style="font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:#9FB0C4; border:1px solid #1E2A3A; padding:7px 13px; border-radius:999px;">pubkey.asc (GPG)</a>
+        <a href="https://kube.imageengine.io/cosign.pub" style="font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:#9FB0C4; border:1px solid #1E2A3A; padding:7px 13px; border-radius:999px;">cosign.pub</a>
+        <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/README.md" style="font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:#9FB0C4; border:1px solid #1E2A3A; padding:7px 13px; border-radius:999px;">Chart README</a>
+      </div>
+    </div>
+  </div>
 
-  <footer>
-    Maintained by <a href="https://www.scientiamobile.com">ScientiaMobile</a>.
-  </footer>
+  <!-- footer -->
+  <div style="border-top:1px solid #141C2A;">
+    <div data-wrap="" data-nav="" style="max-width:1200px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:26px 48px; font-size:13px; color:#6C7C92;">
+      <span>Maintained by <a href="https://www.scientiamobile.com" style="color:#9FB0C4;">ScientiaMobile</a></span>
+      <span style="font-family:'IBM Plex Mono',monospace;">kube.imageengine.io</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  var providers = {
+    aws:          'EKS provisions an AWS Network Load Balancer for the edge service — make sure the AWS Load Balancer Controller is installed in your cluster.',
+    azure:        'AKS creates a Standard Azure Load Balancer. Add service annotations if you need an internal-only LB.',
+    digitalocean: 'DOKS attaches a DigitalOcean Load Balancer to the edge service. Reuse an existing LB with the do-loadbalancer-id annotation.',
+    gke:          'GKE exposes the edge via an external TCP Load Balancer. Use a VPC-native cluster for container-native (NEG) load balancing.',
+    linode:       'LKE provisions a Linode NodeBalancer. Control region and protocol with the linode-loadbalancer service annotations.',
+    custom:       'Self-managed / bare-metal clusters have no cloud LB — front the edge service with MetalLB, or set it to NodePort and route traffic yourself.'
+  };
+
+  var current = 'aws';
+  var tabStrip = document.getElementById('provider-tabs');
+  var tabs = tabStrip.querySelectorAll('.tab-btn');
+  var installProvider = document.getElementById('install-provider');
+  var note = document.getElementById('provider-note');
+
+  function setActive(id) {
+    if (!providers.hasOwnProperty(id)) { return; }
+    current = id;
+    for (var i = 0; i < tabs.length; i++) {
+      var active = tabs[i].getAttribute('data-id') === id;
+      tabs[i].style.color = active ? '#17C4B6' : '#6C7C92';
+      tabs[i].style.borderBottomColor = active ? '#17C4B6' : 'transparent';
+      tabs[i].style.fontWeight = active ? '600' : '500';
+    }
+    installProvider.textContent = id;
+    note.textContent = providers[id];
+  }
+
+  for (var i = 0; i < tabs.length; i++) {
+    (function (btn) {
+      btn.addEventListener('click', function () { setActive(btn.getAttribute('data-id')); });
+    })(tabs[i]);
+  }
+
+  function nsText() {
+    return 'kubectl create namespace imageengine\n\n' +
+      'kubectl create secret generic ie-kube-api-key -n imageengine \\\n' +
+      '  --from-literal=KEY=<your-api-key>\n\n' +
+      'kubectl create secret docker-registry ie-kube-image-pull -n imageengine \\\n' +
+      '  --docker-server=https://docker.scientiamobile.com/v2/ \\\n' +
+      '  --docker-username=<your-email> \\\n' +
+      '  --docker-password=<your-api-key> \\\n' +
+      '  --docker-email=<your-email>';
+  }
+
+  function repoText() {
+    return 'helm repo add imageengine https://kube.imageengine.io\nhelm repo update';
+  }
+
+  function installText() {
+    return 'helm install imageengine-kube imageengine/imageengine-kube \\\n' +
+      '  -n imageengine --set provider=' + current;
+  }
+
+  function gpgText() {
+    return 'curl -fsSL https://kube.imageengine.io/pubkey.asc \\\n' +
+      '  | gpg --dearmor > ~/.gnupg/imageengine-kube.kbx\n\n' +
+      'helm install imageengine-kube imageengine/imageengine-kube \\\n' +
+      '  --verify --keyring ~/.gnupg/imageengine-kube.kbx';
+  }
+
+  function cosignText() {
+    return 'curl -fsSLO https://kube.imageengine.io/cosign.pub\n\n' +
+      'cosign verify --key cosign.pub \\\n' +
+      '  docker.scientiamobile.com/iekube/imageengine-backend.server:<tag>';
+  }
+
+  function wireCopy(btnId, getText) {
+    var btn = document.getElementById(btnId);
+    if (!btn) { return; }
+    var label = btn.querySelector('.copy-label');
+    var timer;
+    btn.addEventListener('click', function () {
+      var text = getText();
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text)['catch'](function () { fallbackCopy(text); });
+      } else {
+        fallbackCopy(text);
+      }
+      label.innerHTML = '<span style="color:#17C4B6;">✓ Copied</span>';
+      clearTimeout(timer);
+      timer = setTimeout(function () { label.textContent = 'Copy'; }, 1600);
+    });
+  }
+
+  function fallbackCopy(text) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'absolute';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    } catch (e) {}
+  }
+
+  wireCopy('copy-ns', nsText);
+  wireCopy('copy-repo', repoText);
+  wireCopy('copy-install', installText);
+  wireCopy('copy-gpg', gpgText);
+  wireCopy('copy-cosign', cosignText);
+})();
+</script>
+
 </body>
 </html>
