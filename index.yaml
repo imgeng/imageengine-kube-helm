@@ -4,6 +4,41 @@ entries:
   - annotations:
       artifacthub.io/changes: |
         - kind: changed
+          description: "OSC sharding clients (backend, origin fetcher, processor) now discover the Object Storage Cache shards from the OSC headless Service's SRV record (OSCCLIENT_SRV_NAME) instead of the hand-maintained OSCCLIENT_ENVCONFIG + OSC{N}_HOST enumeration. The shard set now tracks objectStorageCache.replicaCount automatically — scaling OSC no longer requires editing a per-shard host list (ADR 0019)."
+        - kind: added
+          description: "OSC sharding clients route with rendezvous (HRW) hashing by default in Kubernetes (objectStorageCache.client.hash=hrw), so adding, removing, or rescheduling an OSC shard remaps only ~1/N of the keyspace and failover follows a stable preference list. Set objectStorageCache.client.hash=jump to keep Jump Consistent Hash (ADR 0020)."
+      artifacthub.io/signKey: |
+        fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+        url: https://kube.imageengine.io/pubkey.asc
+    apiVersion: v2
+    created: "2026-07-09T17:58:10.761538597Z"
+    description: ImageEngine - cloud-native image optimization
+    digest: 23f2006104ba945546cf8665b03adb4906ba6e9daabc2caa7804f37e6fabb88e
+    home: https://imageengine.io
+    icon: https://imageengine.io/favicon.ico
+    keywords:
+    - image-optimization
+    - image-cdn
+    - cdn
+    - imageengine
+    - varnish
+    - wurfl
+    kubeVersion: '>=1.30.0-0'
+    maintainers:
+    - email: support@scientiamobile.com
+      name: ScientiaMobile
+      url: https://www.scientiamobile.com
+    name: imageengine-kube
+    sources:
+    - https://kube.imageengine.io
+    - https://github.com/imgeng/imageengine-kube-helm
+    type: application
+    urls:
+    - imageengine-kube-1.8.0.tgz
+    version: 1.8.0
+  - annotations:
+      artifacthub.io/changes: |
+        - kind: changed
           description: "Varnish is now a sharded StatefulSet (ADR 0018): the edge discovers Varnish shards via a headless Service's SRV records and routes every permutation of an image to the same shard using rendezvous (HRW) hashing, so each image is cached on exactly one shard — no cross-replica duplication, ~Nx effective cache and hit ratio. Replaces the single-replica Varnish Deployment; varnish.replicaCount now defaults to 3. Do NOT put varnish.replicaCount behind an HPA (changing it reshards ~1/N of the cache). Requires a sharding-capable edge image."
         - kind: added
           description: "Varnish headless Service (<release>-varnish-headless; clusterIP: None, publishNotReadyAddresses: true) governs the StatefulSet and provides stable per-pod SRV/A records for shard discovery. The edge is wired to it via EDGE_VARNISH_HEADLESS; the plain ClusterIP Service is kept for debug/health only."
@@ -754,4 +789,4 @@ entries:
     urls:
     - imageengine-kube-0.8.0.tgz
     version: 0.8.0
-generated: "2026-07-08T07:02:57.317680858Z"
+generated: "2026-07-09T17:58:10.761766653Z"
