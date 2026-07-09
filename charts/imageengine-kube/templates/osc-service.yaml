@@ -21,9 +21,11 @@ spec:
 ---
 # Headless service governing the OSC StatefulSet. clusterIP: None makes DNS
 # return per-pod A records (e.g. <release>-osc-2.<release>-osc-headless), which
-# are stable across reschedules and used for OSC[N]_HOST shard wiring.
-# publishNotReadyAddresses: true so a shard's name resolves during startup,
-# letting clients establish the pool without waiting for readiness.
+# are stable across reschedules. The named "osc" port also yields SRV records
+# (_osc._tcp.<headless>) that the sharding client uses to discover shards and
+# their ordinals (OSCCLIENT_SRV_NAME, ADR 0019). publishNotReadyAddresses: true
+# so a shard's name resolves during startup, letting clients establish the pool
+# without waiting for readiness.
 apiVersion: v1
 kind: Service
 metadata:

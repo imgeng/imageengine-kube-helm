@@ -2,7 +2,7 @@ apiVersion: v2
 name: imageengine-kube
 description: ImageEngine - cloud-native image optimization
 type: application
-version: 1.7.1
+version: 1.8.0
 kubeVersion: ">=1.30.0-0"
 home: https://imageengine.io
 sources:
@@ -25,5 +25,7 @@ annotations:
     fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
     url: https://kube.imageengine.io/pubkey.asc
   artifacthub.io/changes: |
+    - kind: changed
+      description: "OSC sharding clients (backend, origin fetcher, processor) now discover the Object Storage Cache shards from the OSC headless Service's SRV record (OSCCLIENT_SRV_NAME) instead of the hand-maintained OSCCLIENT_ENVCONFIG + OSC{N}_HOST enumeration. The shard set now tracks objectStorageCache.replicaCount automatically — scaling OSC no longer requires editing a per-shard host list (ADR 0019)."
     - kind: added
-      description: "linux/arm64 is now fully supported alongside linux/amd64 — the chart's images are multi-arch manifests, so ARM64 worker nodes (AWS Graviton, Azure Cobalt, GCP Axion, etc.) pull the correct variant automatically. arm64 is no longer experimental; all-x86-64, all-arm64, and mixed node pools are supported. Docs (REQUIREMENTS.md and all provider guides) updated accordingly."
+      description: "OSC sharding clients route with rendezvous (HRW) hashing by default in Kubernetes (objectStorageCache.client.hash=hrw), so adding, removing, or rescheduling an OSC shard remaps only ~1/N of the keyspace and failover follows a stable preference list. Set objectStorageCache.client.hash=jump to keep Jump Consistent Hash (ADR 0020)."
