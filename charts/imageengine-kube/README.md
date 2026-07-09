@@ -126,5 +126,6 @@ To pin a specific chart version: `helm upgrade ... --version 1.2.3 -f imageengin
 - [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) — Kubernetes version, storage, network, and compute minimums.
 - [docs/SIZING.md](docs/SIZING.md) — recommended footprints for low / medium / high traffic.
 - [docs/CUSTOMIZATIONS.md](docs/CUSTOMIZATIONS.md) — replicas, autoscaling, ingress, TLS, OSC sizing, Varnish tuning, OpenTelemetry tracing, and the rest.
+- [docs/TOPOLOGIES.md](docs/TOPOLOGIES.md) — running the full pipeline (default) vs. splitting it into frontend-only / backend-only tiers across clusters or regions.
 - [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — common issues and fixes.
 - Platform-specific guidance: [AWS](docs/providers/AWS.md), [Azure](docs/providers/AZURE.md), [DigitalOcean](docs/providers/DIGITALOCEAN.md), [GKE](docs/providers/GKE.md), [Linode](docs/providers/LINODE.md), [self-managed / bare metal](docs/providers/CUSTOM.md).

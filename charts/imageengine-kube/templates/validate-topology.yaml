@@ -1,0 +1,14 @@
+{{- /*
+Topology validation (ADR 0021). Renders no resources; it exists only to abort
+the install with a clear, actionable message on an invalid tier combination —
+friendlier than a raw JSON-schema rejection, and it also rejects a
+whitespace-only ieBackends that a bare minLength check would let through.
+*/ -}}
+{{- if and (not .Values.frontend.enabled) (not .Values.backendStack.enabled) }}
+{{- fail "\n\nImageEngine: at least one tier must be enabled. You set BOTH frontend.enabled=false and backendStack.enabled=false, which would deploy nothing. Enable frontend.enabled (edge + Varnish), backendStack.enabled (backend + fetcher + processor + OSC), or both. See docs/TOPOLOGIES.md." }}
+{{- end }}
+{{- if and .Values.frontend.enabled (not .Values.backendStack.enabled) }}
+{{- if not (trim (.Values.varnish.ieBackends | default "")) }}
+{{- fail "\n\nImageEngine: a frontend-only install (frontend.enabled=true, backendStack.enabled=false) must set varnish.ieBackends to the remote backend load-balancer address(es) — a hostname, SRV pool name, or comma-separated IPs for ie-varnish-autoconfig. See docs/TOPOLOGIES.md." }}
+{{- end }}
+{{- end }}

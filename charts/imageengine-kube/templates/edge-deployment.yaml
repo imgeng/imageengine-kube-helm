@@ -1,3 +1,4 @@
+{{- if .Values.frontend.enabled }}
 # ImageEngine Kube Edge Proxy Deployment
 # Go edge proxy: traffic entry point, WURFL device detection, admission control
 # Traffic flow: LoadBalancer -> edge:8080 -> varnish:8080 -> backend
@@ -133,3 +134,4 @@ spec:
           configMap:
             name: {{ include "imageengine.fullname" . }}-carbontxt
         {{- end }}
+{{- end }}

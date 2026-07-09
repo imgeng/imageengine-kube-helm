@@ -1,0 +1,32 @@
+# Example: FRONTEND-ONLY install (edge + Varnish).
+#
+# Deploys just the frontend tier. Varnish sends cache misses to a REMOTE backend
+# stack (a separate backend-only install — see values-backend-only.yaml). Use
+# this for regional frontend points-of-presence in front of one central backend.
+#
+#   helm install ie-frontend imageengine/imageengine-kube -n ie \
+#     -f values-frontend-only.yaml
+#
+# See docs/TOPOLOGIES.md.
+
+frontend:
+  enabled: true
+backendStack:
+  enabled: false
+
+varnish:
+  # REQUIRED for a frontend-only install: the remote backend LB address.
+  # Accepts a hostname, an SRV pool name, or comma-separated IPs. Must listen on
+  # :80 unless a port is encoded here. IP changes behind a stable hostname are
+  # picked up automatically (no redeploy).
+  ieBackends: "ie-backend.us-east.internal.example.com"
+
+# Expose the edge however you normally would (LoadBalancer by default, or pair
+# service.type=ClusterIP with ingress.enabled=true).
+service:
+  type: LoadBalancer
+
+# Tag telemetry with this PoP's region.
+identity:
+  environment: production
+  region: us-west

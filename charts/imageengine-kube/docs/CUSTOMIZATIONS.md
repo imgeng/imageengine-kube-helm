@@ -269,6 +269,44 @@ Notes: a malformed target fails edge startup, and a reachable-but-down `tcp` col
 `IE_ORIGINFETCHER_FETCH_LOG_TARGET` (same grammar as `EDGE_ACCESS_LOG_TARGET`, default `stdout`)
 and `IE_ORIGINFETCHER_FETCH_LOG_SCHEMA` (`ecs` | `legacy`, default `ecs`).
 
+## How do I split the frontend and backend across clusters?
+
+By default the chart deploys the whole pipeline (edge → varnish → backend →
+{fetcher | processor | OSC}) as one release — this is the normal deployment and
+what most installs want. You can instead split it into two independently
+deployable tiers and run them as separate releases, e.g. regional frontend
+points-of-presence in front of one central backend stack:
+
+```yaml
+# Frontend-only release (edge + Varnish); points Varnish at a remote backend LB
+frontend:
+  enabled: true
+backendStack:
+  enabled: false
+varnish:
+  ieBackends: "ie-backend.us-east.internal.example.com"   # required here
+```
+
+```yaml
+# Backend-only release (backend + fetcher + processor + OSC); publishes the backend
+frontend:
+  enabled: false
+backendStack:
+  enabled: true
+backend:
+  service:
+    type: LoadBalancer        # keep it PRIVATE — see the security note in TOPOLOGIES.md
+    loadBalancerSourceRanges:
+      - 10.0.0.0/8
+```
+
+At least one tier must be enabled. A backend `LoadBalancer` carries
+unauthenticated admin endpoints over plain HTTP, so it **must** be private or
+source-range restricted. The full story — the multi-region diagram, how
+`ieBackends` is resolved, health-check and failure behavior, the same-cluster
+two-release pattern, and ready-to-use example values files — is in
+[TOPOLOGIES.md](TOPOLOGIES.md).
+
 ## How do I configure the edge Service?
 
 The chart exposes its edge pods via a single Service whose type you control. The default is `LoadBalancer`, which works out of the box on every supported managed-Kubernetes provider:
