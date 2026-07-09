@@ -21,20 +21,21 @@
 
 {{/*
 OSC sharding client env vars (used by backend, fetcher, processor).
-Emits OSCCLIENT_ENVCONFIG plus one OSC{i}_HOST per shard ordinal, each pointing
-at the StatefulSet pod's stable headless DNS name on the OSC container port
-(8000). The OSC sharding client consistent-hashes the origin key across these
-nodes. With replicaCount=1 this reproduces the legacy single-node config.
+Points the client at the OSC headless Service's SRV record for Kubernetes shard
+discovery (ADR 0019): it discovers every shard, sizes to replicaCount
+automatically (no per-host OSC{i}_HOST list to hand-maintain — a resize is
+picked up within one refresh), and derives each shard's ordinal from its pod
+hostname. Routing uses rendezvous/HRW hashing by default (ADR 0020, override via
+objectStorageCache.client.hash). The port name "osc" matches the headless
+Service's named port, so OSCCLIENT_SRV_PORTNAME is left at its default.
 Usage: {{ include "imageengine.oscShardEnv" . | nindent 12 }}
 */}}
 {{- define "imageengine.oscShardEnv" -}}
 {{- $full := include "imageengine.fullname" . -}}
-- name: OSCCLIENT_ENVCONFIG
-  value: "true"
-{{- range $i := until (int .Values.objectStorageCache.replicaCount) }}
-- name: OSC{{ $i }}_HOST
-  value: "{{ $full }}-osc-{{ $i }}.{{ $full }}-osc-headless:8000"
-{{- end }}
+- name: OSCCLIENT_SRV_NAME
+  value: "{{ $full }}-osc-headless.{{ .Release.Namespace }}.svc.cluster.local"
+- name: OSCCLIENT_HASH
+  value: {{ .Values.objectStorageCache.client.hash | default "hrw" | quote }}
 {{- end -}}
 
 {{/*

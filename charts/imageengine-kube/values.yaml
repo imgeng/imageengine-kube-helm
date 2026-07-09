@@ -5,11 +5,11 @@ imagePullPolicy: Always
 ###################################################
 # Centralized image tags/versions for all components
 images:
-  edge: "4.7.0"
+  edge: "4.8.0"
   varnish: "9.0.3-8"
-  backend: "2.13.0"
-  fetcher: "1.30.0"
-  processor: "3.26.1"
+  backend: "2.14.0"
+  fetcher: "1.31.0"
+  processor: "3.27.0"
   osc: "3.6.0"
 
 ###################################################
@@ -693,6 +693,20 @@ objectStorageCache:
     size: "10Gi"                 # Per-shard size; total cache ~= size * replicaCount
   service:
     port: 80
+  # OSC sharding client (backend/fetcher/processor). In Kubernetes the client
+  # discovers all shards from the OSC headless Service's SRV record and sizes to
+  # replicaCount automatically (ADR 0019) — there is no per-host list to keep in
+  # sync with replicaCount.
+  client:
+    # Consistent-hash algorithm (ADR 0020):
+    #   "hrw"  — rendezvous hashing (default). A shard add/remove/reschedule
+    #            remaps only ~1/N of keys and failover follows a stable
+    #            preference list.
+    #   "jump" — Jump Consistent Hash over the live set (the legacy algorithm).
+    # Do NOT change this on a populated cache tier: switching algorithms remaps
+    # every key (full cache-cold + origin refetch storm). Safe only on a
+    # cold/greenfield tier.
+    hash: hrw
   # Optional scheduling priority. Requires the class to exist (set
   # priorityClass.create=true, or reference an externally-managed class).
   priorityClassName: ""

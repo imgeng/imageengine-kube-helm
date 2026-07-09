@@ -5,10 +5,11 @@ ImageEngine Kube on Google Kubernetes Engine with `provider: gke`.
 ## Recommended cluster
 
 - **GKE Standard, Kubernetes 1.34+** (chart minimum is 1.30). GKE Autopilot also works but constrains pod resource shapes — verify the chart's defaults pass Autopilot validation before committing to it.
-- Worker nodes (x86-64 only — ImageEngine's arm64/Axion build is still experimental, so don't put nodes on `c4a`/`t2a`):
+- Worker nodes (x86-64 and arm64/Axion are both supported — the chart's images are multi-arch, so `c4a`/`t2a` Arm nodes work and often give better price/performance):
   - `n2-standard-4` (4 vCPU / 16 GiB) for general use; better single-thread performance than `e2`.
   - `c4-standard-4` for processor pools needing more CPU per pod.
   - `e2-standard-4` for cost-sensitive deployments.
+  - `c4a-standard-4` (Axion) for arm64 pools.
 - At least 3 nodes across 3 zones so the chart's topology-spread is meaningful.
 
 See [SIZING.md](../SIZING.md) for traffic-tier sizing.

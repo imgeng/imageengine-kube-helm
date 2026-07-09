@@ -5,10 +5,11 @@ ImageEngine Kube on Azure Kubernetes Service with `provider: azure`.
 ## Recommended cluster
 
 - **AKS, Kubernetes 1.34+** AKS deprecated 1.32 in early 2026, and the chart minimum is 1.30.
-- Worker nodes (x86-64 only — ImageEngine's arm64/Cobalt build is still experimental):
-  - `Standard_D4s_v5` (4 vCPU / 16 GiB) as the modern default.
+- Worker nodes (x86-64 and arm64/Cobalt are both supported — the chart's images are multi-arch, so Cobalt/Ampere `Dpsv6`/`Dpsv5` nodes work and often give better price/performance):
+  - `Standard_D4s_v5` (4 vCPU / 16 GiB) as the modern x86-64 default.
   - `Standard_D4s_v6` if available in your region.
-  - PoC clusters can run on `Standard_D2s_v5`.
+  - `Standard_D4ps_v6` (Cobalt/Ampere) for arm64 pools.
+  - PoC clusters can run on `Standard_D2s_v5` (x86-64) or `Standard_D2ps_v6` (arm64).
 - At least 3 nodes across 3 AZs (in regions that support AZs) so the chart's topology-spread is meaningful.
 - Use the **Azure Disk CSI driver** (the in-tree driver was removed in k8s 1.26) and the **Azure CNI** networking plugin.
 

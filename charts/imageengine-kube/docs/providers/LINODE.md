@@ -7,7 +7,7 @@ LKE is Akamai's managed Kubernetes offering. The product name is still "Linode K
 ## Recommended cluster
 
 - **LKE, Kubernetes 1.33+** (chart minimum is 1.30).
-- Worker nodes (x86-64 only — ImageEngine's arm64 build is still experimental):
+- Worker nodes (x86-64 and arm64 are both supported — the chart's images are multi-arch, so arm64 plans work where Linode offers them):
   - `g6-dedicated-4` (4 vCPU / 8 GiB Dedicated CPU) for production. **Dedicated CPU plans are strongly preferred** over Shared because the processor is CPU-bound during cache misses.
   - `g6-dedicated-8` (8 vCPU / 16 GiB) for processor pools at higher traffic tiers.
 - At least 3 nodes for the chart's topology-spread to be meaningful.

@@ -2,15 +2,47 @@
 
 ImageEngine Kube on Amazon EKS with `provider: aws`.
 
+> ## ⚠️ Required: a `gp3` StorageClass
+>
+> **`provider: aws` sets the OSC PersistentVolumeClaim to the `gp3` StorageClass, and a `gp3` StorageClass must exist in the cluster before you install — otherwise the OSC pod stays `Pending` and the deployment never becomes ready.**
+>
+> **EKS does not create `gp3` for you.** A fresh cluster typically ships only a legacy `gp2` class, so you must create `gp3` yourself (or point the chart at an existing class). This is the single most common cause of a stuck first install.
+>
+> Create it before `helm install`:
+>
+> ```yaml
+> # gp3-storageclass.yaml
+> apiVersion: storage.k8s.io/v1
+> kind: StorageClass
+> metadata:
+>   name: gp3
+>   annotations:
+>     storageclass.kubernetes.io/is-default-class: "true"   # optional
+> # EKS Auto Mode: use provisioner ebs.csi.eks.amazonaws.com (built in)
+> # Standard EKS: use provisioner ebs.csi.aws.com (enable the AWS EBS CSI add-on first)
+> provisioner: ebs.csi.eks.amazonaws.com
+> volumeBindingMode: WaitForFirstConsumer
+> allowVolumeExpansion: true
+> parameters:
+>   type: gp3
+> ```
+>
+> ```bash
+> kubectl apply -f gp3-storageclass.yaml
+> ```
+>
+> Full details (provisioner per cluster type, reusing an existing class) are in [Storage](#storage) below.
+
 ## Recommended cluster
 
 - **EKS, Kubernetes 1.33+** (1.30 is the chart minimum; running on a still-supported upstream release saves you the EKS extended-support surcharge).
 - Cluster mode: **EKS Standard** for full control, or **EKS Auto Mode** if you want AWS to manage node provisioning, scaling, and add-ons (Karpenter, AWS LB Controller, EBS CSI driver) for you.
-- Worker nodes (x86-64 only — ImageEngine's arm64/Graviton build is still experimental, so don't put nodes on `m7g`/`c7g`):
-  - `m7i.xlarge` (Sapphire Rapids, 4 vCPU / 16 GiB) as the modern default.
+- Worker nodes (x86-64 and arm64/Graviton are both supported — the chart's images are multi-arch, so `m7g`/`c7g` Graviton nodes work and often give better price/performance):
+  - `m7i.xlarge` (Sapphire Rapids, 4 vCPU / 16 GiB) as the modern x86-64 default.
   - `m6i.xlarge` (Ice Lake, 4 vCPU / 16 GiB) as the conservative baseline.
   - `c7i.xlarge` for processor pools that need more CPU per pod.
-  - PoC clusters can run on `t3.large`.
+  - `m7g.xlarge` / `c7g.xlarge` (Graviton) for arm64 pools.
+  - PoC clusters can run on `t3.large` (x86-64) or `t4g.large` (Graviton).
 - At least 3 nodes in 3 AZs so the chart's topology-spread constraint is meaningful.
 - **Karpenter** is the standard cluster autoscaler in 2026 — install it (or use EKS Auto Mode, which embeds it) and let it provision nodes on demand based on pod requests.
 
@@ -18,7 +50,7 @@ See [SIZING.md](../SIZING.md) for traffic-tier specific guidance — most import
 
 ## What `provider: aws` configures for you
 
-- **Storage class:** `gp3` (general-purpose SSD; preferred over `gp2` for performance and cost).
+- **Storage class:** `gp3` (general-purpose SSD; preferred over `gp2` for performance and cost). **You must create the `gp3` StorageClass yourself — EKS does not ship one. See the required-storage callout at the top and [Storage](#storage) below.**
 - **Edge LoadBalancer scheme:** `internet-facing`. EKS (especially Auto Mode) provisions `type: LoadBalancer` Services as **internal** by default; the preset adds `service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing` so the edge gets a public address out of the box. Set it back to `internal` via `service.annotations` for private deployments.
 - **Ingress class:** `alb` (only used if you set `ingress.enabled: true`). EKS provides the ALB ingress controller natively in Auto Mode, or via the AWS Load Balancer Controller add-on on standard EKS. The preset also defaults the ALB to `internet-facing` with `target-type: ip`.
 - **External DNS provider:** `aws` (used by metric tagging only — the chart doesn't deploy ExternalDNS itself).
