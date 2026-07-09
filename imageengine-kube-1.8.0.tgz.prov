@@ -1,0 +1,54 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+annotations:
+  artifacthub.io/changes: |
+    - kind: changed
+      description: "OSC sharding clients (backend, origin fetcher, processor) now discover the Object Storage Cache shards from the OSC headless Service's SRV record (OSCCLIENT_SRV_NAME) instead of the hand-maintained OSCCLIENT_ENVCONFIG + OSC{N}_HOST enumeration. The shard set now tracks objectStorageCache.replicaCount automatically — scaling OSC no longer requires editing a per-shard host list (ADR 0019)."
+    - kind: added
+      description: "OSC sharding clients route with rendezvous (HRW) hashing by default in Kubernetes (objectStorageCache.client.hash=hrw), so adding, removing, or rescheduling an OSC shard remaps only ~1/N of the keyspace and failover follows a stable preference list. Set objectStorageCache.client.hash=jump to keep Jump Consistent Hash (ADR 0020)."
+  artifacthub.io/signKey: |
+    fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+    url: https://kube.imageengine.io/pubkey.asc
+apiVersion: v2
+description: ImageEngine - cloud-native image optimization
+home: https://imageengine.io
+icon: https://imageengine.io/favicon.ico
+keywords:
+- - image-optimization
+- - image-cdn
+- - cdn
+- - imageengine
+- - varnish
+- - wurfl
+kubeVersion: '>=1.30.0-0'
+maintainers:
+- - email: support@scientiamobile.com
+  name: ScientiaMobile
+  url: https://www.scientiamobile.com
+name: imageengine-kube
+sources:
+- - https://kube.imageengine.io
+- - https://github.com/imgeng/imageengine-kube-helm
+type: application
+version: 1.8.0
+
+...
+files:
+  imageengine-kube-1.8.0.tgz: sha256:23f2006104ba945546cf8665b03adb4906ba6e9daabc2caa7804f37e6fabb88e
+-----BEGIN PGP SIGNATURE-----
+
+wsFcBAEBCgAQBQJqT+EuCRBGMmYGCVfEswAAu1cQAHNS/Dt9LkeCLZFehPU+jaxe
+lvu/07LvjWigzEkSzMvZLmuQwVDUxmfKaeS9wZlS0l8AsrSay/Q4eyCNWHsex81t
+WgG2laVFlOxvqoyqh/tIYZbcXgTCCm9eTc2m7G10sgZ26PYeBpxbrYNNmRZyrx54
+AGjGYZ/4Q2O5T2J8XWESoBQP5G8fg7TUoDwkwnw0mGpexleSOhEBHO5SOrDgyoa6
+PnHEwjI77ntEVOO9A1S3ZdTxHzAHjtpIJCJ8UEzVhMeVomY2NwT5SqhaiYkaebcS
+7RHDmR7VCxG6u4FoQC1iBD5PSkUOsAex5WtXCFYQMBJ9+38xYd8zJ2bQ37vEEeCH
+taUAITCegbQa+VF2IZlGEaBsrQA9fiomPhHldOiFN8ImGg+yPJqM0K9O16buRaIq
+tQ3MjdwlhxlF62OaUj3gBvwYcAfMEPcwuoq3TffiFQJeCPbWezPcA3tasG4X8Q6o
+76kXGrIP+KJ3ZgpFyLoVsoA4NBRaavq0ImHlop1Gg6wNpTHZMVA2+IF2iTDlCQqq
+jarWbZ+JTGWrzo25rX68Fu1E3EF2nwvdXC5tQHyoUqZssM0ROAwD/PEIwUgtGNv6
+Ii28qnDkffNHi0o/FWcoNQONUwwDMYHERE9FrV8II06GFjzWDtx2WOnmSs8mAdl+
+SUPSqpSvOy5p2ezO+jd2
+=BuVY
+-----END PGP SIGNATURE-----
