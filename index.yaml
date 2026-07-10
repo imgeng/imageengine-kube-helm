@@ -3,6 +3,39 @@ entries:
   imageengine-kube:
   - annotations:
       artifacthub.io/changes: |
+        - kind: changed
+          description: "Per-component env: entries may now be a map instead of a scalar. A scalar is rendered as the variable's value:; a map is passed through verbatim as its valueFrom:, so a custom env var can be sourced from a Secret (secretKeyRef), ConfigMap (configMapKeyRef), or the pod's own metadata (fieldRef) instead of being inlined. Scalar values behave exactly as before. See docs/CUSTOMIZATIONS.md."
+      artifacthub.io/signKey: |
+        fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+        url: https://kube.imageengine.io/pubkey.asc
+    apiVersion: v2
+    created: "2026-07-10T23:20:36.874596452Z"
+    description: ImageEngine - cloud-native image optimization
+    digest: c1161021632493a7b930d4c2930f1f064904e9fdb9e3dd2583cf98b2e95fbb59
+    home: https://imageengine.io
+    icon: https://imageengine.io/favicon.ico
+    keywords:
+    - image-optimization
+    - image-cdn
+    - cdn
+    - imageengine
+    - varnish
+    - wurfl
+    kubeVersion: '>=1.30.0-0'
+    maintainers:
+    - email: support@scientiamobile.com
+      name: ScientiaMobile
+      url: https://www.scientiamobile.com
+    name: imageengine-kube
+    sources:
+    - https://kube.imageengine.io
+    - https://github.com/imgeng/imageengine-kube-helm
+    type: application
+    urls:
+    - imageengine-kube-1.9.1.tgz
+    version: 1.9.1
+  - annotations:
+      artifacthub.io/changes: |
         - kind: added
           description: "Split-topology installs: frontend.enabled and backendStack.enabled gate the frontend tier (edge+varnish) and the backend stack (backend, fetcher, processor, OSC) independently, so the pipeline can be deployed as separate frontend-only and backend-only releases (e.g. regional frontend PoPs pointing at a central backend). The full single-cluster pipeline remains the default (ADR 0021)."
         - kind: added
@@ -826,4 +859,4 @@ entries:
     urls:
     - imageengine-kube-0.8.0.tgz
     version: 0.8.0
-generated: "2026-07-10T16:10:03.346743649Z"
+generated: "2026-07-10T23:20:36.874842561Z"
