@@ -261,3 +261,23 @@ Usage: {{ include "imageengine.derivedEnv" (dict "name" "EDGE_EMITTER_SERVER" "v
 {{- end }}
 {{- end -}}
 
+{{/*
+Render a component's `env` map as a container env list. A scalar value sets the
+variable's `value:`; a mapping value is emitted as its `valueFrom:` (e.g.
+secretKeyRef / configMapKeyRef / fieldRef), so a variable can be sourced from a
+Secret or ConfigMap instead of being inlined. Keys already emitted above a call
+site should not be repeated here (a duplicate name breaks `helm upgrade`).
+Usage: {{ include "imageengine.renderEnv" .Values.edge.env | nindent 12 }}
+*/}}
+{{- define "imageengine.renderEnv" -}}
+{{- range $k, $v := . }}
+- name: {{ $k }}
+{{- if kindIs "map" $v }}
+  valueFrom:
+    {{- toYaml $v | nindent 4 }}
+{{- else }}
+  value: {{ $v | quote }}
+{{- end }}
+{{- end }}
+{{- end -}}
+

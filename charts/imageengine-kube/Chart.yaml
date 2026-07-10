@@ -2,7 +2,7 @@ apiVersion: v2
 name: imageengine-kube
 description: ImageEngine - cloud-native image optimization
 type: application
-version: 1.9.0
+version: 1.9.1
 kubeVersion: ">=1.30.0-0"
 home: https://imageengine.io
 sources:
@@ -25,9 +25,5 @@ annotations:
     fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
     url: https://kube.imageengine.io/pubkey.asc
   artifacthub.io/changes: |
-    - kind: added
-      description: "Split-topology installs: frontend.enabled and backendStack.enabled gate the frontend tier (edge+varnish) and the backend stack (backend, fetcher, processor, OSC) independently, so the pipeline can be deployed as separate frontend-only and backend-only releases (e.g. regional frontend PoPs pointing at a central backend). The full single-cluster pipeline remains the default (ADR 0021)."
-    - kind: added
-      description: "backend.service exposure block (type/port/annotations/loadBalancerSourceRanges/externalTrafficPolicy) lets a backend-only install publish the backend behind a LoadBalancer. Defaults to ClusterIP; a backend LoadBalancer must be private or source-range restricted (its listener carries unauthenticated admin endpoints and Varnish speaks plain HTTP) — see docs/TOPOLOGIES.md (ADR 0021)."
-    - kind: removed
-      description: "Removed the unused objectStorageCache.enabled value (no template referenced it)."
+    - kind: changed
+      description: "Per-component env: entries may now be a map instead of a scalar. A scalar is rendered as the variable's value:; a map is passed through verbatim as its valueFrom:, so a custom env var can be sourced from a Secret (secretKeyRef), ConfigMap (configMapKeyRef), or the pod's own metadata (fieldRef) instead of being inlined. Scalar values behave exactly as before. See docs/CUSTOMIZATIONS.md."

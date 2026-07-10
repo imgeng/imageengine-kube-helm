@@ -131,11 +131,15 @@ spec:
                 secretKeyRef:
                   name: ie-kube-api-key
                   key: KEY
+            {{- if not (hasKey (default (dict) .Values.objectStorageCache.env) "OSC_EMITTER_CHANNEL_KEY") }}
             - name: OSC_EMITTER_CHANNEL_KEY
               value: "api-key:$(IE_KUBE_API_KEY_RAW)"
+            {{- end }}
             # TODO: we can't send messages with a api-key, the app needs to deal with this
+            {{- if not (hasKey (default (dict) .Values.objectStorageCache.env) "OSC_EMITTER_RESULT_CHANNEL_KEY") }}
             - name: OSC_EMITTER_RESULT_CHANNEL_KEY
               value: "api-key:$(IE_KUBE_API_KEY_RAW)"
+            {{- end }}
             # Env vars for statistics
             {{- include "imageengine.identityEnv" $ | nindent 12 }}
             {{- include "imageengine.derivedEnv" (dict "name" "OSC_SENTRY_ENV" "value" (include "imageengine.appEnv" $) "env" $.Values.objectStorageCache.env) | nindent 12 }}
@@ -143,10 +147,7 @@ spec:
             {{- include "imageengine.derivedEnv" (dict "name" "OSC_FS_STORAGE_PATH" "value" $.Values.objectStorageCache.storagePath "env" $.Values.objectStorageCache.env) | nindent 12 }}
             {{- include "imageengine.otelEnv" (dict "ctx" $ "enableVar" "OSC_OTEL_ENABLED") | nindent 12 }}
             # Env vars below this line are from values.yaml
-            {{- range $key, $value := .Values.objectStorageCache.env }}
-            - name: {{ $key }}
-              value: {{ $value | quote }}
-            {{- end }}
+            {{- include "imageengine.renderEnv" .Values.objectStorageCache.env | nindent 12 }}
       {{- if not .Values.objectStorageCache.persistence.enabled }}
       volumes:
         - name: osc-storage
