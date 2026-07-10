@@ -119,6 +119,8 @@
 
       <hr style="border:none; border-top:1px solid #1E2A3A; margin:0;">
 
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#6C7C92;">Cluster</div>
+
       <div>
         <label style="display:block; font-weight:600; font-size:14px; margin-bottom:8px;">Cloud provider</label>
         <select id="provider-select">
@@ -130,6 +132,18 @@
           <option value="custom" selected>Custom / on-prem</option>
         </select>
         <p id="provider-note" style="font-size:12px; color:#6C7C92; margin:8px 0 0; line-height:1.5;">Self-managed clusters have no cloud LB — front the edge with MetalLB or NodePort.</p>
+      </div>
+
+      <div>
+        <label style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+          <span style="font-weight:600; font-size:14px;">Worker node RAM</span>
+          <span id="node-ram-label" style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#17C4B6;">8 GiB</span>
+        </label>
+        <input type="range" id="node-ram-slider" min="0" max="1000" value="250" step="1">
+        <div style="display:flex; justify-content:space-between; font-size:11px; color:#6C7C92; margin-top:4px;">
+          <span>4 GiB</span><span>64 GiB</span>
+        </div>
+        <p style="font-size:12px; color:#6C7C92; margin:8px 0 0; line-height:1.5;">Drives node-count estimates and caps Varnish memory to what fits on your nodes.</p>
       </div>
 
       <div>
@@ -226,6 +240,8 @@
     PROCESSOR_MISS_OPS_PER_POD: 4,
     FETCHER_MISS_OPS_PER_POD: 6,
     BACKEND_OPS_PER_POD: 150,
+    NODE_RAM_SIZES: [4, 8, 16, 32, 64],
+    NODE_ALLOCATABLE: 0.72,
     OPS_MIN: 10,
     OPS_MAX: 10000,
     ORIGIN_MIN_GB: 10,
@@ -267,6 +283,7 @@
   var originSlider = document.getElementById('origin-slider');
   var cacheSlider = document.getElementById('cache-slider');
   var providerSelect = document.getElementById('provider-select');
+  var nodeRamSlider = document.getElementById('node-ram-slider');
   var environmentSelect = document.getElementById('environment-select');
   var otelEnabled = document.getElementById('otel-enabled');
   var otelFields = document.getElementById('otel-fields');
@@ -284,6 +301,12 @@
   function logMap(sliderVal, min, max) {
     var t = sliderVal / 1000;
     return min * Math.pow(max / min, t);
+  }
+
+  function nodeRamMap(sliderVal) {
+    var sizes = CONST.NODE_RAM_SIZES;
+    var idx = Math.round((sliderVal / 1000) * (sizes.length - 1));
+    return sizes[Math.max(0, Math.min(sizes.length - 1, idx))];
   }
 
   function formatBytes(gb) {
@@ -321,7 +344,7 @@
 
   function memGi(n) { return n + 'Gi'; }
 
-  function varnishSizing(ops, variantWorkingSetGB) {
+  function varnishSizing(ops, variantWorkingSetGB, nodeRamGi) {
     var memReq, memLim, ephReq, ephLim;
     if (ops < CONST.AUTOSCALE_THRESHOLD) {
       memReq = 1; memLim = 4;
@@ -336,7 +359,28 @@
       memReq = 16; memLim = 32;
       ephReq = 50; ephLim = Math.min(500, Math.max(300, Math.ceil(variantWorkingSetGB * 0.1)));
     }
+    // Cap Varnish memory to what fits on the selected node size (shared-node assumption).
+    var varnishCap = Math.max(2, Math.floor(nodeRamGi * 0.55));
+    memLim = Math.min(memLim, varnishCap);
+    memReq = Math.min(memReq, Math.max(1, Math.floor(memLim / 3)));
+    ephLim = Math.min(ephLim, Math.max(ephReq, nodeRamGi * 8));
     return { memReq: memReq, memLim: memLim, ephReq: ephReq, ephLim: ephLim };
+  }
+
+  function estimateNodes(s, nodeRamGi) {
+    var allocGi = nodeRamGi * CONST.NODE_ALLOCATABLE;
+    var podCount = s.edgeReplicas + s.varnishReplicas + s.backendReplicas +
+      s.fetcherReplicas + s.processorReplicas + s.oscShards;
+    var memGi =
+      s.edgeReplicas * 1 +
+      s.varnishReplicas * (s.varnish.memLim + s.varnish.ephReq * 0.3) +
+      s.backendReplicas * 6 +
+      s.processorReplicas * 6 +
+      s.fetcherReplicas * 2 +
+      s.oscShards * 1;
+    var byMem = Math.ceil(memGi / allocGi);
+    var byCount = Math.ceil(podCount / Math.max(1, Math.floor(allocGi / 4)));
+    return Math.max(3, byMem, byCount);
   }
 
   function indentBlock(text, spaces) {
@@ -349,6 +393,7 @@
     var ops = inputs.ops;
     var originGB = inputs.originGB;
     var cachePct = inputs.cachePct;
+    var nodeRamGi = inputs.nodeRamGi;
     var autoscale = ops > CONST.AUTOSCALE_THRESHOLD;
 
     var edgeReplicas = Math.max(1, Math.ceil(ops / CONST.EDGE_RPS));
@@ -368,21 +413,17 @@
     var fetcherReplicas = Math.max(2, Math.ceil(missOps / CONST.FETCHER_MISS_OPS_PER_POD));
     var backendReplicas = Math.max(2, Math.ceil(ops / CONST.BACKEND_OPS_PER_POD));
 
-    var varnish = varnishSizing(ops, variantWorkingSetGB);
+    var varnish = varnishSizing(ops, variantWorkingSetGB, nodeRamGi);
 
     var processorMax = Math.max(16, processorReplicas * 2);
     var fetcherMax = Math.max(8, fetcherReplicas * 2);
     var backendMax = Math.max(4, backendReplicas * 2);
 
-    var estNodes = Math.max(3, Math.ceil(
-      (edgeReplicas + varnishReplicas + (autoscale ? backendReplicas : backendReplicas) +
-       (autoscale ? processorReplicas : processorReplicas) + oscShards) / 4
-    ));
-
-    return {
+    var result = {
       ops: ops,
       missOps: missOps,
       autoscale: autoscale,
+      nodeRamGi: nodeRamGi,
       edgeReplicas: edgeReplicas,
       varnishReplicas: varnishReplicas,
       varnish: varnish,
@@ -397,9 +438,10 @@
       oscTotalGB: oscTotalGB,
       oscWorkingSetGB: oscWorkingSetGB,
       cachedOriginGB: cachedOriginGB,
-      variantWorkingSetGB: variantWorkingSetGB,
-      estNodes: estNodes
+      variantWorkingSetGB: variantWorkingSetGB
     };
+    result.estNodes = estimateNodes(result, nodeRamGi);
+    return result;
   }
 
   // ── YAML builder ─────────────────────────────────────────────────────────
@@ -408,12 +450,16 @@
     lines.push('# ImageEngine Kube values override');
     lines.push('# Generated by https://kube.imageengine.io/configurator.html');
     lines.push('# Starting-point sizing — re-bench after deploying.');
+    lines.push('#');
+    lines.push('# Cluster planning (informational — not a chart value):');
+    lines.push('#   Provider: ' + inputs.provider +
+      (STORAGE_CLASSES[inputs.provider] ? ' (OSC storageClass: ' + STORAGE_CLASSES[inputs.provider] + ')' : ''));
+    lines.push('#   Recommended worker node RAM: ' + inputs.nodeRamGi + ' GiB');
+    lines.push('#   Estimated nodes: ~' + s.estNodes);
     lines.push('');
 
-    if (inputs.provider !== DEFAULTS.provider) {
-      lines.push('provider: ' + inputs.provider);
-      lines.push('');
-    }
+    lines.push('provider: ' + inputs.provider);
+    lines.push('');
 
     if (inputs.environment !== DEFAULTS.environment) {
       lines.push('identity:');
@@ -540,14 +586,15 @@
   }
 
   // ── Summary cards ────────────────────────────────────────────────────────
-  function renderSummary(s) {
+  function renderSummary(s, inputs) {
     var cards = [
       { label: 'Edge + Varnish', value: s.edgeReplicas + ' + ' + s.varnishReplicas, sub: '1:1 ratio · ' + CONST.EDGE_RPS + ' RPS each' },
       { label: 'Varnish RAM', value: s.varnish.memReq + '–' + s.varnish.memLim + ' GiB', sub: s.varnish.ephLim + ' GiB disk tier' },
       { label: 'OSC storage', value: formatBytes(s.oscTotalGB), sub: s.oscShards + ' shards × ' + s.oscPerShardGi + 'Gi' },
       { label: 'Processor', value: s.autoscale ? 'HPA ' + s.processorReplicas + '–' + s.processorMax : s.processorReplicas + ' pods', sub: '~' + formatOps(s.missOps) + ' miss-path' },
       { label: 'Fetcher', value: s.autoscale ? 'HPA ' + s.fetcherReplicas + '–' + s.fetcherMax : s.fetcherReplicas + ' pods', sub: 'scales on miss storms' },
-      { label: 'Backend', value: s.autoscale ? 'HPA ' + s.backendReplicas + '–' + s.backendMax : s.backendReplicas + ' pods', sub: '6 GiB mem limit each' }
+      { label: 'Backend', value: s.autoscale ? 'HPA ' + s.backendReplicas + '–' + s.backendMax : s.backendReplicas + ' pods', sub: '6 GiB mem limit each' },
+      { label: 'Cluster', value: '~' + s.estNodes + ' nodes', sub: s.nodeRamGi + ' GiB RAM · ' + inputs.provider }
     ];
 
     summaryGrid.innerHTML = cards.map(function (c) {
@@ -561,7 +608,7 @@
       'OSC working set ~' + formatBytes(s.oscWorkingSetGB) + ' (' +
       formatBytes(s.cachedOriginGB) + ' cached origin + ' +
       formatBytes(s.variantWorkingSetGB) + ' variants). ' +
-      'Estimated ~' + s.estNodes + ' nodes (8 vCPU / 16 GiB class). ' +
+      'Estimated ~' + s.estNodes + ' worker nodes at ' + s.nodeRamGi + ' GiB RAM each. ' +
       (s.autoscale ? 'Autoscaling enabled (> ' + CONST.AUTOSCALE_THRESHOLD + '/s).' : 'Fixed replicas (≤ ' + CONST.AUTOSCALE_THRESHOLD + '/s).') +
       ' Assumes ~' + Math.round((1 - CONST.MISS_FRACTION) * 100) + '% combined cache hit rate for miss-path sizing.';
   }
@@ -571,6 +618,7 @@
       ops: logMap(parseFloat(opsSlider.value), CONST.OPS_MIN, CONST.OPS_MAX),
       originGB: logMap(parseFloat(originSlider.value), CONST.ORIGIN_MIN_GB, CONST.ORIGIN_MAX_GB),
       cachePct: parseInt(cacheSlider.value, 10),
+      nodeRamGi: nodeRamMap(parseFloat(nodeRamSlider.value)),
       provider: providerSelect.value,
       environment: environmentSelect.value,
       otelEnabled: otelEnabled.checked,
@@ -586,9 +634,14 @@
     document.getElementById('ops-label').textContent = formatOps(inputs.ops);
     document.getElementById('origin-label').textContent = formatBytes(inputs.originGB);
     document.getElementById('cache-label').textContent = inputs.cachePct + '%';
-    providerNote.textContent = PROVIDERS[inputs.provider] || '';
+    document.getElementById('node-ram-label').textContent = inputs.nodeRamGi + ' GiB';
+    var providerText = PROVIDERS[inputs.provider] || '';
+    if (STORAGE_CLASSES[inputs.provider]) {
+      providerText += ' OSC PVCs use storageClass "' + STORAGE_CLASSES[inputs.provider] + '" (via provider preset).';
+    }
+    providerNote.textContent = providerText;
 
-    renderSummary(s);
+    renderSummary(s, inputs);
     currentYaml = buildYaml(inputs, s);
     yamlOutput.textContent = currentYaml;
     installOutput.textContent =
@@ -597,7 +650,7 @@
   }
 
   // ── Event wiring ─────────────────────────────────────────────────────────
-  [opsSlider, originSlider, cacheSlider, providerSelect, environmentSelect, otelSample].forEach(function (el) {
+  [opsSlider, originSlider, cacheSlider, nodeRamSlider, providerSelect, environmentSelect, otelSample].forEach(function (el) {
     el.addEventListener('input', update);
     el.addEventListener('change', update);
   });
