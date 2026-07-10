@@ -234,7 +234,6 @@
     VARIANTS_PER_ORIGIN: 20,
     OSC_USABLE: 0.80,
     OSC_TARGET_SHARD_GB: 500,
-    OSC_MIN_SHARDS: 2,
     OSC_MAX_SHARDS: 16,
     AUTOSCALE_THRESHOLD: 100,
     PROCESSOR_MISS_OPS_PER_POD: 4,
@@ -334,12 +333,16 @@
 
   function niceShardCount(provisionedGB) {
     var raw = Math.round(provisionedGB / CONST.OSC_TARGET_SHARD_GB);
-    raw = Math.max(CONST.OSC_MIN_SHARDS, Math.min(CONST.OSC_MAX_SHARDS, raw));
-    var nice = [2, 3, 4, 6, 8, 10, 12, 16];
+    raw = Math.max(DEFAULTS.oscShards, Math.min(CONST.OSC_MAX_SHARDS, raw));
+    var nice = [4, 6, 8, 10, 12, 16];
     for (var i = 0; i < nice.length; i++) {
       if (raw <= nice[i]) return nice[i];
     }
     return CONST.OSC_MAX_SHARDS;
+  }
+
+  function atLeastReplicas(key, calculated) {
+    return Math.max(DEFAULTS[key], calculated);
   }
 
   function memGi(n) { return n + 'Gi'; }
@@ -396,8 +399,11 @@
     var nodeRamGi = inputs.nodeRamGi;
     var autoscale = ops > CONST.AUTOSCALE_THRESHOLD;
 
-    var edgeReplicas = Math.max(1, Math.ceil(ops / CONST.EDGE_RPS));
-    var varnishReplicas = edgeReplicas;
+    var forTraffic = Math.max(1, Math.ceil(ops / CONST.EDGE_RPS));
+    // Never below chart defaults (reliability / rollout safety). Keep edge:varnish 1:1.
+    var pairedReplicas = Math.max(DEFAULTS.edgeReplicas, DEFAULTS.varnishReplicas, forTraffic);
+    var edgeReplicas = pairedReplicas;
+    var varnishReplicas = pairedReplicas;
 
     var cachedOriginGB = originGB * (cachePct / 100);
     var variantFactor = 1 + CONST.VARIANTS_PER_ORIGIN / 10;
@@ -409,15 +415,15 @@
     var oscTotalGB = parseInt(oscPerShardGi, 10) * oscShards;
 
     var missOps = ops * CONST.MISS_FRACTION;
-    var processorReplicas = Math.max(2, Math.ceil(missOps / CONST.PROCESSOR_MISS_OPS_PER_POD));
-    var fetcherReplicas = Math.max(2, Math.ceil(missOps / CONST.FETCHER_MISS_OPS_PER_POD));
-    var backendReplicas = Math.max(2, Math.ceil(ops / CONST.BACKEND_OPS_PER_POD));
+    var processorReplicas = atLeastReplicas('processorReplicas', Math.ceil(missOps / CONST.PROCESSOR_MISS_OPS_PER_POD));
+    var fetcherReplicas = atLeastReplicas('fetcherReplicas', Math.ceil(missOps / CONST.FETCHER_MISS_OPS_PER_POD));
+    var backendReplicas = atLeastReplicas('backendReplicas', Math.ceil(ops / CONST.BACKEND_OPS_PER_POD));
 
     var varnish = varnishSizing(ops, variantWorkingSetGB, nodeRamGi);
 
-    var processorMax = Math.max(16, processorReplicas * 2);
-    var fetcherMax = Math.max(8, fetcherReplicas * 2);
-    var backendMax = Math.max(4, backendReplicas * 2);
+    var processorMax = Math.max(DEFAULTS.processorReplicas * 2, 16, processorReplicas * 2);
+    var fetcherMax = Math.max(DEFAULTS.fetcherReplicas * 2, 8, fetcherReplicas * 2);
+    var backendMax = Math.max(DEFAULTS.backendReplicas * 2, 4, backendReplicas * 2);
 
     var result = {
       ops: ops,
@@ -588,9 +594,9 @@
   // ── Summary cards ────────────────────────────────────────────────────────
   function renderSummary(s, inputs) {
     var cards = [
-      { label: 'Edge + Varnish', value: s.edgeReplicas + ' + ' + s.varnishReplicas, sub: '1:1 ratio · ' + CONST.EDGE_RPS + ' RPS each' },
+      { label: 'Edge + Varnish', value: s.edgeReplicas + ' + ' + s.varnishReplicas, sub: '1:1 ratio · min ' + DEFAULTS.varnishReplicas + ' each (chart default)' },
       { label: 'Varnish RAM', value: s.varnish.memReq + '–' + s.varnish.memLim + ' GiB', sub: s.varnish.ephLim + ' GiB disk tier' },
-      { label: 'OSC storage', value: formatBytes(s.oscTotalGB), sub: s.oscShards + ' shards × ' + s.oscPerShardGi + 'Gi' },
+      { label: 'OSC storage', value: formatBytes(s.oscTotalGB), sub: s.oscShards + ' shards × ' + s.oscPerShardGi + 'Gi (min ' + DEFAULTS.oscShards + ')' },
       { label: 'Processor', value: s.autoscale ? 'HPA ' + s.processorReplicas + '–' + s.processorMax : s.processorReplicas + ' pods', sub: '~' + formatOps(s.missOps) + ' miss-path' },
       { label: 'Fetcher', value: s.autoscale ? 'HPA ' + s.fetcherReplicas + '–' + s.fetcherMax : s.fetcherReplicas + ' pods', sub: 'scales on miss storms' },
       { label: 'Backend', value: s.autoscale ? 'HPA ' + s.backendReplicas + '–' + s.backendMax : s.backendReplicas + ' pods', sub: '6 GiB mem limit each' },
@@ -610,7 +616,8 @@
       formatBytes(s.variantWorkingSetGB) + ' variants). ' +
       'Estimated ~' + s.estNodes + ' worker nodes at ' + s.nodeRamGi + ' GiB RAM each. ' +
       (s.autoscale ? 'Autoscaling enabled (> ' + CONST.AUTOSCALE_THRESHOLD + '/s).' : 'Fixed replicas (≤ ' + CONST.AUTOSCALE_THRESHOLD + '/s).') +
-      ' Assumes ~' + Math.round((1 - CONST.MISS_FRACTION) * 100) + '% combined cache hit rate for miss-path sizing.';
+      ' Replica counts never go below chart defaults (reliability / rollout safety). ' +
+      'Assumes ~' + Math.round((1 - CONST.MISS_FRACTION) * 100) + '% combined cache hit rate for miss-path sizing.';
   }
 
   function getInputs() {
