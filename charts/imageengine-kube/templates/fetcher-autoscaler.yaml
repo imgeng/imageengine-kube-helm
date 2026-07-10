@@ -1,4 +1,4 @@
-{{- if .Values.fetcher.autoscaling.enabled }}
+{{- if and .Values.backendStack.enabled .Values.fetcher.autoscaling.enabled }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:

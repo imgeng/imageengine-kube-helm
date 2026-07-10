@@ -13,6 +13,34 @@ images:
   osc: "3.6.0"
 
 ###################################################
+# Deployment topology (ADR 0021)
+###################################################
+# The chart deploys the full request pipeline
+# (edge -> varnish -> backend -> {fetcher | processor | OSC}) as one unit by
+# default. The two toggles below split it into independently-deployable tiers,
+# so you can run a frontend-only release and a backend-only release from the
+# SAME chart — e.g. regional frontend PoPs (us-west/us-central/us-east) all
+# pointing at one central backend stack.
+#
+# Most deployments leave BOTH true (the classic single-cluster install, e.g.
+# behind your own CDN). Disable one tier only for a deliberate split:
+#   frontend-only: frontend.enabled=true,  backendStack.enabled=false
+#                  AND set varnish.ieBackends to the remote backend LB(s) (required)
+#   backend-only:  frontend.enabled=false, backendStack.enabled=true
+#                  AND expose the backend via backend.service.type=LoadBalancer
+# At least one tier must be enabled. See docs/TOPOLOGIES.md.
+frontend:
+  # Frontend tier: the edge Deployment + Varnish StatefulSet, their Services,
+  # the Varnish PDB/PriorityClass, and the carbon.txt ConfigMap. Component
+  # tuning stays under the edge: and varnish: blocks below.
+  enabled: true
+backendStack:
+  # Backend stack: backend + fetcher + processor + Object Storage Cache, their
+  # Services, autoscalers, and the OSC PDB/PriorityClass. Component tuning stays
+  # under the backend:, fetcher:, processor:, and objectStorageCache: blocks.
+  enabled: true
+
+###################################################
 # Prometheus metrics (ADR 0004)
 ###################################################
 # Every ImageEngine component exposes Prometheus metrics on a dedicated
@@ -427,6 +455,26 @@ backend:
   minReadySeconds: 0
   image:
     repository: docker.scientiamobile.com/iekube/imageengine-backend.server
+  # How the backend Service is published (ADR 0021). ClusterIP (the default) is
+  # correct for the classic single-cluster install and for the frontend tier's
+  # in-cluster Varnish -> backend hop. A backend-only install that serves remote
+  # frontend tiers sets type: LoadBalancer here.
+  #
+  # SECURITY: the backend's single listener (:8000) serves BOTH the data plane
+  # AND unauthenticated admin endpoints (POST /api/v1/loglevel,
+  # /api/v1/originreturn), and open-source Varnish cannot originate TLS to
+  # backends — so cross-region frontend->backend traffic is plain HTTP. A
+  # backend LoadBalancer MUST therefore be private (internal LB reached over VPC
+  # peering / VPN) or, at minimum, restricted via loadBalancerSourceRanges to
+  # the frontend clusters' egress addresses. Never leave it open to the world.
+  # Provider LB presets (e.g. the AWS internet-facing scheme) are NOT applied to
+  # this Service; only the annotations you set below are rendered.
+  service:
+    type: ClusterIP            # ClusterIP | NodePort | LoadBalancer
+    port: 80
+    annotations: {}            # e.g. service.beta.kubernetes.io/aws-load-balancer-scheme: internal
+    loadBalancerSourceRanges: []
+    externalTrafficPolicy: ""  # "" (=Cluster) | Local
   resources:
     requests:
       memory: "500Mi"
@@ -686,7 +734,6 @@ objectStorageCache:
   minReadySeconds: 0
   image:
     repository: docker.scientiamobile.com/iekube/object-storage-cache.server
-  enabled: true
   persistence:
     enabled: true
     storageClass: ""             # Leave empty to use provider preset, or specify explicitly

@@ -1,3 +1,4 @@
+{{- if .Values.backendStack.enabled }}
 # ImageEngine Kube Backend Deployment
 apiVersion: apps/v1
 kind: Deployment
@@ -112,3 +113,4 @@ spec:
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
+{{- end }}

@@ -1,3 +1,4 @@
+{{- if .Values.frontend.enabled }}
 # ImageEngine Kube Varnish Cache StatefulSet (ADR 0018)
 # Each ordinal (varnish-0, varnish-1, ...) is an independent cache shard. The
 # edge discovers shards via the governing headless Service's SRV records and
@@ -142,3 +143,4 @@ spec:
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
+{{- end }}

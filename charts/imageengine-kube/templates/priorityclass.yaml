@@ -3,7 +3,10 @@
 # collide with org-managed classes. Enable with priorityClass.create=true, then
 # reference them via objectStorageCache.priorityClassName / varnish.priorityClassName.
 # Higher priority => preempted last and rescheduled first.
+# Each class is emitted only when its tier is enabled (ADR 0021) — no point
+# creating a cluster-scoped class that nothing in this release references.
 {{- if .Values.priorityClass.create }}
+{{- if .Values.backendStack.enabled }}
 apiVersion: scheduling.k8s.io/v1
 kind: PriorityClass
 metadata:
@@ -13,6 +16,8 @@ metadata:
 value: {{ int .Values.priorityClass.oscValue }}
 globalDefault: false
 description: "ImageEngine OSC cache shards - keep scheduled and reschedule first."
+{{- end }}
+{{- if .Values.frontend.enabled }}
 ---
 apiVersion: scheduling.k8s.io/v1
 kind: PriorityClass
@@ -23,4 +28,5 @@ metadata:
 value: {{ int .Values.priorityClass.varnishValue }}
 globalDefault: false
 description: "ImageEngine Varnish cache - high priority, below OSC."
+{{- end }}
 {{- end }}

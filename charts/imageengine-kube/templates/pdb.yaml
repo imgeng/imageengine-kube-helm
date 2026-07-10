@@ -2,7 +2,7 @@
 # disruptions (node drains, autoscaler scale-down, rolling node upgrades) and
 # are honored by kubectl, cluster-autoscaler, and Karpenter alike -- the
 # provider-agnostic equivalent of a "do not evict" hint.
-{{- if .Values.objectStorageCache.pdb.enabled }}
+{{- if and .Values.backendStack.enabled .Values.objectStorageCache.pdb.enabled }}
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
@@ -21,7 +21,7 @@ spec:
       app: {{ include "imageengine.name" . }}
       tier: object-storage
 {{- end }}
-{{- if .Values.varnish.pdb.enabled }}
+{{- if and .Values.frontend.enabled .Values.varnish.pdb.enabled }}
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget

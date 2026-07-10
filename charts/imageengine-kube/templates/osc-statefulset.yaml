@@ -1,3 +1,4 @@
+{{- if .Values.backendStack.enabled }}
 # ImageEngine Kube Object Storage Cache (OSC) StatefulSet
 # Each ordinal (osc-0, osc-1, ...) is an independent cache shard with its own
 # PersistentVolume. Clients (backend/fetcher/processor) consistent-hash the
@@ -166,3 +167,4 @@ spec:
             storage: {{ .Values.objectStorageCache.persistence.size }}
         storageClassName: {{ include "imageengine.storageClass" . }}
   {{- end }}
+{{- end }}

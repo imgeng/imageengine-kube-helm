@@ -1,0 +1,44 @@
+# Example: BACKEND-ONLY install (backend + fetcher + processor + OSC).
+#
+# Deploys just the backend stack and publishes the backend behind a LoadBalancer
+# so remote frontend tiers (see values-frontend-only.yaml) can reach it. Use
+# this for the central backend that serves regional frontend PoPs.
+#
+#   helm install ie-backend imageengine/imageengine-kube -n ie \
+#     -f values-backend-only.yaml
+#
+# See docs/TOPOLOGIES.md.
+
+frontend:
+  enabled: false
+backendStack:
+  enabled: true
+
+# Prefer a PRIVATE backend.service LoadBalancer (below) for exposure. Avoid
+# ingress.enabled here: on a backend-only install the Ingress fronts the backend
+# and inherits edge-oriented, internet-facing provider presets. See TOPOLOGIES.md.
+
+backend:
+  service:
+    type: LoadBalancer
+    # !! KEEP THIS PRIVATE !!  The backend listener serves unauthenticated admin
+    # endpoints and Varnish reaches it over plain HTTP. Use an internal LB and/or
+    # restrict the source ranges to your frontend clusters. NEVER expose it to
+    # the open internet.
+    annotations:
+      # AWS example — internal (non-internet-facing) NLB:
+      service.beta.kubernetes.io/aws-load-balancer-scheme: internal
+    loadBalancerSourceRanges:
+      - 10.0.0.0/8          # your frontend clusters' egress CIDRs
+
+# Tag telemetry with the backend region.
+identity:
+  environment: production
+  region: us-east
+
+# Size the cache tier for the aggregate traffic of ALL frontend regions it
+# serves (see docs/SIZING.md).
+objectStorageCache:
+  replicaCount: 4
+  persistence:
+    size: "256Gi"
