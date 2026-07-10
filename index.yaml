@@ -3,6 +3,43 @@ entries:
   imageengine-kube:
   - annotations:
       artifacthub.io/changes: |
+        - kind: added
+          description: "Split-topology installs: frontend.enabled and backendStack.enabled gate the frontend tier (edge+varnish) and the backend stack (backend, fetcher, processor, OSC) independently, so the pipeline can be deployed as separate frontend-only and backend-only releases (e.g. regional frontend PoPs pointing at a central backend). The full single-cluster pipeline remains the default (ADR 0021)."
+        - kind: added
+          description: "backend.service exposure block (type/port/annotations/loadBalancerSourceRanges/externalTrafficPolicy) lets a backend-only install publish the backend behind a LoadBalancer. Defaults to ClusterIP; a backend LoadBalancer must be private or source-range restricted (its listener carries unauthenticated admin endpoints and Varnish speaks plain HTTP) — see docs/TOPOLOGIES.md (ADR 0021)."
+        - kind: removed
+          description: "Removed the unused objectStorageCache.enabled value (no template referenced it)."
+      artifacthub.io/signKey: |
+        fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+        url: https://kube.imageengine.io/pubkey.asc
+    apiVersion: v2
+    created: "2026-07-10T16:10:03.346512196Z"
+    description: ImageEngine - cloud-native image optimization
+    digest: 590baefb8890df3a18e089e06b8d9c200f4e424162a55112dd6d92055058c31a
+    home: https://imageengine.io
+    icon: https://imageengine.io/favicon.ico
+    keywords:
+    - image-optimization
+    - image-cdn
+    - cdn
+    - imageengine
+    - varnish
+    - wurfl
+    kubeVersion: '>=1.30.0-0'
+    maintainers:
+    - email: support@scientiamobile.com
+      name: ScientiaMobile
+      url: https://www.scientiamobile.com
+    name: imageengine-kube
+    sources:
+    - https://kube.imageengine.io
+    - https://github.com/imgeng/imageengine-kube-helm
+    type: application
+    urls:
+    - imageengine-kube-1.9.0.tgz
+    version: 1.9.0
+  - annotations:
+      artifacthub.io/changes: |
         - kind: changed
           description: "OSC sharding clients (backend, origin fetcher, processor) now discover the Object Storage Cache shards from the OSC headless Service's SRV record (OSCCLIENT_SRV_NAME) instead of the hand-maintained OSCCLIENT_ENVCONFIG + OSC{N}_HOST enumeration. The shard set now tracks objectStorageCache.replicaCount automatically — scaling OSC no longer requires editing a per-shard host list (ADR 0019)."
         - kind: added
@@ -789,4 +826,4 @@ entries:
     urls:
     - imageengine-kube-0.8.0.tgz
     version: 0.8.0
-generated: "2026-07-09T17:58:10.761766653Z"
+generated: "2026-07-10T16:10:03.346743649Z"
