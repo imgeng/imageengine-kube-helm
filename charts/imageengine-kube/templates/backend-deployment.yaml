@@ -95,8 +95,10 @@ spec:
                 secretKeyRef:
                   name: ie-kube-api-key
                   key: KEY
+            {{- if not (hasKey (default (dict) .Values.backend.env) "ORIGINCONF_EMITTER_CHANNEL_KEY") }}
             - name: ORIGINCONF_EMITTER_CHANNEL_KEY
               value: "api-key:$(IE_BACKEND_IMAGEENGINE_API_KEY)"
+            {{- end }}
             - name: IE_BACKEND_IMAGEENGINE_API_URL
               value: {{ .Values.imageengine.imageEngineApiUrl | quote }}
             - name: IE_BACKEND_IMAGEENGINE_API_TIMEOUT

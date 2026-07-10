@@ -94,23 +94,27 @@ spec:
               value: "edge"
             - name: EDGE_SENTRY_DSN
               value: {{ .Values.sentry.FRONTEND_DSN | quote }}
+            {{- if not (hasKey (default (dict) .Values.edge.env) "EDGE_API_KEY") }}
             - name: EDGE_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: ie-kube-api-key
                   key: KEY
+            {{- end }}
+            {{- if not (hasKey (default (dict) .Values.edge.env) "EDGE_EMITTER_SERVER_KEY") }}
             - name: EDGE_EMITTER_SERVER_KEY
               value: "api-key:$(EDGE_API_KEY)"
+            {{- end }}
+            {{- if not (hasKey (default (dict) .Values.edge.env) "EDGE_EMITTER_BAN_KEY") }}
             - name: EDGE_EMITTER_BAN_KEY
               value: "api-key:$(EDGE_API_KEY)"
+            {{- end }}
             - name: EDGE_API_URL
               value: {{ .Values.imageengine.imageEngineApiUrl | quote }}
             {{- include "imageengine.identityEnv" $ | nindent 12 }}
             {{- include "imageengine.derivedEnv" (dict "name" "EDGE_EMITTER_SERVER" "value" $.Values.imageengine.emitterServer "env" $.Values.edge.env) | nindent 12 }}
             {{- include "imageengine.otelEnv" (dict "ctx" $ "enableVar" "EDGE_OTEL_ENABLED") | nindent 12 }}
-            {{- /* carbon.txt is served ONLY with BOTH a hash AND customer content;
-                   without content we must not set the hash gate, or the edge would
-                   serve its embedded ScientiaMobile default. See values.yaml. */}}
+            {{- /* carbon.txt is served ONLY with BOTH a hash AND customer content. See values.yaml. */}}
             {{- if and .Values.edge.carbontxt.enabled .Values.edge.carbontxt.hash .Values.edge.carbontxt.content }}
             - name: EDGE_CARBONTXT_HASH
               value: {{ .Values.edge.carbontxt.hash | quote }}

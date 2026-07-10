@@ -131,11 +131,15 @@ spec:
                 secretKeyRef:
                   name: ie-kube-api-key
                   key: KEY
+            {{- if not (hasKey (default (dict) .Values.objectStorageCache.env) "OSC_EMITTER_CHANNEL_KEY") }}
             - name: OSC_EMITTER_CHANNEL_KEY
               value: "api-key:$(IE_KUBE_API_KEY_RAW)"
+            {{- end }}
             # TODO: we can't send messages with a api-key, the app needs to deal with this
+            {{- if not (hasKey (default (dict) .Values.objectStorageCache.env) "OSC_EMITTER_RESULT_CHANNEL_KEY") }}
             - name: OSC_EMITTER_RESULT_CHANNEL_KEY
               value: "api-key:$(IE_KUBE_API_KEY_RAW)"
+            {{- end }}
             # Env vars for statistics
             {{- include "imageengine.identityEnv" $ | nindent 12 }}
             {{- include "imageengine.derivedEnv" (dict "name" "OSC_SENTRY_ENV" "value" (include "imageengine.appEnv" $) "env" $.Values.objectStorageCache.env) | nindent 12 }}
