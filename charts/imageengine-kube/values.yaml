@@ -150,6 +150,22 @@ sentry:
 secrets:
   imagePullSecretName: "ie-kube-image-pull"
 
+# NOTE ON <<SECRET: <name>.<key>>> PLACEHOLDERS
+# Several commented-out env vars below use a `<<SECRET: <secret-name>.<key>>>`
+# placeholder (e.g. "<<SECRET: ie-kube-emitter.KEY>>"). This is shorthand for
+# "source this variable from the <key> key of the <secret-name> Secret." Any
+# variable under a <component>.env block may be given a MAP value instead of a
+# scalar; the map is rendered verbatim as the container env var's `valueFrom:`.
+# So the placeholder above becomes:
+#   edge:
+#     env:
+#       EDGE_EMITTER_SERVER_KEY:
+#         secretKeyRef:
+#           name: ie-kube-emitter
+#           key: KEY
+# configMapKeyRef and fieldRef work the same way. The chart references Secrets by
+# name only — create them in the install namespace yourself. See CUSTOMIZATIONS.md.
+
 # Deployment identity — labels stamped on every structured log record and trace
 # span (mapped to ECS service.* / cloud.* / host.*). Friendly camelCase keys; the
 # chart maps each to the env var the binaries read at template time

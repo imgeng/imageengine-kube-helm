@@ -526,6 +526,49 @@ backend:
 
 The full set of supported env vars is documented in the inline comments of [`values.yaml`](https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/values.yaml) — there are far too many to list here.
 
+### Sourcing an env var from a Secret or ConfigMap
+
+An `env` entry can be either a **scalar** (rendered as the variable's `value:`) or a
+**map** (rendered verbatim as the variable's `valueFrom:`). That lets you pull any
+custom env var from a Kubernetes Secret, ConfigMap, or the pod's own metadata
+instead of inlining it in `values.yaml` — never commit a secret in plaintext:
+
+```yaml
+edge:
+  env:
+    # Scalar -> value:
+    EDGE_LOGLEVEL: "info"
+    # Map -> valueFrom.secretKeyRef (pull a secret you created out-of-band)
+    EDGE_EMITTER_SERVER_KEY:
+      secretKeyRef:
+        name: ie-kube-emitter
+        key: KEY
+    # Map -> valueFrom.configMapKeyRef
+    EDGE_ORIGIN_CONF_REFRESH_INTERVAL:
+      configMapKeyRef:
+        name: edge-tuning
+        key: refreshInterval
+    # Map -> valueFrom.fieldRef (Downward API)
+    EDGE_POD_IP:
+      fieldRef:
+        fieldPath: status.podIP
+```
+
+This is the mechanism behind the `<<SECRET: <secret-name>.<key>>` placeholders
+you'll see in the commented-out examples in [`values.yaml`](https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/values.yaml)
+(e.g. `EDGE_EMITTER_SERVER_KEY: "<<SECRET: ie-kube-emitter.KEY>>"`). To use one,
+replace the placeholder with a `secretKeyRef` map as shown above — `<<SECRET: ie-kube-emitter.KEY>>`
+means "the `KEY` key of the `ie-kube-emitter` Secret." The chart references these
+Secrets by name; you are responsible for creating them in the install namespace
+(see [REQUIREMENTS.md](REQUIREMENTS.md)).
+
+The whole map value is passed straight through to the container's `valueFrom:`, so
+any field Kubernetes accepts there works — including `optional: true` on a
+`secretKeyRef`/`configMapKeyRef` if the source may not exist. Note that env vars
+the chart already sets for a component (identity, Sentry/OTel, and the derived
+`*_SERVER`/`APP_ENV` vars above the `values.yaml` block) must not be redefined in
+`env` — a duplicate name breaks `helm upgrade`.
+
 ## Next
 
 - [SIZING.md](SIZING.md) — how to choose the right values for your traffic volume.
