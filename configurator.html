@@ -143,7 +143,7 @@
         <div style="display:flex; justify-content:space-between; font-size:11px; color:#6C7C92; margin-top:4px;">
           <span>4 GiB</span><span>64 GiB</span>
         </div>
-        <p style="font-size:12px; color:#6C7C92; margin:8px 0 0; line-height:1.5;">Drives node-count estimates and caps Varnish memory to what fits on your nodes.</p>
+        <p style="font-size:12px; color:#6C7C92; margin:8px 0 0; line-height:1.5;">Assumes X GiB RAM = X/2 vCPU. Drives node-count estimates, processor pod size, and caps Varnish memory/disk to your nodes.</p>
       </div>
 
       <div>
@@ -234,9 +234,14 @@
     VARNISH_HIT_RATE: 0.90,
     OSC_HIT_RATE: 0.75,              // hit rate among Varnish misses
     // Processor: ~100 resize ops/s per 4-core node, linear with core count.
-    PROCESSOR_RESIZE_OPS_PER_CORE: 25, // 100 / 4
-    PROCESSOR_CPU_CORES_PER_POD: 0.8,  // chart default cpu request (800m)
+    PROCESSOR_RESIZE_OPS_PER_CORE: 25,   // 100 / 4
+    PROCESSOR_MIN_POD_CORES: 0.8,        // chart default cpu request (800m) — floor for small nodes
+    PROCESSOR_PODS_PER_NODE: 2,          // pack ~2 processor pods per node
+    PROCESSOR_POD_OVERHEAD_CORES: 0.2,   // shave per pod so k8s/system overhead pods still fit
     BACKEND_VARNISH_MISS_OPS_PER_POD: 50,
+    // Varnish disk (file-backed) tiers only hold larger images — small images stay
+    // in the malloc tier — so cap disk at a multiple of the pod's RAM.
+    VARNISH_DISK_RAM_MULTIPLE: 4,
     VARIANTS_PER_ORIGIN: 20,
     OSC_USABLE: 0.80,
     OSC_TARGET_SHARD_GB: 500,
@@ -244,7 +249,7 @@
     AUTOSCALE_THRESHOLD: 100,
     NODE_RAM_SIZES: [4, 8, 16, 32, 64],
     NODE_ALLOCATABLE: 0.75,          // fraction of node CPU/RAM schedulable after system overhead
-    NODE_VCPU_PER_GIB: 0.25,         // standard general-purpose node ratio (1 vCPU : 4 GiB)
+    NODE_VCPU_PER_GIB: 0.5,          // assumed node ratio: X GiB RAM => X/2 vCPU
     // Per-pod resource *requests* (what the scheduler packs on, not limits).
     // cpu in cores, mem in GiB. Kept in sync with the chart's request blocks.
     REQ: {
@@ -359,8 +364,20 @@
     return Math.max(DEFAULTS[key], calculated);
   }
 
-  function processorOpsPerPod() {
-    return CONST.PROCESSOR_RESIZE_OPS_PER_CORE * CONST.PROCESSOR_CPU_CORES_PER_POD;
+  // Size each processor pod's CPU *request* to the chosen node: pack
+  // PROCESSOR_PODS_PER_NODE pods per node, shaved so system/overhead pods still
+  // fit (e.g. 8-core node => 2 pods of 3800m, leaving room for kube-system).
+  // The chart sets no CPU *limit*, so a pod can still burst past its request into
+  // idle cores; the larger request just reserves cores and makes HPA less twitchy.
+  function processorPodCores(nodeRamGi) {
+    var nodeCores = nodeRamGi * CONST.NODE_VCPU_PER_GIB;
+    var perPod = nodeCores / CONST.PROCESSOR_PODS_PER_NODE - CONST.PROCESSOR_POD_OVERHEAD_CORES;
+    perPod = Math.round(perPod * 10) / 10; // round to 100m
+    return Math.max(CONST.PROCESSOR_MIN_POD_CORES, perPod);
+  }
+
+  function processorOpsPerPod(cpuCores) {
+    return CONST.PROCESSOR_RESIZE_OPS_PER_CORE * cpuCores;
   }
 
   function trafficSplit(ops) {
@@ -394,7 +411,10 @@
     var varnishCap = Math.max(2, Math.floor(nodeRamGi * 0.55));
     memLim = Math.min(memLim, varnishCap);
     memReq = Math.min(memReq, Math.max(1, Math.floor(memLim / 3)));
-    ephLim = Math.min(ephLim, Math.max(ephReq, nodeRamGi * 8));
+    // Disk (file-backed) tiers only serve larger images; small images live in the
+    // malloc tier. Keep the disk cache within VARNISH_DISK_RAM_MULTIPLE x pod RAM.
+    ephLim = Math.min(ephLim, memLim * CONST.VARNISH_DISK_RAM_MULTIPLE);
+    ephReq = Math.min(ephReq, ephLim);
     return { memReq: memReq, memLim: memLim, ephReq: ephReq, ephLim: ephLim };
   }
 
@@ -411,7 +431,7 @@
       s.varnishReplicas * R.varnish.cpu +
       s.backendReplicas * R.backend.cpu +
       s.fetcherReplicas * R.fetcher.cpu +
-      s.processorReplicas * R.processor.cpu +
+      s.processorReplicas * s.processorCpu +
       s.oscShards * R.osc.cpu;
     var totalMem =
       s.edgeReplicas * R.edge.mem +
@@ -463,9 +483,11 @@
     var oscTotalGB = parseInt(oscPerShardGi, 10) * oscShards;
 
     var traffic = trafficSplit(ops);
+    var processorCpu = processorPodCores(nodeRamGi);
+    var processorPodOps = processorOpsPerPod(processorCpu);
     var processorReplicas = atLeastReplicas(
       'processorReplicas',
-      Math.ceil(traffic.processorOps / processorOpsPerPod())
+      Math.ceil(traffic.processorOps / processorPodOps)
     );
     // Fetcher runs on the same cold path as the processor (origin fetch + transform).
     var fetcherReplicas = atLeastReplicas('fetcherReplicas', processorReplicas);
@@ -494,6 +516,8 @@
       fetcherMax: fetcherMax,
       processorReplicas: processorReplicas,
       processorMax: processorMax,
+      processorCpu: processorCpu,
+      processorPodOps: processorPodOps,
       oscShards: oscShards,
       oscPerShardGi: oscPerShardGi,
       oscTotalGB: oscTotalGB,
@@ -524,7 +548,8 @@
     lines.push('#   Assumed hit rates: Varnish ' + Math.round(CONST.VARNISH_HIT_RATE * 100) +
       '%, OSC ' + Math.round(CONST.OSC_HIT_RATE * 100) + '% of Varnish misses');
     lines.push('#   Processor benchmark: ~' + (CONST.PROCESSOR_RESIZE_OPS_PER_CORE * 4) +
-      ' resize ops/s per 4-core node (~' + Math.round(processorOpsPerPod()) + '/s per pod at 800m CPU)');
+      ' resize ops/s per 4-core node; sized at ' + Math.round(s.processorCpu * 1000) +
+      'm/pod (~' + Math.round(s.processorPodOps) + '/s per pod, ' + CONST.PROCESSOR_PODS_PER_NODE + '/node)');
     lines.push('');
 
     lines.push('provider: ' + inputs.provider);
@@ -607,7 +632,8 @@
     }
 
     // Processor
-    if (s.autoscale || s.processorReplicas !== DEFAULTS.processorReplicas) {
+    var procCpuChanged = s.processorCpu > CONST.PROCESSOR_MIN_POD_CORES;
+    if (s.autoscale || s.processorReplicas !== DEFAULTS.processorReplicas || procCpuChanged) {
       lines.push('processor:');
       if (s.autoscale) {
         lines.push('  autoscaling:');
@@ -615,8 +641,14 @@
         lines.push('    minReplicas: ' + s.processorReplicas);
         lines.push('    maxReplicas: ' + s.processorMax);
         lines.push('    targetCPUUtilizationPercentage: 80');
-      } else {
+      } else if (s.processorReplicas !== DEFAULTS.processorReplicas) {
         lines.push('  replicaCount: ' + s.processorReplicas);
+      }
+      if (procCpuChanged) {
+        // No CPU limit by design (GOMAXPROCS/CFS pitfall); only raise the request.
+        lines.push('  resources:');
+        lines.push('    requests:');
+        lines.push('      cpu: "' + Math.round(s.processorCpu * 1000) + 'm"');
       }
       lines.push('');
     }
@@ -658,9 +690,9 @@
   function renderSummary(s, inputs) {
     var cards = [
       { label: 'Edge + Varnish', value: s.edgeReplicas + ' + ' + s.varnishReplicas, sub: '1:1 ratio · min ' + DEFAULTS.varnishReplicas + ' each (chart default)' },
-      { label: 'Varnish RAM', value: s.varnish.memReq + '–' + s.varnish.memLim + ' GiB', sub: s.varnish.ephLim + ' GiB disk tier' },
+      { label: 'Varnish RAM', value: s.varnish.memReq + '–' + s.varnish.memLim + ' GiB', sub: s.varnish.ephLim + ' GiB disk (≤' + CONST.VARNISH_DISK_RAM_MULTIPLE + '× RAM)' },
       { label: 'OSC storage', value: formatBytes(s.oscTotalGB), sub: s.oscShards + ' shards × ' + s.oscPerShardGi + 'Gi (min ' + DEFAULTS.oscShards + ')' },
-      { label: 'Processor', value: s.autoscale ? 'HPA ' + s.processorReplicas + '–' + s.processorMax : s.processorReplicas + ' pods', sub: '~' + formatOps(s.traffic.processorOps) + ' resize/s · ' + Math.round(processorOpsPerPod()) + '/pod' },
+      { label: 'Processor', value: s.autoscale ? 'HPA ' + s.processorReplicas + '–' + s.processorMax : s.processorReplicas + ' pods', sub: '~' + formatOps(s.traffic.processorOps) + ' resize/s · ' + Math.round(s.processorCpu * 1000) + 'm/pod (~' + Math.round(s.processorPodOps) + '/s)' },
       { label: 'Fetcher', value: s.autoscale ? 'HPA ' + s.fetcherReplicas + '–' + s.fetcherMax : s.fetcherReplicas + ' pods', sub: 'paired with processor on cold path' },
       { label: 'Backend', value: s.autoscale ? 'HPA ' + s.backendReplicas + '–' + s.backendMax : s.backendReplicas + ' pods', sub: '~' + formatOps(s.traffic.varnishMiss) + ' Varnish miss/s' },
       { label: 'Cluster', value: '~' + s.estNodes + ' nodes', sub: s.nodeRamGi + ' GiB / ~' + (Math.round(s.node.nodeCpu * 10) / 10) + ' vCPU · ' + s.node.bound + '-bound' }
