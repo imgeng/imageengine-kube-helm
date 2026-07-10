@@ -36,6 +36,14 @@
   }
   .toggle input:checked + .toggle-slider { background: #17C4B6; }
   .toggle input:checked + .toggle-slider:before { transform: translateX(20px); background: #06121B; }
+  .prov-btn {
+    padding: 8px 13px; border-radius: 8px; border: 1px solid #26344A;
+    background: #0E1726; color: #9FB0C4;
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: border-color .15s, color .15s, background .15s;
+  }
+  .prov-btn:hover { border-color: #3A4C68; color: #C7D3E3; }
+  .prov-btn[aria-pressed="true"] { border-color: #17C4B6; color: #17C4B6; background: rgba(23,196,182,.09); }
   /* Let grid/flex tracks shrink below their content so the <pre> blocks scroll
      internally instead of forcing the whole page wider than the viewport. */
   [data-panel] { min-width: 0; }
@@ -91,6 +99,32 @@
     <!-- inputs panel -->
     <div data-panel="" data-card="" style="border:1px solid #1E2A3A; border-radius:14px; background:#0D1420; padding:24px; display:flex; flex-direction:column; gap:22px;">
 
+      <!-- mode header -->
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <span id="mode-label" style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#6C7C92;">Getting started</span>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <label for="advanced-toggle" id="advanced-text" style="font-size:13px; font-weight:600; color:#9FB0C4; cursor:pointer; user-select:none;">Advanced</label>
+          <label class="toggle">
+            <input type="checkbox" id="advanced-toggle">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- cloud provider (foundational) -->
+      <div>
+        <label style="display:block; font-weight:600; font-size:14px; margin-bottom:8px;">Cloud provider</label>
+        <div id="provider-buttons" style="display:flex; flex-wrap:wrap; gap:8px;">
+          <button type="button" class="prov-btn" data-provider="aws">AWS</button>
+          <button type="button" class="prov-btn" data-provider="azure">Azure</button>
+          <button type="button" class="prov-btn" data-provider="digitalocean">DigitalOcean</button>
+          <button type="button" class="prov-btn" data-provider="gke">Google</button>
+          <button type="button" class="prov-btn" data-provider="linode">Linode</button>
+          <button type="button" class="prov-btn" data-provider="custom" aria-pressed="true">Custom</button>
+        </div>
+        <p id="provider-note" style="font-size:12px; color:#6C7C92; margin:8px 0 0; line-height:1.5;">Self-managed clusters have no cloud LB — front the edge with MetalLB or NodePort.</p>
+      </div>
+
       <div>
         <label style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
           <span style="font-weight:600; font-size:14px;">Requests / sec (to the cluster)</span>
@@ -114,6 +148,9 @@
         </div>
       </div>
 
+      <!-- advanced knobs (hidden until Advanced is on) -->
+      <div id="advanced-fields" style="display:none; flex-direction:column; gap:22px;">
+
       <div>
         <label style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
           <span style="font-weight:600; font-size:14px;">Origin images to cache</span>
@@ -129,19 +166,6 @@
       <hr style="border:none; border-top:1px solid #1E2A3A; margin:0;">
 
       <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#6C7C92;">Cluster</div>
-
-      <div>
-        <label style="display:block; font-weight:600; font-size:14px; margin-bottom:8px;">Cloud provider</label>
-        <select id="provider-select">
-          <option value="aws">AWS (EKS)</option>
-          <option value="azure">Azure (AKS)</option>
-          <option value="digitalocean">DigitalOcean (DOKS)</option>
-          <option value="gke">Google (GKE)</option>
-          <option value="linode">Linode (LKE)</option>
-          <option value="custom" selected>Custom / on-prem</option>
-        </select>
-        <p id="provider-note" style="font-size:12px; color:#6C7C92; margin:8px 0 0; line-height:1.5;">Self-managed clusters have no cloud LB — front the edge with MetalLB or NodePort.</p>
-      </div>
 
       <div>
         <label style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
@@ -240,6 +264,8 @@
           </div>
         </div>
       </div>
+
+      </div><!-- /advanced-fields -->
 
     </div>
 
@@ -362,7 +388,11 @@
   var opsSlider = document.getElementById('ops-slider');
   var originSlider = document.getElementById('origin-slider');
   var cacheSlider = document.getElementById('cache-slider');
-  var providerSelect = document.getElementById('provider-select');
+  var providerButtons = document.getElementById('provider-buttons');
+  var advancedToggle = document.getElementById('advanced-toggle');
+  var advancedFields = document.getElementById('advanced-fields');
+  var modeLabel = document.getElementById('mode-label');
+  var advancedText = document.getElementById('advanced-text');
   var nodeRamSlider = document.getElementById('node-ram-slider');
   var environmentSelect = document.getElementById('environment-select');
   var otelEnabled = document.getElementById('otel-enabled');
@@ -386,6 +416,7 @@
   var providerNote = document.getElementById('provider-note');
 
   var currentYaml = '';
+  var currentProvider = DEFAULTS.provider;
 
   // ── Helpers ─────────────────────────────────────────────────────────────
   function logMap(sliderVal, min, max) {
@@ -803,15 +834,30 @@
 
   // ── Summary cards ────────────────────────────────────────────────────────
   function renderSummary(s, inputs) {
-    var cards = [
-      { label: 'Edge + Varnish', value: s.edgeReplicas + ' + ' + s.varnishReplicas, sub: '1:1 ratio · min ' + DEFAULTS.varnishReplicas + ' each (chart default)' },
-      { label: 'Varnish RAM', value: s.varnish.memReq + '–' + s.varnish.memLim + ' GiB', sub: s.varnish.ephLim + ' GiB disk (≤' + CONST.VARNISH_DISK_RAM_MULTIPLE + '× RAM)' },
-      { label: 'OSC storage', value: formatBytes(s.oscTotalGB), sub: s.oscShards + ' shards × ' + s.oscPerShardGi + 'Gi (min ' + DEFAULTS.oscShards + ')' },
-      { label: 'Processor', value: s.autoscale ? 'HPA ' + s.processorReplicas + '–' + s.processorMax : s.processorReplicas + ' pods', sub: '~' + formatOps(s.traffic.processorOps) + ' resize/s · ' + Math.round(s.processorCpu * 1000) + 'm/pod (~' + Math.round(s.processorPodOps) + '/s)' },
-      { label: 'Fetcher', value: s.autoscale ? 'HPA ' + s.fetcherReplicas + '–' + s.fetcherMax : s.fetcherReplicas + ' pods', sub: 'paired with processor on cold path' },
-      { label: 'Backend', value: s.autoscale ? 'HPA ' + s.backendReplicas + '–' + s.backendMax : s.backendReplicas + ' pods', sub: '~' + formatOps(s.traffic.varnishMiss) + ' Varnish miss/s' },
-      { label: 'Cluster', value: '~' + s.estNodes + ' nodes', sub: s.nodeRamGi + ' GiB / ~' + (Math.round(s.node.nodeCpu * 10) / 10) + ' vCPU · ' + s.node.bound + '-bound' }
-    ];
+    var advanced = advancedToggle.checked;
+    var cards;
+
+    if (!advanced) {
+      // Simple mode: three headline numbers, no prose. Just enough to answer
+      // "how big a cluster and how much storage do I need?".
+      var totalPods = s.edgeReplicas + s.varnishReplicas + s.backendReplicas +
+        s.fetcherReplicas + s.processorReplicas + s.oscShards;
+      cards = [
+        { label: 'Worker nodes', value: '~' + s.estNodes, sub: s.nodeRamGi + ' GiB · ~' + (Math.round(s.node.nodeCpu * 10) / 10) + ' vCPU each' },
+        { label: 'Cache storage', value: formatBytes(s.oscTotalGB), sub: s.oscShards + ' OSC shards' },
+        { label: s.autoscale ? 'Pods (min)' : 'Total pods', value: totalPods + (s.autoscale ? '+' : ''), sub: s.autoscale ? 'autoscaling on' : 'fixed replicas' }
+      ];
+    } else {
+      cards = [
+        { label: 'Edge + Varnish', value: s.edgeReplicas + ' + ' + s.varnishReplicas, sub: '1:1 ratio · min ' + DEFAULTS.varnishReplicas + ' each (chart default)' },
+        { label: 'Varnish RAM', value: s.varnish.memReq + '–' + s.varnish.memLim + ' GiB', sub: s.varnish.ephLim + ' GiB disk (≤' + CONST.VARNISH_DISK_RAM_MULTIPLE + '× RAM)' },
+        { label: 'OSC storage', value: formatBytes(s.oscTotalGB), sub: s.oscShards + ' shards × ' + s.oscPerShardGi + 'Gi (min ' + DEFAULTS.oscShards + ')' },
+        { label: 'Processor', value: s.autoscale ? 'HPA ' + s.processorReplicas + '–' + s.processorMax : s.processorReplicas + ' pods', sub: '~' + formatOps(s.traffic.processorOps) + ' resize/s · ' + Math.round(s.processorCpu * 1000) + 'm/pod (~' + Math.round(s.processorPodOps) + '/s)' },
+        { label: 'Fetcher', value: s.autoscale ? 'HPA ' + s.fetcherReplicas + '–' + s.fetcherMax : s.fetcherReplicas + ' pods', sub: 'paired with processor on cold path' },
+        { label: 'Backend', value: s.autoscale ? 'HPA ' + s.backendReplicas + '–' + s.backendMax : s.backendReplicas + ' pods', sub: '~' + formatOps(s.traffic.varnishMiss) + ' Varnish miss/s' },
+        { label: 'Cluster', value: '~' + s.estNodes + ' nodes', sub: s.nodeRamGi + ' GiB / ~' + (Math.round(s.node.nodeCpu * 10) / 10) + ' vCPU · ' + s.node.bound + '-bound' }
+      ];
+    }
 
     summaryGrid.innerHTML = cards.map(function (c) {
       return '<div style="border:1px solid #1A2432; border-radius:10px; background:#0B111C; padding:14px;">' +
@@ -820,6 +866,13 @@
         '<div style="font-size:12px; color:#8A98AD;">' + c.sub + '</div></div>';
     }).join('');
 
+    if (!advanced) {
+      summaryNote.style.display = 'none';
+      summaryNote.textContent = '';
+      return;
+    }
+
+    summaryNote.style.display = '';
     summaryNote.textContent =
       'OSC working set ~' + formatBytes(s.oscWorkingSetGB) + ' (' +
       formatBytes(s.cachedOriginGB) + ' cached origin + ' +
@@ -842,7 +895,7 @@
       originGB: logMap(parseFloat(originSlider.value), CONST.ORIGIN_MIN_GB, CONST.ORIGIN_MAX_GB),
       cachePct: parseInt(cacheSlider.value, 10),
       nodeRamGi: nodeRamMap(parseFloat(nodeRamSlider.value)),
-      provider: providerSelect.value,
+      provider: currentProvider,
       environment: environmentSelect.value,
       otelEnabled: otelEnabled.checked,
       otelEndpoint: otelEndpoint.value.trim(),
@@ -890,10 +943,34 @@
   }
 
   // ── Event wiring ─────────────────────────────────────────────────────────
-  [opsSlider, originSlider, cacheSlider, nodeRamSlider, providerSelect, environmentSelect, otelSample,
+  [opsSlider, originSlider, cacheSlider, nodeRamSlider, environmentSelect, otelSample,
    edgeLogTarget, edgeLogSchema, fetcherLogTarget, fetcherLogSchema].forEach(function (el) {
     el.addEventListener('input', update);
     el.addEventListener('change', update);
+  });
+
+  // Cloud provider button row (replaces the native select).
+  function setProvider(val) {
+    currentProvider = val;
+    var btns = providerButtons.querySelectorAll('.prov-btn');
+    Array.prototype.forEach.call(btns, function (b) {
+      b.setAttribute('aria-pressed', b.getAttribute('data-provider') === val ? 'true' : 'false');
+    });
+    update();
+  }
+  providerButtons.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('.prov-btn') : null;
+    if (b) setProvider(b.getAttribute('data-provider'));
+  });
+
+  // Advanced mode: reveal the full knob set and switch the footprint between
+  // the concise headline view and the full per-component breakdown.
+  advancedToggle.addEventListener('change', function () {
+    var on = advancedToggle.checked;
+    advancedFields.style.display = on ? 'flex' : 'none';
+    modeLabel.textContent = on ? 'Advanced setup' : 'Getting started';
+    advancedText.style.color = on ? '#17C4B6' : '#9FB0C4';
+    update();
   });
 
   otelEnabled.addEventListener('change', function () {
