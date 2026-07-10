@@ -1,0 +1,52 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+annotations:
+  artifacthub.io/changes: |
+    - kind: changed
+      description: "Per-component env: entries may now be a map instead of a scalar. A scalar is rendered as the variable's value:; a map is passed through verbatim as its valueFrom:, so a custom env var can be sourced from a Secret (secretKeyRef), ConfigMap (configMapKeyRef), or the pod's own metadata (fieldRef) instead of being inlined. Scalar values behave exactly as before. See docs/CUSTOMIZATIONS.md."
+  artifacthub.io/signKey: |
+    fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+    url: https://kube.imageengine.io/pubkey.asc
+apiVersion: v2
+description: ImageEngine - cloud-native image optimization
+home: https://imageengine.io
+icon: https://imageengine.io/favicon.ico
+keywords:
+- - image-optimization
+- - image-cdn
+- - cdn
+- - imageengine
+- - varnish
+- - wurfl
+kubeVersion: '>=1.30.0-0'
+maintainers:
+- - email: support@scientiamobile.com
+  name: ScientiaMobile
+  url: https://www.scientiamobile.com
+name: imageengine-kube
+sources:
+- - https://kube.imageengine.io
+- - https://github.com/imgeng/imageengine-kube-helm
+type: application
+version: 1.9.1
+
+...
+files:
+  imageengine-kube-1.9.1.tgz: sha256:c1161021632493a7b930d4c2930f1f064904e9fdb9e3dd2583cf98b2e95fbb59
+-----BEGIN PGP SIGNATURE-----
+
+wsFcBAEBCgAQBQJqUX5BCRBGMmYGCVfEswAAGDkQAB+u/3b/3pq0nksosvSTvht2
+pQAYu7mUJia4OJCDHvYLvw0JocqhyMPvN318Fcr2nyiLWx5fZ8/PfD+TTLMYq3hr
+3q98jRiI+CiZ6eJglVV2IuzIgZpcVMymiRznzLAlroSeJRFVQURxiE3KpXF1ajKt
+pg9/9kqVbeqbbP0e+zh6ZLq17910jfK9Ebb/oksg/EiSqSIXci++ML4k8FGg5woh
+UuwsseLowQbWbvuNJEwtgU1JisoM8XFNNZBKeK5F0GmKv6HAeX0LBALPXf7RBo3V
+baD3DYYNDFHRCD0osskwkAfyhKJCQsJ2E4jLAwH+NO44SXkpceyyPBAjvqPGzqf3
+sRXAIA8t/LedkoEbpAGkG+5u+LlKJ8Xr9euURBQ3ETD01yC/tvqlaulAw8hBWT80
+jHipme7DhRQSIJ78NAW/Xhvy3Km3L4lc1b8ijnfwwsoaRQcqnWHoJhLKY4vdxx6j
+RbRpxG5Z3DbkgyJO8tKmIlYMbxp2Z3N+D/EkHpyrScP7zF8c/jDHEgL0wfK73uS2
+bWAiwqaWWSuN3QPzILX0XV2jpY25PYOFYDAyztGSyeXPDMwO+KvXYWa2zJeBcoWk
+Tzl8j4dnb4ve7StzNJf69JHFE+ONOEe/jiVGsXYxudf1Nu2kJP8dL3uyIlzS70GS
+Ji9u45DVzgsEepRyUAJ2
+=/zfL
+-----END PGP SIGNATURE-----
