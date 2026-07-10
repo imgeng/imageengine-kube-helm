@@ -91,7 +91,7 @@
         <div style="display:flex; justify-content:space-between; font-size:11px; color:#6C7C92; margin-top:4px;">
           <span>10/s</span><span>10,000/s</span>
         </div>
-        <p style="font-size:12px; color:#6C7C92; margin:8px 0 0; line-height:1.5;">Treated as total edge RPS. Miss-path load uses an assumed ~85% combined cache hit rate.</p>
+        <p style="font-size:12px; color:#6C7C92; margin:8px 0 0; line-height:1.5;">Total edge RPS. Miss-path sizing uses measured hit rates: ~90% Varnish, ~75% OSC (of Varnish misses) — ~2.5% of requests need processing.</p>
       </div>
 
       <div>
@@ -230,15 +230,18 @@
   // ── Sizing constants (tune here) ──────────────────────────────────────────
   var CONST = {
     EDGE_RPS: 250,
-    MISS_FRACTION: 0.15,
+    // Layered cache model: Varnish → OSC → processor (measured steady-state).
+    VARNISH_HIT_RATE: 0.90,
+    OSC_HIT_RATE: 0.75,              // hit rate among Varnish misses
+    // Processor: ~100 resize ops/s per 4-core node, linear with core count.
+    PROCESSOR_RESIZE_OPS_PER_CORE: 25, // 100 / 4
+    PROCESSOR_CPU_CORES_PER_POD: 0.8,  // chart default cpu request (800m)
+    BACKEND_VARNISH_MISS_OPS_PER_POD: 50,
     VARIANTS_PER_ORIGIN: 20,
     OSC_USABLE: 0.80,
     OSC_TARGET_SHARD_GB: 500,
     OSC_MAX_SHARDS: 16,
     AUTOSCALE_THRESHOLD: 100,
-    PROCESSOR_MISS_OPS_PER_POD: 4,
-    FETCHER_MISS_OPS_PER_POD: 6,
-    BACKEND_OPS_PER_POD: 150,
     NODE_RAM_SIZES: [4, 8, 16, 32, 64],
     NODE_ALLOCATABLE: 0.72,
     OPS_MIN: 10,
@@ -345,6 +348,20 @@
     return Math.max(DEFAULTS[key], calculated);
   }
 
+  function processorOpsPerPod() {
+    return CONST.PROCESSOR_RESIZE_OPS_PER_CORE * CONST.PROCESSOR_CPU_CORES_PER_POD;
+  }
+
+  function trafficSplit(ops) {
+    var varnishMiss = ops * (1 - CONST.VARNISH_HIT_RATE);
+    var processorOps = varnishMiss * (1 - CONST.OSC_HIT_RATE);
+    return {
+      varnishMiss: varnishMiss,
+      oscHit: varnishMiss * CONST.OSC_HIT_RATE,
+      processorOps: processorOps
+    };
+  }
+
   function memGi(n) { return n + 'Gi'; }
 
   function varnishSizing(ops, variantWorkingSetGB, nodeRamGi) {
@@ -414,10 +431,17 @@
     var oscPerShardGi = niceGi(provisionedGB / oscShards);
     var oscTotalGB = parseInt(oscPerShardGi, 10) * oscShards;
 
-    var missOps = ops * CONST.MISS_FRACTION;
-    var processorReplicas = atLeastReplicas('processorReplicas', Math.ceil(missOps / CONST.PROCESSOR_MISS_OPS_PER_POD));
-    var fetcherReplicas = atLeastReplicas('fetcherReplicas', Math.ceil(missOps / CONST.FETCHER_MISS_OPS_PER_POD));
-    var backendReplicas = atLeastReplicas('backendReplicas', Math.ceil(ops / CONST.BACKEND_OPS_PER_POD));
+    var traffic = trafficSplit(ops);
+    var processorReplicas = atLeastReplicas(
+      'processorReplicas',
+      Math.ceil(traffic.processorOps / processorOpsPerPod())
+    );
+    // Fetcher runs on the same cold path as the processor (origin fetch + transform).
+    var fetcherReplicas = atLeastReplicas('fetcherReplicas', processorReplicas);
+    var backendReplicas = atLeastReplicas(
+      'backendReplicas',
+      Math.ceil(traffic.varnishMiss / CONST.BACKEND_VARNISH_MISS_OPS_PER_POD)
+    );
 
     var varnish = varnishSizing(ops, variantWorkingSetGB, nodeRamGi);
 
@@ -427,7 +451,7 @@
 
     var result = {
       ops: ops,
-      missOps: missOps,
+      traffic: traffic,
       autoscale: autoscale,
       nodeRamGi: nodeRamGi,
       edgeReplicas: edgeReplicas,
@@ -462,6 +486,10 @@
       (STORAGE_CLASSES[inputs.provider] ? ' (OSC storageClass: ' + STORAGE_CLASSES[inputs.provider] + ')' : ''));
     lines.push('#   Recommended worker node RAM: ' + inputs.nodeRamGi + ' GiB');
     lines.push('#   Estimated nodes: ~' + s.estNodes);
+    lines.push('#   Assumed hit rates: Varnish ' + Math.round(CONST.VARNISH_HIT_RATE * 100) +
+      '%, OSC ' + Math.round(CONST.OSC_HIT_RATE * 100) + '% of Varnish misses');
+    lines.push('#   Processor benchmark: ~' + (CONST.PROCESSOR_RESIZE_OPS_PER_CORE * 4) +
+      ' resize ops/s per 4-core node (~' + Math.round(processorOpsPerPod()) + '/s per pod at 800m CPU)');
     lines.push('');
 
     lines.push('provider: ' + inputs.provider);
@@ -597,9 +625,9 @@
       { label: 'Edge + Varnish', value: s.edgeReplicas + ' + ' + s.varnishReplicas, sub: '1:1 ratio · min ' + DEFAULTS.varnishReplicas + ' each (chart default)' },
       { label: 'Varnish RAM', value: s.varnish.memReq + '–' + s.varnish.memLim + ' GiB', sub: s.varnish.ephLim + ' GiB disk tier' },
       { label: 'OSC storage', value: formatBytes(s.oscTotalGB), sub: s.oscShards + ' shards × ' + s.oscPerShardGi + 'Gi (min ' + DEFAULTS.oscShards + ')' },
-      { label: 'Processor', value: s.autoscale ? 'HPA ' + s.processorReplicas + '–' + s.processorMax : s.processorReplicas + ' pods', sub: '~' + formatOps(s.missOps) + ' miss-path' },
-      { label: 'Fetcher', value: s.autoscale ? 'HPA ' + s.fetcherReplicas + '–' + s.fetcherMax : s.fetcherReplicas + ' pods', sub: 'scales on miss storms' },
-      { label: 'Backend', value: s.autoscale ? 'HPA ' + s.backendReplicas + '–' + s.backendMax : s.backendReplicas + ' pods', sub: '6 GiB mem limit each' },
+      { label: 'Processor', value: s.autoscale ? 'HPA ' + s.processorReplicas + '–' + s.processorMax : s.processorReplicas + ' pods', sub: '~' + formatOps(s.traffic.processorOps) + ' resize/s · ' + Math.round(processorOpsPerPod()) + '/pod' },
+      { label: 'Fetcher', value: s.autoscale ? 'HPA ' + s.fetcherReplicas + '–' + s.fetcherMax : s.fetcherReplicas + ' pods', sub: 'paired with processor on cold path' },
+      { label: 'Backend', value: s.autoscale ? 'HPA ' + s.backendReplicas + '–' + s.backendMax : s.backendReplicas + ' pods', sub: '~' + formatOps(s.traffic.varnishMiss) + ' Varnish miss/s' },
       { label: 'Cluster', value: '~' + s.estNodes + ' nodes', sub: s.nodeRamGi + ' GiB RAM · ' + inputs.provider }
     ];
 
@@ -617,7 +645,10 @@
       'Estimated ~' + s.estNodes + ' worker nodes at ' + s.nodeRamGi + ' GiB RAM each. ' +
       (s.autoscale ? 'Autoscaling enabled (> ' + CONST.AUTOSCALE_THRESHOLD + '/s).' : 'Fixed replicas (≤ ' + CONST.AUTOSCALE_THRESHOLD + '/s).') +
       ' Replica counts never go below chart defaults (reliability / rollout safety). ' +
-      'Assumes ~' + Math.round((1 - CONST.MISS_FRACTION) * 100) + '% combined cache hit rate for miss-path sizing.';
+      'Cache model: ' + Math.round(CONST.VARNISH_HIT_RATE * 100) + '% Varnish hit → ' +
+      Math.round(CONST.OSC_HIT_RATE * 100) + '% OSC hit of remainder → ' +
+      formatOps(s.traffic.processorOps) + ' resize/s (' +
+      (Math.round(s.traffic.processorOps / s.ops * 1000) / 10) + '% of edge RPS).';
   }
 
   function getInputs() {
