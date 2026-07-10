@@ -147,10 +147,7 @@ spec:
             {{- include "imageengine.derivedEnv" (dict "name" "OSC_FS_STORAGE_PATH" "value" $.Values.objectStorageCache.storagePath "env" $.Values.objectStorageCache.env) | nindent 12 }}
             {{- include "imageengine.otelEnv" (dict "ctx" $ "enableVar" "OSC_OTEL_ENABLED") | nindent 12 }}
             # Env vars below this line are from values.yaml
-            {{- range $key, $value := .Values.objectStorageCache.env }}
-            - name: {{ $key }}
-              value: {{ $value | quote }}
-            {{- end }}
+            {{- include "imageengine.renderEnv" .Values.objectStorageCache.env | nindent 12 }}
       {{- if not .Values.objectStorageCache.persistence.enabled }}
       volumes:
         - name: osc-storage

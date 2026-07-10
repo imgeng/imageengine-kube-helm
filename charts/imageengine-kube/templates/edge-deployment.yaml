@@ -121,10 +121,7 @@ spec:
             - name: EDGE_CARBONTXT_FILE
               value: "/usr/share/iee/carbon.txt"
             {{- end }}
-            {{- range $key, $value := .Values.edge.env }}
-            - name: {{ $key }}
-              value: {{ $value | quote }}
-            {{- end }}
+            {{- include "imageengine.renderEnv" .Values.edge.env | nindent 12 }}
           volumeMounts:
             {{- if and .Values.edge.carbontxt.enabled .Values.edge.carbontxt.hash .Values.edge.carbontxt.content }}
             - name: carbontxt
