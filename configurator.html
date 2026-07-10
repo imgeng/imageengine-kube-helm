@@ -1,0 +1,823 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sizing Configurator — ImageEngine Kube</title>
+<meta name="description" content="Generate a Helm values-override.yaml sized for your ImageEngine Kube deployment — OSC shards, Varnish RAM, edge replicas, and autoscaling.">
+<link rel="icon" href="assets/ie-mark-v3.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0A0E17; }
+  a { color: #17C4B6; text-decoration: none; }
+  a:hover { color: #4CE0D3; }
+  pre { margin: 0; }
+  ::selection { background: #17C4B6; color: #06121B; }
+  .copy-btn:hover { border-color: #17C4B6 !important; color: #17C4B6 !important; }
+  input[type="range"] { width: 100%; accent-color: #17C4B6; cursor: pointer; }
+  select, input[type="text"], input[type="number"] {
+    width: 100%; padding: 10px 12px; border-radius: 9px;
+    border: 1px solid #26344A; background: #0E1726; color: #E6EDF5;
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 14px;
+  }
+  select:focus, input:focus { outline: none; border-color: #17C4B6; }
+  .toggle { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute; cursor: pointer; inset: 0;
+    background: #26344A; border-radius: 24px; transition: .2s;
+  }
+  .toggle-slider:before {
+    position: absolute; content: ""; height: 18px; width: 18px;
+    left: 3px; bottom: 3px; background: #9FB0C4; border-radius: 50%; transition: .2s;
+  }
+  .toggle input:checked + .toggle-slider { background: #17C4B6; }
+  .toggle input:checked + .toggle-slider:before { transform: translateX(20px); background: #06121B; }
+  @media (max-width: 900px) {
+    [data-wrap] { padding-left: 28px !important; padding-right: 28px !important; }
+    [data-layout] { grid-template-columns: 1fr !important; }
+    [data-summary-grid] { grid-template-columns: 1fr 1fr !important; }
+  }
+  @media (max-width: 600px) {
+    [data-wrap] { padding-left: 20px !important; padding-right: 20px !important; }
+    [data-summary-grid] { grid-template-columns: 1fr !important; }
+    [data-nav] { flex-wrap: wrap !important; gap: 14px !important; }
+    [data-nav-links] { gap: 14px !important; flex-wrap: wrap !important; }
+  }
+</style>
+</head>
+<body>
+
+<div style="background:#0A0E17; color:#E6EDF5; font-family:'IBM Plex Sans',sans-serif; min-height:100vh;">
+
+  <!-- nav -->
+  <div style="border-bottom:1px solid #141C2A;">
+    <div data-wrap="" data-nav="" style="max-width:1200px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:20px 48px;">
+      <a href="index.html" style="display:flex; align-items:center;">
+        <img src="assets/logo-white.png" alt="ImageEngine Kube" style="height:36px; width:auto; display:block;">
+      </a>
+      <div data-nav-links="" style="display:flex; align-items:center; gap:26px; font-size:14px;">
+        <a href="index.html" style="color:#9FB0C4;">Home</a>
+        <a href="configurator.html" style="color:#17C4B6; font-weight:600;">Configurator</a>
+        <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/SIZING.md" style="color:#9FB0C4;">Sizing guide</a>
+        <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/GETTING_STARTED.md" style="color:#9FB0C4;">Docs</a>
+        <a href="https://github.com/imgeng/imageengine-kube-helm" style="color:#9FB0C4;">GitHub</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- header -->
+  <div data-wrap="" style="max-width:1200px; margin:0 auto; padding:48px 48px 32px;">
+    <div style="font-family:'IBM Plex Mono',monospace; font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:#17C4B6; margin-bottom:14px;">Helm values generator</div>
+    <h1 style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:40px; line-height:1.08; letter-spacing:-.02em; margin:0 0 14px; max-width:720px;">Size your ImageEngine Kube cluster.</h1>
+    <p style="font-size:17px; line-height:1.6; color:#9FB0C4; margin:0; max-width:640px;">Turn a few workload knobs into a starting-point <span style="font-family:'IBM Plex Mono',monospace; color:#C7D3E3;">values-override.yaml</span>. These are bench-from numbers — re-measure after deploying. See the <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/SIZING.md">sizing guide</a> for the full rationale.</p>
+  </div>
+
+  <!-- main layout -->
+  <div data-wrap="" data-layout="" style="max-width:1200px; margin:0 auto; padding:0 48px 72px; display:grid; grid-template-columns:380px 1fr; gap:32px; align-items:start;">
+
+    <!-- inputs panel -->
+    <div style="border:1px solid #1E2A3A; border-radius:14px; background:#0D1420; padding:24px; display:flex; flex-direction:column; gap:22px;">
+
+      <div>
+        <label style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+          <span style="font-weight:600; font-size:14px;">Requests / sec (to the cluster)</span>
+          <span id="ops-label" style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#17C4B6;">100/s</span>
+        </label>
+        <input type="range" id="ops-slider" min="0" max="1000" value="333" step="1">
+        <div style="display:flex; justify-content:space-between; font-size:11px; color:#6C7C92; margin-top:4px;">
+          <span>10/s</span><span>10,000/s</span>
+        </div>
+        <p style="font-size:12px; color:#6C7C92; margin:8px 0 0; line-height:1.5;">Total edge ingress. Cache layers pare this down: ~90% hit at Varnish, ~75% of the rest at OSC — so 1000/s ≈ 100/s at the backend and ~25/s of image processing.</p>
+      </div>
+
+      <div>
+        <label style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+          <span style="font-weight:600; font-size:14px;">Total origin image size</span>
+          <span id="origin-label" style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#17C4B6;">1 TB</span>
+        </label>
+        <input type="range" id="origin-slider" min="0" max="1000" value="500" step="1">
+        <div style="display:flex; justify-content:space-between; font-size:11px; color:#6C7C92; margin-top:4px;">
+          <span>10 GB</span><span>100 TB</span>
+        </div>
+      </div>
+
+      <div>
+        <label style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+          <span style="font-weight:600; font-size:14px;">Origin images to cache</span>
+          <span id="cache-label" style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#17C4B6;">30%</span>
+        </label>
+        <input type="range" id="cache-slider" min="10" max="100" value="30" step="1">
+        <div style="display:flex; justify-content:space-between; font-size:11px; color:#6C7C92; margin-top:4px;">
+          <span>10%</span><span>100%</span>
+        </div>
+        <p style="font-size:12px; color:#6C7C92; margin:8px 0 0; line-height:1.5;">Fraction of your origin catalog kept in OSC. Processed variants add ~2× more (20 variants/origin at ~10% of origin size each).</p>
+      </div>
+
+      <hr style="border:none; border-top:1px solid #1E2A3A; margin:0;">
+
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#6C7C92;">Cluster</div>
+
+      <div>
+        <label style="display:block; font-weight:600; font-size:14px; margin-bottom:8px;">Cloud provider</label>
+        <select id="provider-select">
+          <option value="aws">AWS (EKS)</option>
+          <option value="azure">Azure (AKS)</option>
+          <option value="digitalocean">DigitalOcean (DOKS)</option>
+          <option value="gke">Google (GKE)</option>
+          <option value="linode">Linode (LKE)</option>
+          <option value="custom" selected>Custom / on-prem</option>
+        </select>
+        <p id="provider-note" style="font-size:12px; color:#6C7C92; margin:8px 0 0; line-height:1.5;">Self-managed clusters have no cloud LB — front the edge with MetalLB or NodePort.</p>
+      </div>
+
+      <div>
+        <label style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+          <span style="font-weight:600; font-size:14px;">Worker node RAM</span>
+          <span id="node-ram-label" style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#17C4B6;">8 GiB</span>
+        </label>
+        <input type="range" id="node-ram-slider" min="0" max="1000" value="250" step="1">
+        <div style="display:flex; justify-content:space-between; font-size:11px; color:#6C7C92; margin-top:4px;">
+          <span>4 GiB</span><span>64 GiB</span>
+        </div>
+        <p style="font-size:12px; color:#6C7C92; margin:8px 0 0; line-height:1.5;">Assumes X GiB RAM = X/2 vCPU. Drives node-count estimates, processor pod size, and caps Varnish memory/disk to your nodes.</p>
+      </div>
+
+      <div>
+        <label style="display:block; font-weight:600; font-size:14px; margin-bottom:8px;">Environment</label>
+        <select id="environment-select">
+          <option value="production">production</option>
+          <option value="staging">staging</option>
+          <option value="canary">canary</option>
+          <option value="testing" selected>testing</option>
+          <option value="development">development</option>
+        </select>
+      </div>
+
+      <hr style="border:none; border-top:1px solid #1E2A3A; margin:0;">
+
+      <div>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+          <span style="font-weight:600; font-size:14px;">OpenTelemetry tracing</span>
+          <label class="toggle">
+            <input type="checkbox" id="otel-enabled">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div id="otel-fields" style="display:none; flex-direction:column; gap:10px;">
+          <div>
+            <label style="display:block; font-size:12px; color:#9FB0C4; margin-bottom:6px;">OTLP endpoint</label>
+            <input type="text" id="otel-endpoint" placeholder="http://otel-collector.observability:4317">
+          </div>
+          <div>
+            <label style="display:block; font-size:12px; color:#9FB0C4; margin-bottom:6px;">Trace sample rate (0–1)</label>
+            <input type="number" id="otel-sample" min="0" max="1" step="0.01" value="0.05">
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- output panel -->
+    <div style="display:flex; flex-direction:column; gap:20px;">
+
+      <!-- summary -->
+      <div style="border:1px solid #1E2A3A; border-radius:14px; background:#0D1420; padding:24px;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#6C7C92; margin-bottom:16px;">Computed footprint</div>
+        <div data-summary-grid="" id="summary-grid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;"></div>
+        <p id="summary-note" style="font-size:12.5px; color:#8A98AD; margin:16px 0 0; line-height:1.55;"></p>
+      </div>
+
+      <!-- yaml output -->
+      <div style="border:1px solid #234642; border-radius:14px; background:#081512; overflow:hidden;">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid #16302C;">
+          <span style="color:#5FBFB4; font-weight:600; font-size:11px; letter-spacing:.08em; text-transform:uppercase;">values-override.yaml</span>
+          <div style="display:flex; gap:8px;">
+            <button id="copy-yaml" class="copy-btn" style="display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border:1px solid #2A5751; border-radius:7px; background:#0C201C; color:#5FBFB4; font-family:'IBM Plex Sans',sans-serif; font-weight:600; font-size:11px; cursor:pointer;"><span class="copy-label">Copy</span></button>
+            <button id="download-yaml" class="copy-btn" style="display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border:1px solid #2A5751; border-radius:7px; background:#0C201C; color:#5FBFB4; font-family:'IBM Plex Sans',sans-serif; font-weight:600; font-size:11px; cursor:pointer;">Download</button>
+          </div>
+        </div>
+        <pre id="yaml-output" style="padding:16px; overflow:auto; color:#C7D3E3; font-family:'IBM Plex Mono',monospace; font-size:12.5px; line-height:1.65; max-height:480px;"></pre>
+      </div>
+
+      <!-- install command -->
+      <div style="border:1px solid #1E2A3A; border-radius:14px; background:#080D16; overflow:hidden;">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid #16202F;">
+          <span style="color:#6C7C92; font-weight:600; font-size:11px; letter-spacing:.08em; text-transform:uppercase;">Install with override</span>
+          <button id="copy-install" class="copy-btn" style="display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border:1px solid #26344A; border-radius:7px; background:#0E1726; color:#9FB0C4; font-family:'IBM Plex Sans',sans-serif; font-weight:600; font-size:11px; cursor:pointer;"><span class="copy-label">Copy</span></button>
+        </div>
+        <pre id="install-output" style="padding:16px; overflow:auto; color:#C7D3E3; font-family:'IBM Plex Mono',monospace; font-size:12.5px; line-height:1.65;"></pre>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- footer -->
+  <div style="border-top:1px solid #141C2A;">
+    <div data-wrap="" style="max-width:1200px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:26px 48px; font-size:13px; color:#6C7C92;">
+      <span>Maintained by <a href="https://www.scientiamobile.com" style="color:#9FB0C4;">ScientiaMobile</a></span>
+      <span style="font-family:'IBM Plex Mono',monospace;">kube.imageengine.io</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  // ── Sizing constants (tune here) ──────────────────────────────────────────
+  var CONST = {
+    EDGE_RPS: 250,
+    // Layered cache model: Varnish → OSC → processor (measured steady-state).
+    VARNISH_HIT_RATE: 0.90,
+    OSC_HIT_RATE: 0.75,              // hit rate among Varnish misses
+    // Processor: ~100 resize ops/s per 4-core node, linear with core count.
+    PROCESSOR_RESIZE_OPS_PER_CORE: 25,   // 100 / 4
+    PROCESSOR_MIN_POD_CORES: 0.8,        // chart default cpu request (800m) — floor for small nodes
+    PROCESSOR_PODS_PER_NODE: 2,          // pack ~2 processor pods per node
+    PROCESSOR_POD_OVERHEAD_CORES: 0.2,   // shave per pod so k8s/system overhead pods still fit
+    BACKEND_VARNISH_MISS_OPS_PER_POD: 50,
+    // Varnish disk (file-backed) tiers only hold larger images — small images stay
+    // in the malloc tier — so cap disk at a multiple of the pod's RAM.
+    VARNISH_DISK_RAM_MULTIPLE: 4,
+    VARIANTS_PER_ORIGIN: 20,
+    OSC_USABLE: 0.80,
+    OSC_TARGET_SHARD_GB: 500,
+    OSC_MAX_SHARDS: 16,
+    AUTOSCALE_THRESHOLD: 100,
+    NODE_RAM_SIZES: [4, 8, 16, 32, 64],
+    NODE_ALLOCATABLE: 0.75,          // fraction of node CPU/RAM schedulable after system overhead
+    NODE_VCPU_PER_GIB: 0.5,          // assumed node ratio: X GiB RAM => X/2 vCPU
+    // Per-pod resource *requests* (what the scheduler packs on, not limits).
+    // cpu in cores, mem in GiB. Kept in sync with the chart's request blocks.
+    REQ: {
+      edge:      { cpu: 0.25, mem: 0.25 },
+      varnish:   { cpu: 0.50, mem: 1.0  },
+      backend:   { cpu: 0.25, mem: 1.0  },
+      fetcher:   { cpu: 0.25, mem: 0.5  },
+      processor: { cpu: 0.80, mem: 2.4  },
+      osc:       { cpu: 0.90, mem: 0.5  }
+    },
+    OPS_MIN: 10,
+    OPS_MAX: 10000,
+    ORIGIN_MIN_GB: 10,
+    ORIGIN_MAX_GB: 102400
+  };
+
+  var PROVIDERS = {
+    aws:          'EKS provisions an AWS Network Load Balancer — make sure the AWS Load Balancer Controller is installed.',
+    azure:        'AKS creates a Standard Azure Load Balancer. Add service annotations for an internal-only LB if needed.',
+    digitalocean: 'DOKS attaches a DigitalOcean Load Balancer to the edge service.',
+    gke:          'GKE exposes the edge via an external TCP Load Balancer. Use a VPC-native cluster for NEG load balancing.',
+    linode:       'LKE provisions a Linode NodeBalancer.',
+    custom:       'Self-managed clusters have no cloud LB — front the edge with MetalLB or NodePort.'
+  };
+
+  var STORAGE_CLASSES = {
+    aws: 'gp3',
+    azure: 'managed-csi-premium',
+    digitalocean: 'do-block-storage',
+    gke: 'standard-rwo',
+    linode: 'linode-block-storage-retain'
+  };
+
+  // Chart defaults (only emit overrides when different)
+  var DEFAULTS = {
+    provider: 'custom',
+    environment: 'testing',
+    edgeReplicas: 1,
+    varnishReplicas: 3,
+    backendReplicas: 2,
+    fetcherReplicas: 2,
+    processorReplicas: 2,
+    oscShards: 4,
+    oscSizeGi: 10
+  };
+
+  // ── DOM refs ─────────────────────────────────────────────────────────────
+  var opsSlider = document.getElementById('ops-slider');
+  var originSlider = document.getElementById('origin-slider');
+  var cacheSlider = document.getElementById('cache-slider');
+  var providerSelect = document.getElementById('provider-select');
+  var nodeRamSlider = document.getElementById('node-ram-slider');
+  var environmentSelect = document.getElementById('environment-select');
+  var otelEnabled = document.getElementById('otel-enabled');
+  var otelFields = document.getElementById('otel-fields');
+  var otelEndpoint = document.getElementById('otel-endpoint');
+  var otelSample = document.getElementById('otel-sample');
+  var summaryGrid = document.getElementById('summary-grid');
+  var summaryNote = document.getElementById('summary-note');
+  var yamlOutput = document.getElementById('yaml-output');
+  var installOutput = document.getElementById('install-output');
+  var providerNote = document.getElementById('provider-note');
+
+  var currentYaml = '';
+
+  // ── Helpers ─────────────────────────────────────────────────────────────
+  function logMap(sliderVal, min, max) {
+    var t = sliderVal / 1000;
+    return min * Math.pow(max / min, t);
+  }
+
+  function nodeRamMap(sliderVal) {
+    var sizes = CONST.NODE_RAM_SIZES;
+    var idx = Math.round((sliderVal / 1000) * (sizes.length - 1));
+    return sizes[Math.max(0, Math.min(sizes.length - 1, idx))];
+  }
+
+  function formatBytes(gb) {
+    if (gb >= 1024) {
+      var tb = gb / 1024;
+      return (tb >= 10 ? Math.round(tb) : Math.round(tb * 10) / 10) + ' TB';
+    }
+    if (gb >= 100) return Math.round(gb) + ' GB';
+    if (gb >= 10) return Math.round(gb) + ' GB';
+    return Math.round(gb * 10) / 10 + ' GB';
+  }
+
+  function formatOps(ops) {
+    if (ops >= 1000) return (ops / 1000).toFixed(ops >= 5000 ? 0 : 1).replace(/\.0$/, '') + 'k/s';
+    return Math.round(ops) + '/s';
+  }
+
+  function niceGi(gb) {
+    if (gb <= 0) return 10;
+    if (gb <= 50) return Math.max(10, Math.ceil(gb / 10) * 10);
+    if (gb <= 500) return Math.ceil(gb / 50) * 50;
+    if (gb <= 2000) return Math.ceil(gb / 100) * 100;
+    return Math.ceil(gb / 500) * 500;
+  }
+
+  function niceShardCount(provisionedGB) {
+    var raw = Math.round(provisionedGB / CONST.OSC_TARGET_SHARD_GB);
+    raw = Math.max(DEFAULTS.oscShards, Math.min(CONST.OSC_MAX_SHARDS, raw));
+    var nice = [4, 6, 8, 10, 12, 16];
+    for (var i = 0; i < nice.length; i++) {
+      if (raw <= nice[i]) return nice[i];
+    }
+    return CONST.OSC_MAX_SHARDS;
+  }
+
+  function atLeastReplicas(key, calculated) {
+    return Math.max(DEFAULTS[key], calculated);
+  }
+
+  // Size each processor pod's CPU *request* to the chosen node: pack
+  // PROCESSOR_PODS_PER_NODE pods per node, shaved so system/overhead pods still
+  // fit (e.g. 8-core node => 2 pods of 3800m, leaving room for kube-system).
+  // The chart sets no CPU *limit*, so a pod can still burst past its request into
+  // idle cores; the larger request just reserves cores and makes HPA less twitchy.
+  function processorPodCores(nodeRamGi) {
+    var nodeCores = nodeRamGi * CONST.NODE_VCPU_PER_GIB;
+    var perPod = nodeCores / CONST.PROCESSOR_PODS_PER_NODE - CONST.PROCESSOR_POD_OVERHEAD_CORES;
+    perPod = Math.round(perPod * 10) / 10; // round to 100m
+    return Math.max(CONST.PROCESSOR_MIN_POD_CORES, perPod);
+  }
+
+  function processorOpsPerPod(cpuCores) {
+    return CONST.PROCESSOR_RESIZE_OPS_PER_CORE * cpuCores;
+  }
+
+  function trafficSplit(ops) {
+    var varnishMiss = ops * (1 - CONST.VARNISH_HIT_RATE);
+    var processorOps = varnishMiss * (1 - CONST.OSC_HIT_RATE);
+    return {
+      varnishMiss: varnishMiss,
+      oscHit: varnishMiss * CONST.OSC_HIT_RATE,
+      processorOps: processorOps
+    };
+  }
+
+  function memGi(n) { return n + 'Gi'; }
+
+  function varnishSizing(ops, variantWorkingSetGB, nodeRamGi) {
+    var memReq, memLim, ephReq, ephLim;
+    if (ops < CONST.AUTOSCALE_THRESHOLD) {
+      memReq = 1; memLim = 4;
+      ephReq = 10; ephLim = Math.max(50, Math.min(200, Math.ceil(variantWorkingSetGB * 0.03)));
+    } else if (ops < 200) {
+      memReq = 4; memLim = 12;
+      ephReq = 10; ephLim = Math.max(100, Math.min(300, Math.ceil(variantWorkingSetGB * 0.05)));
+    } else if (ops < 750) {
+      memReq = 8; memLim = 16;
+      ephReq = 20; ephLim = Math.max(200, Math.min(500, Math.ceil(variantWorkingSetGB * 0.08)));
+    } else {
+      memReq = 16; memLim = 32;
+      ephReq = 50; ephLim = Math.min(500, Math.max(300, Math.ceil(variantWorkingSetGB * 0.1)));
+    }
+    // Cap Varnish memory to what fits on the selected node size (shared-node assumption).
+    var varnishCap = Math.max(2, Math.floor(nodeRamGi * 0.55));
+    memLim = Math.min(memLim, varnishCap);
+    memReq = Math.min(memReq, Math.max(1, Math.floor(memLim / 3)));
+    // Disk (file-backed) tiers only serve larger images; small images live in the
+    // malloc tier. Keep the disk cache within VARNISH_DISK_RAM_MULTIPLE x pod RAM.
+    ephLim = Math.min(ephLim, memLim * CONST.VARNISH_DISK_RAM_MULTIPLE);
+    ephReq = Math.min(ephReq, ephLim);
+    return { memReq: memReq, memLim: memLim, ephReq: ephReq, ephLim: ephLim };
+  }
+
+  function estimateNodes(s, nodeRamGi) {
+    // Scheduling is driven by resource *requests*, not limits. Derive per-node
+    // schedulable CPU/RAM from the node RAM size (standard 1 vCPU : 4 GiB ratio).
+    var R = CONST.REQ;
+    var nodeCpu = nodeRamGi * CONST.NODE_VCPU_PER_GIB;
+    var allocCpu = nodeCpu * CONST.NODE_ALLOCATABLE;
+    var allocMem = nodeRamGi * CONST.NODE_ALLOCATABLE;
+
+    var totalCpu =
+      s.edgeReplicas * R.edge.cpu +
+      s.varnishReplicas * R.varnish.cpu +
+      s.backendReplicas * R.backend.cpu +
+      s.fetcherReplicas * R.fetcher.cpu +
+      s.processorReplicas * s.processorCpu +
+      s.oscShards * R.osc.cpu;
+    var totalMem =
+      s.edgeReplicas * R.edge.mem +
+      s.varnishReplicas * Math.max(R.varnish.mem, s.varnish.memReq) +
+      s.backendReplicas * R.backend.mem +
+      s.fetcherReplicas * R.fetcher.mem +
+      s.processorReplicas * R.processor.mem +
+      s.oscShards * R.osc.mem;
+
+    var byCpu = Math.ceil(totalCpu / allocCpu);
+    var byMem = Math.ceil(totalMem / allocMem);
+    var nodes = Math.max(byCpu, byMem);
+    // Floor at 2 so there's somewhere to reschedule during a node loss / rollout.
+    return {
+      nodes: Math.max(2, nodes),
+      bound: byCpu >= byMem ? 'CPU' : 'memory',
+      totalCpu: totalCpu,
+      totalMem: totalMem,
+      nodeCpu: nodeCpu
+    };
+  }
+
+  function indentBlock(text, spaces) {
+    var pad = Array(spaces + 1).join(' ');
+    return text.split('\n').map(function (l) { return pad + l; }).join('\n');
+  }
+
+  // ── Sizing model ─────────────────────────────────────────────────────────
+  function compute(inputs) {
+    var ops = inputs.ops;
+    var originGB = inputs.originGB;
+    var cachePct = inputs.cachePct;
+    var nodeRamGi = inputs.nodeRamGi;
+    var autoscale = ops > CONST.AUTOSCALE_THRESHOLD;
+
+    var forTraffic = Math.max(1, Math.ceil(ops / CONST.EDGE_RPS));
+    // Never below chart defaults (reliability / rollout safety). Keep edge:varnish 1:1.
+    var pairedReplicas = Math.max(DEFAULTS.edgeReplicas, DEFAULTS.varnishReplicas, forTraffic);
+    var edgeReplicas = pairedReplicas;
+    var varnishReplicas = pairedReplicas;
+
+    var cachedOriginGB = originGB * (cachePct / 100);
+    var variantFactor = 1 + CONST.VARIANTS_PER_ORIGIN / 10;
+    var oscWorkingSetGB = cachedOriginGB * variantFactor;
+    var variantWorkingSetGB = cachedOriginGB * (CONST.VARIANTS_PER_ORIGIN / 10);
+    var provisionedGB = oscWorkingSetGB / CONST.OSC_USABLE;
+    var oscShards = niceShardCount(provisionedGB);
+    var oscPerShardGi = niceGi(provisionedGB / oscShards);
+    var oscTotalGB = parseInt(oscPerShardGi, 10) * oscShards;
+
+    var traffic = trafficSplit(ops);
+    var processorCpu = processorPodCores(nodeRamGi);
+    var processorPodOps = processorOpsPerPod(processorCpu);
+    var processorReplicas = atLeastReplicas(
+      'processorReplicas',
+      Math.ceil(traffic.processorOps / processorPodOps)
+    );
+    // Fetcher runs on the same cold path as the processor (origin fetch + transform).
+    var fetcherReplicas = atLeastReplicas('fetcherReplicas', processorReplicas);
+    var backendReplicas = atLeastReplicas(
+      'backendReplicas',
+      Math.ceil(traffic.varnishMiss / CONST.BACKEND_VARNISH_MISS_OPS_PER_POD)
+    );
+
+    var varnish = varnishSizing(ops, variantWorkingSetGB, nodeRamGi);
+
+    var processorMax = Math.max(DEFAULTS.processorReplicas * 2, 16, processorReplicas * 2);
+    var fetcherMax = Math.max(DEFAULTS.fetcherReplicas * 2, 8, fetcherReplicas * 2);
+    var backendMax = Math.max(DEFAULTS.backendReplicas * 2, 4, backendReplicas * 2);
+
+    var result = {
+      ops: ops,
+      traffic: traffic,
+      autoscale: autoscale,
+      nodeRamGi: nodeRamGi,
+      edgeReplicas: edgeReplicas,
+      varnishReplicas: varnishReplicas,
+      varnish: varnish,
+      backendReplicas: backendReplicas,
+      backendMax: backendMax,
+      fetcherReplicas: fetcherReplicas,
+      fetcherMax: fetcherMax,
+      processorReplicas: processorReplicas,
+      processorMax: processorMax,
+      processorCpu: processorCpu,
+      processorPodOps: processorPodOps,
+      oscShards: oscShards,
+      oscPerShardGi: oscPerShardGi,
+      oscTotalGB: oscTotalGB,
+      oscWorkingSetGB: oscWorkingSetGB,
+      cachedOriginGB: cachedOriginGB,
+      variantWorkingSetGB: variantWorkingSetGB
+    };
+    result.node = estimateNodes(result, nodeRamGi);
+    result.estNodes = result.node.nodes;
+    return result;
+  }
+
+  // ── YAML builder ─────────────────────────────────────────────────────────
+  function buildYaml(inputs, s) {
+    var lines = [];
+    lines.push('# ImageEngine Kube values override');
+    lines.push('# Generated by https://kube.imageengine.io/configurator.html');
+    lines.push('# Starting-point sizing — re-bench after deploying.');
+    lines.push('#');
+    lines.push('# Cluster planning (informational — not a chart value):');
+    lines.push('#   Provider: ' + inputs.provider +
+      (STORAGE_CLASSES[inputs.provider] ? ' (OSC storageClass: ' + STORAGE_CLASSES[inputs.provider] + ')' : ''));
+    lines.push('#   Recommended worker node: ' + inputs.nodeRamGi + ' GiB RAM / ~' +
+      (Math.round(s.node.nodeCpu * 10) / 10) + ' vCPU');
+    lines.push('#   Estimated nodes: ~' + s.estNodes + ' (' + s.node.bound + '-bound; ' +
+      (Math.round(s.node.totalCpu * 10) / 10) + ' vCPU + ' +
+      (Math.round(s.node.totalMem * 10) / 10) + ' GiB of requests)');
+    lines.push('#   Assumed hit rates: Varnish ' + Math.round(CONST.VARNISH_HIT_RATE * 100) +
+      '%, OSC ' + Math.round(CONST.OSC_HIT_RATE * 100) + '% of Varnish misses');
+    lines.push('#   Processor benchmark: ~' + (CONST.PROCESSOR_RESIZE_OPS_PER_CORE * 4) +
+      ' resize ops/s per 4-core node; sized at ' + Math.round(s.processorCpu * 1000) +
+      'm/pod (~' + Math.round(s.processorPodOps) + '/s per pod, ' + CONST.PROCESSOR_PODS_PER_NODE + '/node)');
+    lines.push('');
+
+    lines.push('provider: ' + inputs.provider);
+    lines.push('');
+
+    if (inputs.environment !== DEFAULTS.environment) {
+      lines.push('identity:');
+      lines.push('  environment: "' + inputs.environment + '"');
+      lines.push('');
+    }
+
+    if (s.edgeReplicas !== DEFAULTS.edgeReplicas) {
+      lines.push('edge:');
+      lines.push('  replicaCount: ' + s.edgeReplicas);
+      if (inputs.environment === 'production' || s.ops > CONST.AUTOSCALE_THRESHOLD) {
+        lines.push('  env:');
+        lines.push('    EDGE_ACCESS_LOG_TARGET: none');
+      }
+      lines.push('');
+    } else if (inputs.environment === 'production' || s.ops > CONST.AUTOSCALE_THRESHOLD) {
+      lines.push('edge:');
+      lines.push('  env:');
+      lines.push('    EDGE_ACCESS_LOG_TARGET: none');
+      lines.push('');
+    }
+
+    var varnishChanged = s.varnishReplicas !== DEFAULTS.varnishReplicas ||
+      s.varnish.memReq !== 1 || s.varnish.memLim !== 4 ||
+      s.varnish.ephLim !== 500;
+    if (varnishChanged) {
+      lines.push('varnish:');
+      if (s.varnishReplicas !== DEFAULTS.varnishReplicas) {
+        lines.push('  replicaCount: ' + s.varnishReplicas);
+      }
+      lines.push('  resources:');
+      lines.push('    requests:');
+      lines.push('      memory: "' + memGi(s.varnish.memReq) + '"');
+      lines.push('      cpu: "500m"');
+      lines.push('      ephemeral-storage: "' + s.varnish.ephReq + 'Gi"');
+      lines.push('    limits:');
+      lines.push('      memory: "' + memGi(s.varnish.memLim) + '"');
+      lines.push('      ephemeral-storage: "' + s.varnish.ephLim + 'Gi"');
+      lines.push('  env:');
+      lines.push('    VARNISH_STORAGE: tiered');
+      lines.push('');
+    }
+
+    // Backend — always bump memory limit (chart default 2Gi; sizing guide recommends 6Gi)
+    lines.push('backend:');
+    if (s.autoscale) {
+      lines.push('  autoscaling:');
+      lines.push('    enabled: true');
+      lines.push('    minReplicas: ' + s.backendReplicas);
+      lines.push('    maxReplicas: ' + s.backendMax);
+      lines.push('    targetCPUUtilizationPercentage: 80');
+    } else if (s.backendReplicas !== DEFAULTS.backendReplicas) {
+      lines.push('  replicaCount: ' + s.backendReplicas);
+    }
+    lines.push('  resources:');
+    lines.push('    requests:');
+    lines.push('      memory: "1Gi"');
+    lines.push('      cpu: "250m"');
+    lines.push('    limits:');
+    lines.push('      memory: "6Gi"');
+    lines.push('');
+
+    // Fetcher
+    if (s.autoscale || s.fetcherReplicas !== DEFAULTS.fetcherReplicas) {
+      lines.push('fetcher:');
+      if (s.autoscale) {
+        lines.push('  autoscaling:');
+        lines.push('    enabled: true');
+        lines.push('    minReplicas: ' + s.fetcherReplicas);
+        lines.push('    maxReplicas: ' + s.fetcherMax);
+        lines.push('    targetCPUUtilizationPercentage: 80');
+      } else {
+        lines.push('  replicaCount: ' + s.fetcherReplicas);
+      }
+      lines.push('');
+    }
+
+    // Processor
+    var procCpuChanged = s.processorCpu > CONST.PROCESSOR_MIN_POD_CORES;
+    if (s.autoscale || s.processorReplicas !== DEFAULTS.processorReplicas || procCpuChanged) {
+      lines.push('processor:');
+      if (s.autoscale) {
+        lines.push('  autoscaling:');
+        lines.push('    enabled: true');
+        lines.push('    minReplicas: ' + s.processorReplicas);
+        lines.push('    maxReplicas: ' + s.processorMax);
+        lines.push('    targetCPUUtilizationPercentage: 80');
+      } else if (s.processorReplicas !== DEFAULTS.processorReplicas) {
+        lines.push('  replicaCount: ' + s.processorReplicas);
+      }
+      if (procCpuChanged) {
+        // No CPU limit by design (GOMAXPROCS/CFS pitfall); only raise the request.
+        lines.push('  resources:');
+        lines.push('    requests:');
+        lines.push('      cpu: "' + Math.round(s.processorCpu * 1000) + 'm"');
+      }
+      lines.push('');
+    }
+
+    // OSC
+    var oscSizeNum = parseInt(s.oscPerShardGi, 10);
+    if (s.oscShards !== DEFAULTS.oscShards || oscSizeNum !== DEFAULTS.oscSizeGi) {
+      lines.push('objectStorageCache:');
+      if (s.oscShards !== DEFAULTS.oscShards) {
+        lines.push('  replicaCount: ' + s.oscShards);
+      }
+      lines.push('  persistence:');
+      lines.push('    size: "' + s.oscPerShardGi + 'Gi"');
+      if (inputs.provider !== 'custom' && STORAGE_CLASSES[inputs.provider]) {
+        lines.push('    storageClass: "' + STORAGE_CLASSES[inputs.provider] + '"');
+      }
+      lines.push('');
+    }
+
+    // OTEL
+    if (inputs.otelEnabled) {
+      lines.push('otel:');
+      lines.push('  enabled: true');
+      if (inputs.otelEndpoint) {
+        lines.push('  endpoint: "' + inputs.otelEndpoint + '"');
+      }
+      if (inputs.otelSample < 1) {
+        lines.push('  env:');
+        lines.push('    OTEL_TRACES_SAMPLER: parentbased_traceidratio');
+        lines.push('    OTEL_TRACES_SAMPLER_ARG: "' + inputs.otelSample + '"');
+      }
+      lines.push('');
+    }
+
+    return lines.join('\n').replace(/\n+$/, '\n');
+  }
+
+  // ── Summary cards ────────────────────────────────────────────────────────
+  function renderSummary(s, inputs) {
+    var cards = [
+      { label: 'Edge + Varnish', value: s.edgeReplicas + ' + ' + s.varnishReplicas, sub: '1:1 ratio · min ' + DEFAULTS.varnishReplicas + ' each (chart default)' },
+      { label: 'Varnish RAM', value: s.varnish.memReq + '–' + s.varnish.memLim + ' GiB', sub: s.varnish.ephLim + ' GiB disk (≤' + CONST.VARNISH_DISK_RAM_MULTIPLE + '× RAM)' },
+      { label: 'OSC storage', value: formatBytes(s.oscTotalGB), sub: s.oscShards + ' shards × ' + s.oscPerShardGi + 'Gi (min ' + DEFAULTS.oscShards + ')' },
+      { label: 'Processor', value: s.autoscale ? 'HPA ' + s.processorReplicas + '–' + s.processorMax : s.processorReplicas + ' pods', sub: '~' + formatOps(s.traffic.processorOps) + ' resize/s · ' + Math.round(s.processorCpu * 1000) + 'm/pod (~' + Math.round(s.processorPodOps) + '/s)' },
+      { label: 'Fetcher', value: s.autoscale ? 'HPA ' + s.fetcherReplicas + '–' + s.fetcherMax : s.fetcherReplicas + ' pods', sub: 'paired with processor on cold path' },
+      { label: 'Backend', value: s.autoscale ? 'HPA ' + s.backendReplicas + '–' + s.backendMax : s.backendReplicas + ' pods', sub: '~' + formatOps(s.traffic.varnishMiss) + ' Varnish miss/s' },
+      { label: 'Cluster', value: '~' + s.estNodes + ' nodes', sub: s.nodeRamGi + ' GiB / ~' + (Math.round(s.node.nodeCpu * 10) / 10) + ' vCPU · ' + s.node.bound + '-bound' }
+    ];
+
+    summaryGrid.innerHTML = cards.map(function (c) {
+      return '<div style="border:1px solid #1A2432; border-radius:10px; background:#0B111C; padding:14px;">' +
+        '<div style="font-size:11px; color:#6C7C92; text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px;">' + c.label + '</div>' +
+        '<div style="font-family:\'Space Grotesk\',sans-serif; font-weight:600; font-size:18px; color:#E6EDF5; margin-bottom:4px;">' + c.value + '</div>' +
+        '<div style="font-size:12px; color:#8A98AD;">' + c.sub + '</div></div>';
+    }).join('');
+
+    summaryNote.textContent =
+      'OSC working set ~' + formatBytes(s.oscWorkingSetGB) + ' (' +
+      formatBytes(s.cachedOriginGB) + ' cached origin + ' +
+      formatBytes(s.variantWorkingSetGB) + ' variants). ' +
+      'Estimated ~' + s.estNodes + ' worker nodes (' + s.nodeRamGi + ' GiB / ~' +
+      (Math.round(s.node.nodeCpu * 10) / 10) + ' vCPU each) — ' + s.node.bound + '-bound on ' +
+      (Math.round(s.node.totalCpu * 10) / 10) + ' vCPU + ' +
+      (Math.round(s.node.totalMem * 10) / 10) + ' GiB of pod requests. ' +
+      (s.autoscale ? 'Autoscaling enabled (> ' + CONST.AUTOSCALE_THRESHOLD + '/s).' : 'Fixed replicas (≤ ' + CONST.AUTOSCALE_THRESHOLD + '/s).') +
+      ' At low traffic the node count is driven by the chart-default replica floors (esp. ' + DEFAULTS.oscShards + ' OSC shards at 900m CPU and ' + DEFAULTS.varnishReplicas + ' Varnish); a minimal dev cluster can lower those. ' +
+      'Cache model: ' + Math.round(CONST.VARNISH_HIT_RATE * 100) + '% Varnish hit → ' +
+      Math.round(CONST.OSC_HIT_RATE * 100) + '% OSC hit of remainder → ' +
+      formatOps(s.traffic.processorOps) + ' resize/s (' +
+      (Math.round(s.traffic.processorOps / s.ops * 1000) / 10) + '% of edge RPS).';
+  }
+
+  function getInputs() {
+    return {
+      ops: logMap(parseFloat(opsSlider.value), CONST.OPS_MIN, CONST.OPS_MAX),
+      originGB: logMap(parseFloat(originSlider.value), CONST.ORIGIN_MIN_GB, CONST.ORIGIN_MAX_GB),
+      cachePct: parseInt(cacheSlider.value, 10),
+      nodeRamGi: nodeRamMap(parseFloat(nodeRamSlider.value)),
+      provider: providerSelect.value,
+      environment: environmentSelect.value,
+      otelEnabled: otelEnabled.checked,
+      otelEndpoint: otelEndpoint.value.trim(),
+      otelSample: parseFloat(otelSample.value) || 0.05
+    };
+  }
+
+  function update() {
+    var inputs = getInputs();
+    var s = compute(inputs);
+
+    document.getElementById('ops-label').textContent = formatOps(inputs.ops);
+    document.getElementById('origin-label').textContent = formatBytes(inputs.originGB);
+    document.getElementById('cache-label').textContent = inputs.cachePct + '%';
+    document.getElementById('node-ram-label').textContent = inputs.nodeRamGi + ' GiB';
+    var providerText = PROVIDERS[inputs.provider] || '';
+    if (STORAGE_CLASSES[inputs.provider]) {
+      providerText += ' OSC PVCs use storageClass "' + STORAGE_CLASSES[inputs.provider] + '" (via provider preset).';
+    }
+    providerNote.textContent = providerText;
+
+    renderSummary(s, inputs);
+    currentYaml = buildYaml(inputs, s);
+    yamlOutput.textContent = currentYaml;
+    installOutput.textContent =
+      'helm install imageengine-kube imageengine/imageengine-kube \\\n' +
+      '  -n imageengine -f values-override.yaml';
+  }
+
+  // ── Event wiring ─────────────────────────────────────────────────────────
+  [opsSlider, originSlider, cacheSlider, nodeRamSlider, providerSelect, environmentSelect, otelSample].forEach(function (el) {
+    el.addEventListener('input', update);
+    el.addEventListener('change', update);
+  });
+
+  otelEnabled.addEventListener('change', function () {
+    otelFields.style.display = otelEnabled.checked ? 'flex' : 'none';
+    update();
+  });
+  otelEndpoint.addEventListener('input', update);
+
+  function wireCopy(btnId, getText) {
+    var btn = document.getElementById(btnId);
+    if (!btn) return;
+    var label = btn.querySelector('.copy-label');
+    var timer;
+    btn.addEventListener('click', function () {
+      var text = getText();
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text)['catch'](function () { fallbackCopy(text); });
+      } else {
+        fallbackCopy(text);
+      }
+      if (label) {
+        label.innerHTML = '<span style="color:#17C4B6;">✓ Copied</span>';
+        clearTimeout(timer);
+        timer = setTimeout(function () { label.textContent = 'Copy'; }, 1600);
+      }
+    });
+  }
+
+  function fallbackCopy(text) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'absolute';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    } catch (e) {}
+  }
+
+  wireCopy('copy-yaml', function () { return currentYaml; });
+  wireCopy('copy-install', function () { return installOutput.textContent; });
+
+  document.getElementById('download-yaml').addEventListener('click', function () {
+    var blob = new Blob([currentYaml], { type: 'text/yaml' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'values-override.yaml';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  update();
+})();
+</script>
+
+</body>
+</html>
