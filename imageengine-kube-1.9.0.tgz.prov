@@ -1,0 +1,56 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+annotations:
+  artifacthub.io/changes: |
+    - kind: added
+      description: "Split-topology installs: frontend.enabled and backendStack.enabled gate the frontend tier (edge+varnish) and the backend stack (backend, fetcher, processor, OSC) independently, so the pipeline can be deployed as separate frontend-only and backend-only releases (e.g. regional frontend PoPs pointing at a central backend). The full single-cluster pipeline remains the default (ADR 0021)."
+    - kind: added
+      description: "backend.service exposure block (type/port/annotations/loadBalancerSourceRanges/externalTrafficPolicy) lets a backend-only install publish the backend behind a LoadBalancer. Defaults to ClusterIP; a backend LoadBalancer must be private or source-range restricted (its listener carries unauthenticated admin endpoints and Varnish speaks plain HTTP) — see docs/TOPOLOGIES.md (ADR 0021)."
+    - kind: removed
+      description: "Removed the unused objectStorageCache.enabled value (no template referenced it)."
+  artifacthub.io/signKey: |
+    fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+    url: https://kube.imageengine.io/pubkey.asc
+apiVersion: v2
+description: ImageEngine - cloud-native image optimization
+home: https://imageengine.io
+icon: https://imageengine.io/favicon.ico
+keywords:
+- - image-optimization
+- - image-cdn
+- - cdn
+- - imageengine
+- - varnish
+- - wurfl
+kubeVersion: '>=1.30.0-0'
+maintainers:
+- - email: support@scientiamobile.com
+  name: ScientiaMobile
+  url: https://www.scientiamobile.com
+name: imageengine-kube
+sources:
+- - https://kube.imageengine.io
+- - https://github.com/imgeng/imageengine-kube-helm
+type: application
+version: 1.9.0
+
+...
+files:
+  imageengine-kube-1.9.0.tgz: sha256:590baefb8890df3a18e089e06b8d9c200f4e424162a55112dd6d92055058c31a
+-----BEGIN PGP SIGNATURE-----
+
+wsFcBAEBCgAQBQJqURlXCRBGMmYGCVfEswAA0cAQAKDYi1WKzuyzrDcCDSCjyAdm
+iU/fdXYqpuFzvae8vq+LjTE7SFxcJD25sTw0lGlGIiDyJUDFjggeQyRugmYdN9j6
+XjWLg25bG3UYuydY8aPyAWdlmg8ak58pXuQTXi1UP3GYb+uLCP6/rb+TZfq4XWMa
+6bHI7biNUN76H3C1u1xpVQjw397HUQK3SeOmzQpFz0slOPp95ikbGO9BvGdDND3V
+/fJD1wNtsag/DLSmb8z6dh9eNO1kJOSMA/xya1KRmtf6QNE7FmnV14oaxlf+/Oy+
+KaPzz6CdK4zeV+JCH2c+oMeSENoj8mQhrd1AyMZy9lolg2hA0OlTzn0kiXjlwWX0
+jcbwZwj/Dl2zk/tTH7lc2N5MfIMy26mKVBQMs3uCpUvUNv40m+uvb58RIxhYF4Pf
+tqMyQcPp19o82NXow7/TAfQkHm/PRM7UwodtCEgZzZwaaOmf9gQXf9dFxCWa4vMn
+kZ/rySazAAjh1yQgG29eJBcuKng+dsV41J3UcXlY8oQhWnkkBoe1tfYjutGrl6t7
+SW96C30ohw95U607l0RCoJX7nWof8+uPDeHewR+62jAQMNGw6BRleJWkxC6klnxZ
+IxgdvDitngXqg+9y9v41bPNzzRJBv753R+4m7ux1ahaC06+XbjoJzM5xw6DuD4UE
++5xVGj/yi07/eAEzBbLR
+=oVDu
+-----END PGP SIGNATURE-----
