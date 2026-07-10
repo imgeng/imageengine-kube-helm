@@ -84,14 +84,14 @@
 
       <div>
         <label style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
-          <span style="font-weight:600; font-size:14px;">Image operations / sec</span>
+          <span style="font-weight:600; font-size:14px;">Requests / sec (to the cluster)</span>
           <span id="ops-label" style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#17C4B6;">100/s</span>
         </label>
         <input type="range" id="ops-slider" min="0" max="1000" value="333" step="1">
         <div style="display:flex; justify-content:space-between; font-size:11px; color:#6C7C92; margin-top:4px;">
           <span>10/s</span><span>10,000/s</span>
         </div>
-        <p style="font-size:12px; color:#6C7C92; margin:8px 0 0; line-height:1.5;">Total edge RPS. Miss-path sizing uses measured hit rates: ~90% Varnish, ~75% OSC (of Varnish misses) — ~2.5% of requests need processing.</p>
+        <p style="font-size:12px; color:#6C7C92; margin:8px 0 0; line-height:1.5;">Total edge ingress. Cache layers pare this down: ~90% hit at Varnish, ~75% of the rest at OSC — so 1000/s ≈ 100/s at the backend and ~25/s of image processing.</p>
       </div>
 
       <div>
@@ -243,7 +243,18 @@
     OSC_MAX_SHARDS: 16,
     AUTOSCALE_THRESHOLD: 100,
     NODE_RAM_SIZES: [4, 8, 16, 32, 64],
-    NODE_ALLOCATABLE: 0.72,
+    NODE_ALLOCATABLE: 0.75,          // fraction of node CPU/RAM schedulable after system overhead
+    NODE_VCPU_PER_GIB: 0.25,         // standard general-purpose node ratio (1 vCPU : 4 GiB)
+    // Per-pod resource *requests* (what the scheduler packs on, not limits).
+    // cpu in cores, mem in GiB. Kept in sync with the chart's request blocks.
+    REQ: {
+      edge:      { cpu: 0.25, mem: 0.25 },
+      varnish:   { cpu: 0.50, mem: 1.0  },
+      backend:   { cpu: 0.25, mem: 1.0  },
+      fetcher:   { cpu: 0.25, mem: 0.5  },
+      processor: { cpu: 0.80, mem: 2.4  },
+      osc:       { cpu: 0.90, mem: 0.5  }
+    },
     OPS_MIN: 10,
     OPS_MAX: 10000,
     ORIGIN_MIN_GB: 10,
@@ -388,19 +399,39 @@
   }
 
   function estimateNodes(s, nodeRamGi) {
-    var allocGi = nodeRamGi * CONST.NODE_ALLOCATABLE;
-    var podCount = s.edgeReplicas + s.varnishReplicas + s.backendReplicas +
-      s.fetcherReplicas + s.processorReplicas + s.oscShards;
-    var memGi =
-      s.edgeReplicas * 1 +
-      s.varnishReplicas * (s.varnish.memLim + s.varnish.ephReq * 0.3) +
-      s.backendReplicas * 6 +
-      s.processorReplicas * 6 +
-      s.fetcherReplicas * 2 +
-      s.oscShards * 1;
-    var byMem = Math.ceil(memGi / allocGi);
-    var byCount = Math.ceil(podCount / Math.max(1, Math.floor(allocGi / 4)));
-    return Math.max(3, byMem, byCount);
+    // Scheduling is driven by resource *requests*, not limits. Derive per-node
+    // schedulable CPU/RAM from the node RAM size (standard 1 vCPU : 4 GiB ratio).
+    var R = CONST.REQ;
+    var nodeCpu = nodeRamGi * CONST.NODE_VCPU_PER_GIB;
+    var allocCpu = nodeCpu * CONST.NODE_ALLOCATABLE;
+    var allocMem = nodeRamGi * CONST.NODE_ALLOCATABLE;
+
+    var totalCpu =
+      s.edgeReplicas * R.edge.cpu +
+      s.varnishReplicas * R.varnish.cpu +
+      s.backendReplicas * R.backend.cpu +
+      s.fetcherReplicas * R.fetcher.cpu +
+      s.processorReplicas * R.processor.cpu +
+      s.oscShards * R.osc.cpu;
+    var totalMem =
+      s.edgeReplicas * R.edge.mem +
+      s.varnishReplicas * Math.max(R.varnish.mem, s.varnish.memReq) +
+      s.backendReplicas * R.backend.mem +
+      s.fetcherReplicas * R.fetcher.mem +
+      s.processorReplicas * R.processor.mem +
+      s.oscShards * R.osc.mem;
+
+    var byCpu = Math.ceil(totalCpu / allocCpu);
+    var byMem = Math.ceil(totalMem / allocMem);
+    var nodes = Math.max(byCpu, byMem);
+    // Floor at 2 so there's somewhere to reschedule during a node loss / rollout.
+    return {
+      nodes: Math.max(2, nodes),
+      bound: byCpu >= byMem ? 'CPU' : 'memory',
+      totalCpu: totalCpu,
+      totalMem: totalMem,
+      nodeCpu: nodeCpu
+    };
   }
 
   function indentBlock(text, spaces) {
@@ -470,7 +501,8 @@
       cachedOriginGB: cachedOriginGB,
       variantWorkingSetGB: variantWorkingSetGB
     };
-    result.estNodes = estimateNodes(result, nodeRamGi);
+    result.node = estimateNodes(result, nodeRamGi);
+    result.estNodes = result.node.nodes;
     return result;
   }
 
@@ -484,8 +516,11 @@
     lines.push('# Cluster planning (informational — not a chart value):');
     lines.push('#   Provider: ' + inputs.provider +
       (STORAGE_CLASSES[inputs.provider] ? ' (OSC storageClass: ' + STORAGE_CLASSES[inputs.provider] + ')' : ''));
-    lines.push('#   Recommended worker node RAM: ' + inputs.nodeRamGi + ' GiB');
-    lines.push('#   Estimated nodes: ~' + s.estNodes);
+    lines.push('#   Recommended worker node: ' + inputs.nodeRamGi + ' GiB RAM / ~' +
+      (Math.round(s.node.nodeCpu * 10) / 10) + ' vCPU');
+    lines.push('#   Estimated nodes: ~' + s.estNodes + ' (' + s.node.bound + '-bound; ' +
+      (Math.round(s.node.totalCpu * 10) / 10) + ' vCPU + ' +
+      (Math.round(s.node.totalMem * 10) / 10) + ' GiB of requests)');
     lines.push('#   Assumed hit rates: Varnish ' + Math.round(CONST.VARNISH_HIT_RATE * 100) +
       '%, OSC ' + Math.round(CONST.OSC_HIT_RATE * 100) + '% of Varnish misses');
     lines.push('#   Processor benchmark: ~' + (CONST.PROCESSOR_RESIZE_OPS_PER_CORE * 4) +
@@ -628,7 +663,7 @@
       { label: 'Processor', value: s.autoscale ? 'HPA ' + s.processorReplicas + '–' + s.processorMax : s.processorReplicas + ' pods', sub: '~' + formatOps(s.traffic.processorOps) + ' resize/s · ' + Math.round(processorOpsPerPod()) + '/pod' },
       { label: 'Fetcher', value: s.autoscale ? 'HPA ' + s.fetcherReplicas + '–' + s.fetcherMax : s.fetcherReplicas + ' pods', sub: 'paired with processor on cold path' },
       { label: 'Backend', value: s.autoscale ? 'HPA ' + s.backendReplicas + '–' + s.backendMax : s.backendReplicas + ' pods', sub: '~' + formatOps(s.traffic.varnishMiss) + ' Varnish miss/s' },
-      { label: 'Cluster', value: '~' + s.estNodes + ' nodes', sub: s.nodeRamGi + ' GiB RAM · ' + inputs.provider }
+      { label: 'Cluster', value: '~' + s.estNodes + ' nodes', sub: s.nodeRamGi + ' GiB / ~' + (Math.round(s.node.nodeCpu * 10) / 10) + ' vCPU · ' + s.node.bound + '-bound' }
     ];
 
     summaryGrid.innerHTML = cards.map(function (c) {
@@ -642,9 +677,12 @@
       'OSC working set ~' + formatBytes(s.oscWorkingSetGB) + ' (' +
       formatBytes(s.cachedOriginGB) + ' cached origin + ' +
       formatBytes(s.variantWorkingSetGB) + ' variants). ' +
-      'Estimated ~' + s.estNodes + ' worker nodes at ' + s.nodeRamGi + ' GiB RAM each. ' +
+      'Estimated ~' + s.estNodes + ' worker nodes (' + s.nodeRamGi + ' GiB / ~' +
+      (Math.round(s.node.nodeCpu * 10) / 10) + ' vCPU each) — ' + s.node.bound + '-bound on ' +
+      (Math.round(s.node.totalCpu * 10) / 10) + ' vCPU + ' +
+      (Math.round(s.node.totalMem * 10) / 10) + ' GiB of pod requests. ' +
       (s.autoscale ? 'Autoscaling enabled (> ' + CONST.AUTOSCALE_THRESHOLD + '/s).' : 'Fixed replicas (≤ ' + CONST.AUTOSCALE_THRESHOLD + '/s).') +
-      ' Replica counts never go below chart defaults (reliability / rollout safety). ' +
+      ' At low traffic the node count is driven by the chart-default replica floors (esp. ' + DEFAULTS.oscShards + ' OSC shards at 900m CPU and ' + DEFAULTS.varnishReplicas + ' Varnish); a minimal dev cluster can lower those. ' +
       'Cache model: ' + Math.round(CONST.VARNISH_HIT_RATE * 100) + '% Varnish hit → ' +
       Math.round(CONST.OSC_HIT_RATE * 100) + '% OSC hit of remainder → ' +
       formatOps(s.traffic.processorOps) + ' resize/s (' +
