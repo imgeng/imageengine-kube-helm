@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; }
-  body { margin: 0; background: #0A0E17; }
+  html, body { margin: 0; background: #0A0E17; overflow-x: hidden; max-width: 100%; }
   a { color: #17C4B6; text-decoration: none; }
   a:hover { color: #4CE0D3; }
   pre { margin: 0; }
@@ -36,16 +36,25 @@
   }
   .toggle input:checked + .toggle-slider { background: #17C4B6; }
   .toggle input:checked + .toggle-slider:before { transform: translateX(20px); background: #06121B; }
+  /* Let grid/flex tracks shrink below their content so the <pre> blocks scroll
+     internally instead of forcing the whole page wider than the viewport. */
+  [data-panel] { min-width: 0; }
+  pre { -webkit-overflow-scrolling: touch; }
   @media (max-width: 900px) {
-    [data-wrap] { padding-left: 28px !important; padding-right: 28px !important; }
-    [data-layout] { grid-template-columns: 1fr !important; }
+    [data-wrap] { padding-left: 24px !important; padding-right: 24px !important; }
+    [data-layout] { grid-template-columns: minmax(0, 1fr) !important; }
     [data-summary-grid] { grid-template-columns: 1fr 1fr !important; }
+    [data-hero] { font-size: 32px !important; }
   }
   @media (max-width: 600px) {
-    [data-wrap] { padding-left: 20px !important; padding-right: 20px !important; }
+    [data-wrap] { padding-left: 16px !important; padding-right: 16px !important; }
+    [data-header] { padding-top: 32px !important; padding-bottom: 24px !important; }
     [data-summary-grid] { grid-template-columns: 1fr !important; }
-    [data-nav] { flex-wrap: wrap !important; gap: 14px !important; }
-    [data-nav-links] { gap: 14px !important; flex-wrap: wrap !important; }
+    [data-nav] { flex-wrap: wrap !important; gap: 12px !important; }
+    [data-nav-links] { gap: 12px 18px !important; flex-wrap: wrap !important; }
+    [data-hero] { font-size: 26px !important; }
+    [data-lede] { font-size: 15px !important; }
+    [data-card] { padding: 18px !important; }
   }
 </style>
 </head>
@@ -70,17 +79,17 @@
   </div>
 
   <!-- header -->
-  <div data-wrap="" style="max-width:1200px; margin:0 auto; padding:48px 48px 32px;">
+  <div data-wrap="" data-header="" style="max-width:1200px; margin:0 auto; padding:48px 48px 32px;">
     <div style="font-family:'IBM Plex Mono',monospace; font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:#17C4B6; margin-bottom:14px;">Helm values generator</div>
-    <h1 style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:40px; line-height:1.08; letter-spacing:-.02em; margin:0 0 14px; max-width:720px;">Size your ImageEngine Kube cluster.</h1>
-    <p style="font-size:17px; line-height:1.6; color:#9FB0C4; margin:0; max-width:640px;">Turn a few workload knobs into a starting-point <span style="font-family:'IBM Plex Mono',monospace; color:#C7D3E3;">values-override.yaml</span>. These are bench-from numbers — re-measure after deploying. See the <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/SIZING.md">sizing guide</a> for the full rationale.</p>
+    <h1 data-hero="" style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:40px; line-height:1.08; letter-spacing:-.02em; margin:0 0 14px; max-width:720px;">Size your ImageEngine Kube cluster.</h1>
+    <p data-lede="" style="font-size:17px; line-height:1.6; color:#9FB0C4; margin:0; max-width:640px;">Turn a few workload knobs into a starting-point <span style="font-family:'IBM Plex Mono',monospace; color:#C7D3E3;">values-override.yaml</span>. These are bench-from numbers — re-measure after deploying. See the <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/SIZING.md">sizing guide</a> for the full rationale.</p>
   </div>
 
   <!-- main layout -->
-  <div data-wrap="" data-layout="" style="max-width:1200px; margin:0 auto; padding:0 48px 72px; display:grid; grid-template-columns:380px 1fr; gap:32px; align-items:start;">
+  <div data-wrap="" data-layout="" style="max-width:1200px; margin:0 auto; padding:0 48px 72px; display:grid; grid-template-columns:minmax(0,380px) minmax(0,1fr); gap:32px; align-items:start;">
 
     <!-- inputs panel -->
-    <div style="border:1px solid #1E2A3A; border-radius:14px; background:#0D1420; padding:24px; display:flex; flex-direction:column; gap:22px;">
+    <div data-panel="" data-card="" style="border:1px solid #1E2A3A; border-radius:14px; background:#0D1420; padding:24px; display:flex; flex-direction:column; gap:22px;">
 
       <div>
         <label style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
@@ -159,6 +168,59 @@
 
       <hr style="border:none; border-top:1px solid #1E2A3A; margin:0;">
 
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#6C7C92;">Logging</div>
+
+      <!-- edge access log -->
+      <div>
+        <label style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+          <span style="font-weight:600; font-size:14px;">Edge access log</span>
+          <span id="edge-log-eff" style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#17C4B6;"></span>
+        </label>
+        <select id="edge-log-target">
+          <option value="auto" selected>Auto — off in prod / high-traffic</option>
+          <option value="stdout">stdout (kubectl logs)</option>
+          <option value="stderr">stderr</option>
+          <option value="none">Disabled</option>
+          <option value="tcp-ndjson">TCP collector — NDJSON</option>
+          <option value="tcp-syslog">TCP collector — syslog</option>
+        </select>
+        <input type="text" id="edge-log-endpoint" placeholder="vector.logging:9000" style="display:none; margin-top:8px;">
+        <div id="edge-log-schema-wrap" style="display:none; margin-top:8px;">
+          <label style="display:block; font-size:12px; color:#9FB0C4; margin-bottom:6px;">Field schema</label>
+          <select id="edge-log-schema">
+            <option value="ecs" selected>ECS (default)</option>
+            <option value="legacy">legacy</option>
+          </select>
+        </div>
+        <p style="font-size:12px; color:#6C7C92; margin:8px 0 0; line-height:1.5;">Per-request structured JSON. High volume — <span style="font-family:'IBM Plex Mono',monospace; color:#C7D3E3;">Auto</span> disables it in production or above ~100/s to save I/O, CPU &amp; storage.</p>
+      </div>
+
+      <!-- origin-fetcher log -->
+      <div>
+        <label style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+          <span style="font-weight:600; font-size:14px;">Origin-fetcher log</span>
+          <span id="fetcher-log-eff" style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#17C4B6;"></span>
+        </label>
+        <select id="fetcher-log-target">
+          <option value="stdout" selected>stdout (kubectl logs)</option>
+          <option value="stderr">stderr</option>
+          <option value="none">Disabled</option>
+          <option value="tcp-ndjson">TCP collector — NDJSON</option>
+          <option value="tcp-syslog">TCP collector — syslog</option>
+        </select>
+        <input type="text" id="fetcher-log-endpoint" placeholder="vector.logging:9001" style="display:none; margin-top:8px;">
+        <div id="fetcher-log-schema-wrap" style="display:none; margin-top:8px;">
+          <label style="display:block; font-size:12px; color:#9FB0C4; margin-bottom:6px;">Field schema</label>
+          <select id="fetcher-log-schema">
+            <option value="ecs" selected>ECS (default)</option>
+            <option value="legacy">legacy</option>
+          </select>
+        </div>
+        <p style="font-size:12px; color:#6C7C92; margin:8px 0 0; line-height:1.5;">One record per origin fetch (cache misses on the cold path) — far lower volume than access logs, so it stays on by default.</p>
+      </div>
+
+      <hr style="border:none; border-top:1px solid #1E2A3A; margin:0;">
+
       <div>
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
           <span style="font-weight:600; font-size:14px;">OpenTelemetry tracing</span>
@@ -182,17 +244,17 @@
     </div>
 
     <!-- output panel -->
-    <div style="display:flex; flex-direction:column; gap:20px;">
+    <div data-panel="" style="display:flex; flex-direction:column; gap:20px; min-width:0;">
 
       <!-- summary -->
-      <div style="border:1px solid #1E2A3A; border-radius:14px; background:#0D1420; padding:24px;">
+      <div data-panel="" data-card="" style="border:1px solid #1E2A3A; border-radius:14px; background:#0D1420; padding:24px;">
         <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#6C7C92; margin-bottom:16px;">Computed footprint</div>
-        <div data-summary-grid="" id="summary-grid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;"></div>
+        <div data-summary-grid="" id="summary-grid" style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px;"></div>
         <p id="summary-note" style="font-size:12.5px; color:#8A98AD; margin:16px 0 0; line-height:1.55;"></p>
       </div>
 
       <!-- yaml output -->
-      <div style="border:1px solid #234642; border-radius:14px; background:#081512; overflow:hidden;">
+      <div data-panel="" style="border:1px solid #234642; border-radius:14px; background:#081512; overflow:hidden;">
         <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid #16302C;">
           <span style="color:#5FBFB4; font-weight:600; font-size:11px; letter-spacing:.08em; text-transform:uppercase;">values-override.yaml</span>
           <div style="display:flex; gap:8px;">
@@ -204,7 +266,7 @@
       </div>
 
       <!-- install command -->
-      <div style="border:1px solid #1E2A3A; border-radius:14px; background:#080D16; overflow:hidden;">
+      <div data-panel="" style="border:1px solid #1E2A3A; border-radius:14px; background:#080D16; overflow:hidden;">
         <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid #16202F;">
           <span style="color:#6C7C92; font-weight:600; font-size:11px; letter-spacing:.08em; text-transform:uppercase;">Install with override</span>
           <button id="copy-install" class="copy-btn" style="display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border:1px solid #26344A; border-radius:7px; background:#0E1726; color:#9FB0C4; font-family:'IBM Plex Sans',sans-serif; font-weight:600; font-size:11px; cursor:pointer;"><span class="copy-label">Copy</span></button>
@@ -307,6 +369,16 @@
   var otelFields = document.getElementById('otel-fields');
   var otelEndpoint = document.getElementById('otel-endpoint');
   var otelSample = document.getElementById('otel-sample');
+  var edgeLogTarget = document.getElementById('edge-log-target');
+  var edgeLogEndpoint = document.getElementById('edge-log-endpoint');
+  var edgeLogSchemaWrap = document.getElementById('edge-log-schema-wrap');
+  var edgeLogSchema = document.getElementById('edge-log-schema');
+  var edgeLogEff = document.getElementById('edge-log-eff');
+  var fetcherLogTarget = document.getElementById('fetcher-log-target');
+  var fetcherLogEndpoint = document.getElementById('fetcher-log-endpoint');
+  var fetcherLogSchemaWrap = document.getElementById('fetcher-log-schema-wrap');
+  var fetcherLogSchema = document.getElementById('fetcher-log-schema');
+  var fetcherLogEff = document.getElementById('fetcher-log-eff');
   var summaryGrid = document.getElementById('summary-grid');
   var summaryNote = document.getElementById('summary-note');
   var yamlOutput = document.getElementById('yaml-output');
@@ -391,6 +463,34 @@
   }
 
   function memGi(n) { return n + 'Gi'; }
+
+  // Resolve a logging control into a chart value. Returns:
+  //   dsn      — the *_LOG_TARGET value to emit, or null to leave the chart
+  //              default (stdout) and emit nothing
+  //   disabled — true when the effective sink is "none"
+  //   sink     — short label for the UI badge
+  // `autoDisable` is the "Auto" verdict (prod / high-traffic => off); the
+  // fetcher passes false since it has no Auto option.
+  function resolveLogTarget(mode, endpoint, autoDisable) {
+    var ep = endpoint || 'REPLACE_ME:9000';
+    switch (mode) {
+      case 'auto':
+        return autoDisable
+          ? { dsn: 'none', disabled: true, sink: 'off · auto' }
+          : { dsn: null, disabled: false, sink: 'stdout · auto' };
+      case 'stdout':     return { dsn: null,     disabled: false, sink: 'stdout' };
+      case 'stderr':     return { dsn: 'stderr', disabled: false, sink: 'stderr' };
+      case 'none':       return { dsn: 'none',   disabled: true,  sink: 'off' };
+      case 'tcp-ndjson': return { dsn: '"tcp://' + ep + '?format=ndjson"', disabled: false, sink: 'tcp · ndjson' };
+      case 'tcp-syslog': return { dsn: '"tcp://' + ep + '?format=syslog"', disabled: false, sink: 'tcp · syslog' };
+    }
+    return { dsn: null, disabled: false, sink: 'stdout' };
+  }
+
+  // Whether the field-schema knob applies (an explicit sink is selected).
+  function logSinkSelected(mode) {
+    return mode !== 'auto' && mode !== 'none';
+  }
 
   function varnishSizing(ops, variantWorkingSetGB, nodeRamGi) {
     var memReq, memLim, ephReq, ephLim;
@@ -561,18 +661,23 @@
       lines.push('');
     }
 
-    if (s.edgeReplicas !== DEFAULTS.edgeReplicas) {
+    // Edge — access-log target/schema plus replica count.
+    var edgeAutoDisable = inputs.environment === 'production' || s.ops > CONST.AUTOSCALE_THRESHOLD;
+    var edgeLog = resolveLogTarget(inputs.edgeLogTarget, inputs.edgeLogEndpoint, edgeAutoDisable);
+    var edgeEnv = [];
+    if (edgeLog.dsn !== null) edgeEnv.push('EDGE_ACCESS_LOG_TARGET: ' + edgeLog.dsn);
+    if (logSinkSelected(inputs.edgeLogTarget) && inputs.edgeLogSchema === 'legacy') {
+      edgeEnv.push('EDGE_ACCESS_LOG_SCHEMA: legacy');
+    }
+    if (s.edgeReplicas !== DEFAULTS.edgeReplicas || edgeEnv.length) {
       lines.push('edge:');
-      lines.push('  replicaCount: ' + s.edgeReplicas);
-      if (inputs.environment === 'production' || s.ops > CONST.AUTOSCALE_THRESHOLD) {
-        lines.push('  env:');
-        lines.push('    EDGE_ACCESS_LOG_TARGET: none');
+      if (s.edgeReplicas !== DEFAULTS.edgeReplicas) {
+        lines.push('  replicaCount: ' + s.edgeReplicas);
       }
-      lines.push('');
-    } else if (inputs.environment === 'production' || s.ops > CONST.AUTOSCALE_THRESHOLD) {
-      lines.push('edge:');
-      lines.push('  env:');
-      lines.push('    EDGE_ACCESS_LOG_TARGET: none');
+      if (edgeEnv.length) {
+        lines.push('  env:');
+        edgeEnv.forEach(function (e) { lines.push('    ' + e); });
+      }
       lines.push('');
     }
 
@@ -616,8 +721,14 @@
     lines.push('      memory: "6Gi"');
     lines.push('');
 
-    // Fetcher
-    if (s.autoscale || s.fetcherReplicas !== DEFAULTS.fetcherReplicas) {
+    // Fetcher — autoscaling/replicas plus fetch-log target/schema.
+    var fetcherLog = resolveLogTarget(inputs.fetcherLogTarget, inputs.fetcherLogEndpoint, false);
+    var fetcherEnv = [];
+    if (fetcherLog.dsn !== null) fetcherEnv.push('IE_ORIGINFETCHER_FETCH_LOG_TARGET: ' + fetcherLog.dsn);
+    if (logSinkSelected(inputs.fetcherLogTarget) && inputs.fetcherLogSchema === 'legacy') {
+      fetcherEnv.push('IE_ORIGINFETCHER_FETCH_LOG_SCHEMA: legacy');
+    }
+    if (s.autoscale || s.fetcherReplicas !== DEFAULTS.fetcherReplicas || fetcherEnv.length) {
       lines.push('fetcher:');
       if (s.autoscale) {
         lines.push('  autoscaling:');
@@ -625,8 +736,12 @@
         lines.push('    minReplicas: ' + s.fetcherReplicas);
         lines.push('    maxReplicas: ' + s.fetcherMax);
         lines.push('    targetCPUUtilizationPercentage: 80');
-      } else {
+      } else if (s.fetcherReplicas !== DEFAULTS.fetcherReplicas) {
         lines.push('  replicaCount: ' + s.fetcherReplicas);
+      }
+      if (fetcherEnv.length) {
+        lines.push('  env:');
+        fetcherEnv.forEach(function (e) { lines.push('    ' + e); });
       }
       lines.push('');
     }
@@ -731,7 +846,13 @@
       environment: environmentSelect.value,
       otelEnabled: otelEnabled.checked,
       otelEndpoint: otelEndpoint.value.trim(),
-      otelSample: parseFloat(otelSample.value) || 0.05
+      otelSample: parseFloat(otelSample.value) || 0.05,
+      edgeLogTarget: edgeLogTarget.value,
+      edgeLogEndpoint: edgeLogEndpoint.value.trim(),
+      edgeLogSchema: edgeLogSchema.value,
+      fetcherLogTarget: fetcherLogTarget.value,
+      fetcherLogEndpoint: fetcherLogEndpoint.value.trim(),
+      fetcherLogSchema: fetcherLogSchema.value
     };
   }
 
@@ -749,6 +870,17 @@
     }
     providerNote.textContent = providerText;
 
+    // Logging controls: reveal endpoint/schema conditionally and show the
+    // effective sink each source resolves to (Auto depends on env + traffic).
+    var isTcp = function (m) { return m === 'tcp-ndjson' || m === 'tcp-syslog'; };
+    var edgeAutoDisable = inputs.environment === 'production' || s.ops > CONST.AUTOSCALE_THRESHOLD;
+    edgeLogEndpoint.style.display = isTcp(inputs.edgeLogTarget) ? 'block' : 'none';
+    edgeLogSchemaWrap.style.display = logSinkSelected(inputs.edgeLogTarget) ? 'block' : 'none';
+    edgeLogEff.textContent = resolveLogTarget(inputs.edgeLogTarget, inputs.edgeLogEndpoint, edgeAutoDisable).sink;
+    fetcherLogEndpoint.style.display = isTcp(inputs.fetcherLogTarget) ? 'block' : 'none';
+    fetcherLogSchemaWrap.style.display = logSinkSelected(inputs.fetcherLogTarget) ? 'block' : 'none';
+    fetcherLogEff.textContent = resolveLogTarget(inputs.fetcherLogTarget, inputs.fetcherLogEndpoint, false).sink;
+
     renderSummary(s, inputs);
     currentYaml = buildYaml(inputs, s);
     yamlOutput.textContent = currentYaml;
@@ -758,7 +890,8 @@
   }
 
   // ── Event wiring ─────────────────────────────────────────────────────────
-  [opsSlider, originSlider, cacheSlider, nodeRamSlider, providerSelect, environmentSelect, otelSample].forEach(function (el) {
+  [opsSlider, originSlider, cacheSlider, nodeRamSlider, providerSelect, environmentSelect, otelSample,
+   edgeLogTarget, edgeLogSchema, fetcherLogTarget, fetcherLogSchema].forEach(function (el) {
     el.addEventListener('input', update);
     el.addEventListener('change', update);
   });
@@ -768,6 +901,8 @@
     update();
   });
   otelEndpoint.addEventListener('input', update);
+  edgeLogEndpoint.addEventListener('input', update);
+  fetcherLogEndpoint.addEventListener('input', update);
 
   function wireCopy(btnId, getText) {
     var btn = document.getElementById(btnId);
