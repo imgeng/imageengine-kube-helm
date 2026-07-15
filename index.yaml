@@ -4,6 +4,39 @@ entries:
   - annotations:
       artifacthub.io/changes: |
         - kind: changed
+          description: "Updated image processor to v3.28.0 to disable AVIF clear aperture mode on non-even dimension images for greater compatibility with Firefox"
+      artifacthub.io/signKey: |
+        fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+        url: https://kube.imageengine.io/pubkey.asc
+    apiVersion: v2
+    created: "2026-07-15T17:38:05.083140466Z"
+    description: ImageEngine - cloud-native image optimization
+    digest: adce03a26138e385d4bc302ab6041ceaef41a5328177d2a5e00d6ebe2942d223
+    home: https://imageengine.io
+    icon: https://imageengine.io/favicon.ico
+    keywords:
+    - image-optimization
+    - image-cdn
+    - cdn
+    - imageengine
+    - varnish
+    - wurfl
+    kubeVersion: '>=1.30.0-0'
+    maintainers:
+    - email: support@scientiamobile.com
+      name: ScientiaMobile
+      url: https://www.scientiamobile.com
+    name: imageengine-kube
+    sources:
+    - https://kube.imageengine.io
+    - https://github.com/imgeng/imageengine-kube-helm
+    type: application
+    urls:
+    - imageengine-kube-1.9.2.tgz
+    version: 1.9.2
+  - annotations:
+      artifacthub.io/changes: |
+        - kind: changed
           description: "Per-component env: entries may now be a map instead of a scalar. A scalar is rendered as the variable's value:; a map is passed through verbatim as its valueFrom:, so a custom env var can be sourced from a Secret (secretKeyRef), ConfigMap (configMapKeyRef), or the pod's own metadata (fieldRef) instead of being inlined. Scalar values behave exactly as before. See docs/CUSTOMIZATIONS.md."
       artifacthub.io/signKey: |
         fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
@@ -859,4 +892,4 @@ entries:
     urls:
     - imageengine-kube-0.8.0.tgz
     version: 0.8.0
-generated: "2026-07-10T23:20:36.874842561Z"
+generated: "2026-07-15T17:38:05.083393236Z"
