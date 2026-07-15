@@ -1,0 +1,52 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+annotations:
+  artifacthub.io/changes: |
+    - kind: changed
+      description: "Updated image processor to v3.28.0 to disable AVIF clear aperture mode on non-even dimension images for greater compatibility with Firefox"
+  artifacthub.io/signKey: |
+    fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+    url: https://kube.imageengine.io/pubkey.asc
+apiVersion: v2
+description: ImageEngine - cloud-native image optimization
+home: https://imageengine.io
+icon: https://imageengine.io/favicon.ico
+keywords:
+- - image-optimization
+- - image-cdn
+- - cdn
+- - imageengine
+- - varnish
+- - wurfl
+kubeVersion: '>=1.30.0-0'
+maintainers:
+- - email: support@scientiamobile.com
+  name: ScientiaMobile
+  url: https://www.scientiamobile.com
+name: imageengine-kube
+sources:
+- - https://kube.imageengine.io
+- - https://github.com/imgeng/imageengine-kube-helm
+type: application
+version: 1.9.2
+
+...
+files:
+  imageengine-kube-1.9.2.tgz: sha256:adce03a26138e385d4bc302ab6041ceaef41a5328177d2a5e00d6ebe2942d223
+-----BEGIN PGP SIGNATURE-----
+
+wsFcBAEBCgAQBQJqV8V5CRBGMmYGCVfEswAASM4QAK6fee6M82IRt0yOYUF9Jbxl
+QEOtrA11pybe664jbl4Dq6ftMVGq6zMKeA3tY5VkDO3yKWlrQQuRZpvuVqHpCqic
+y1qTq+J0xRcETicHUSAfy01EuiC/1GMsegsPO8dttdfRhAyE9uKcXoFj8yN08dqy
+stou3Z/VKjxG2l3pmjFX7DivD/lUZkKZRBkqLIDw1EIf3AWyf3Ib4ulVKRB8yTwX
+EuDid5W9n8GjxiTAzpCQllGOzo6xM6FajHoQBFq/k0s0JtxuLfDX9AXJvDNm4mCK
+KEk6mv65iIAeA5RHNG2kJWB77b0KVKhwZdvIENLcmyM2lHJxlw7UKi3GAOkA2ruh
+vDMSVZeCpSsJpbmif+iPhYO1ELEIAWsRbpsiQRh6+3twSqVN7niRrL8oXpJxzSl/
+dPvStXvnfil3+svoCyry/01QVROHi+fr2NGnn860fVevU5vQ0HtjXM18QfJpSk76
+iHacclo3kl+tKeHnyipNvUKYxodlEQd2pxyn4GTU9zuJWjNwIRdF+FO53OMNKN7b
+8q1sdv6xqCOHMLDmzO7Qg2nQCJqBdwdAC8Trvr1HFk+0GEVrLpYu8NcGUu9+vFEJ
+udqufY877cJbAx8KOAmfVMCLciiK12k3qD+muoDF9FjsjrFwDxL+57dx7nSVYFtN
+DKD5HoISdSZNOAgiIHtk
+=CqCP
+-----END PGP SIGNATURE-----
