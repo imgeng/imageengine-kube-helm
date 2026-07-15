@@ -2,7 +2,7 @@ apiVersion: v2
 name: imageengine-kube
 description: ImageEngine - cloud-native image optimization
 type: application
-version: 1.9.1
+version: 1.9.2
 kubeVersion: ">=1.30.0-0"
 home: https://imageengine.io
 sources:
@@ -26,4 +26,4 @@ annotations:
     url: https://kube.imageengine.io/pubkey.asc
   artifacthub.io/changes: |
     - kind: changed
-      description: "Per-component env: entries may now be a map instead of a scalar. A scalar is rendered as the variable's value:; a map is passed through verbatim as its valueFrom:, so a custom env var can be sourced from a Secret (secretKeyRef), ConfigMap (configMapKeyRef), or the pod's own metadata (fieldRef) instead of being inlined. Scalar values behave exactly as before. See docs/CUSTOMIZATIONS.md."
+      description: "Updated image processor to v3.28.0 to disable AVIF clear aperture mode on non-even dimension images for greater compatibility with Firefox"
