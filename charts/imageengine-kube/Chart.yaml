@@ -2,7 +2,7 @@ apiVersion: v2
 name: imageengine-kube
 description: ImageEngine - cloud-native image optimization
 type: application
-version: 1.9.2
+version: 1.9.3
 kubeVersion: ">=1.30.0-0"
 home: https://imageengine.io
 sources:
@@ -26,4 +26,4 @@ annotations:
     url: https://kube.imageengine.io/pubkey.asc
   artifacthub.io/changes: |
     - kind: changed
-      description: "Updated image processor to v3.28.0 to disable AVIF clear aperture mode on non-even dimension images for greater compatibility with Firefox"
+      description: "Updated edge component to v4.9.1 to allow user-adjustable settings to override the Link header."
