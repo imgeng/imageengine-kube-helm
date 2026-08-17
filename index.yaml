@@ -4,6 +4,39 @@ entries:
   - annotations:
       artifacthub.io/changes: |
         - kind: changed
+          description: "Updated edge component to v4.9.1 to allow user-adjustable settings to override the Link header."
+      artifacthub.io/signKey: |
+        fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+        url: https://kube.imageengine.io/pubkey.asc
+    apiVersion: v2
+    created: "2026-08-17T18:05:06.943937363Z"
+    description: ImageEngine - cloud-native image optimization
+    digest: e6a7e6a27261f07b2e4c8862b60dfed12430aa123059483dba5f77e7f473a818
+    home: https://imageengine.io
+    icon: https://imageengine.io/favicon.ico
+    keywords:
+    - image-optimization
+    - image-cdn
+    - cdn
+    - imageengine
+    - varnish
+    - wurfl
+    kubeVersion: '>=1.30.0-0'
+    maintainers:
+    - email: support@scientiamobile.com
+      name: ScientiaMobile
+      url: https://www.scientiamobile.com
+    name: imageengine-kube
+    sources:
+    - https://kube.imageengine.io
+    - https://github.com/imgeng/imageengine-kube-helm
+    type: application
+    urls:
+    - imageengine-kube-1.9.3.tgz
+    version: 1.9.3
+  - annotations:
+      artifacthub.io/changes: |
+        - kind: changed
           description: "Updated image processor to v3.28.0 to disable AVIF clear aperture mode on non-even dimension images for greater compatibility with Firefox"
       artifacthub.io/signKey: |
         fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
@@ -892,4 +925,4 @@ entries:
     urls:
     - imageengine-kube-0.8.0.tgz
     version: 0.8.0
-generated: "2026-07-15T17:38:05.083393236Z"
+generated: "2026-08-17T18:05:06.944202799Z"
