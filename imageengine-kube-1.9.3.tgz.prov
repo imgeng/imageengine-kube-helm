@@ -1,0 +1,52 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+annotations:
+  artifacthub.io/changes: |
+    - kind: changed
+      description: "Updated edge component to v4.9.1 to allow user-adjustable settings to override the Link header."
+  artifacthub.io/signKey: |
+    fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+    url: https://kube.imageengine.io/pubkey.asc
+apiVersion: v2
+description: ImageEngine - cloud-native image optimization
+home: https://imageengine.io
+icon: https://imageengine.io/favicon.ico
+keywords:
+- - image-optimization
+- - image-cdn
+- - cdn
+- - imageengine
+- - varnish
+- - wurfl
+kubeVersion: '>=1.30.0-0'
+maintainers:
+- - email: support@scientiamobile.com
+  name: ScientiaMobile
+  url: https://www.scientiamobile.com
+name: imageengine-kube
+sources:
+- - https://kube.imageengine.io
+- - https://github.com/imgeng/imageengine-kube-helm
+type: application
+version: 1.9.3
+
+...
+files:
+  imageengine-kube-1.9.3.tgz: sha256:e6a7e6a27261f07b2e4c8862b60dfed12430aa123059483dba5f77e7f473a818
+-----BEGIN PGP SIGNATURE-----
+
+wsFcBAEBCgAQBQJqg01PCRBGMmYGCVfEswAA3KEQABE6HvPcPQrC7/doMOJr0bMB
+wa7InRG3HQ7VdA950AhRcw+taaQzrpFmh1YSs0cvSzqFw3GJnLVclKhCQb4oqqbS
+pqKMDxRD5C514KrOpxGqfoPZ1e+XM3DbPCDNHoEeqKTjNLof/mqxBj0gwadxrEAj
+tEbB4u6oz3R79DbsX0FtG1Sk7qsb/bgsN2iaDB0jrwbH8Bz4JPeQaUY/rHRBN8ZF
+vG62p1w0YNW7aQ8F8/DygYxqKnrT8LR586fj7FubSvctP+kZiEWvSPFnyjY7/5Dh
+NoffwnKG0z6drLVb4t0Gr3pu1nQxdCA91WaXCQVNFF5aB8FEymca5UklFq/c6n0q
+HgbG+jMGY2jMqGgTJizrc2wKIECmE7R545bhlU2mL+LCI2oFOOrQWJ3UGDc2uYhB
+b1lQzwLiJCw5Np+jkieXTWnRARaU8kUOeYtscZOyw9ICHnsKzm3y6aEpwAuUseIX
+QDr+cvjhfnomyzL0T9N2V2YpQZETjGg9BOOpt9wC2sdAje72VAfGeWF7VygcKPay
+EgmQiDrGD6fmSfIQU7Zxa0I1O9/xP5pgDV1AMZ588kBwGP0BxWCGTtgmP+ZPlNvQ
+maN63xme0vatYbXCV5R8rJ/Bbb4o0vSHUU6TJac6RXHQJLacfgbyiVMmqkfAShf3
+dJEpTeDEop0K9BsHLaJX
+=t04z
+-----END PGP SIGNATURE-----
