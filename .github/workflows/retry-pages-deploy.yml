@@ -2,7 +2,7 @@ name: Retry Pages Deploy
 
 on:
   workflow_run:
-    workflows: ["pages build and deployment"]
+    workflows: ["Deploy Pages"]
     types: [completed]
 
 permissions:

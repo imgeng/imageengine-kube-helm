@@ -15,6 +15,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # Persist the PAT so the gh-pages push below is attributed to a user.
+          # Pushes made with GITHUB_TOKEN do not trigger workflow runs, which
+          # would leave the released index.yaml undeployed.
+          token: ${{ secrets.GH_PAGES_PUSH_TOKEN }}
 
       - name: Configure git
         run: |
@@ -49,7 +53,7 @@ jobs:
           packages_with_index: true
           config: cr.yaml
         env:
-          CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_TOKEN: ${{ secrets.GH_PAGES_PUSH_TOKEN }}
 
       - name: Publish .prov files to gh-pages
         if: steps.cr.outputs.changed_charts != ''
