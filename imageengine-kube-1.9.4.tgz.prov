@@ -1,0 +1,58 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+annotations:
+  artifacthub.io/changes: |
+    - kind: changed
+      description: "Updated component images to address security fixes: backend v2.16.0, origin fetcher v1.32.0, processor v3.30.0, and object storage cache v3.7.0."
+    - kind: changed
+      description: "Updated edge component to v4.9.1 to allow user-adjustable settings to override the Link header."
+    - kind: changed
+      description: "Updated image processor to v3.30.0 to decode tiled HEIC/AVIF origins (including full-resolution iPhone photos) that previously failed libvips security limits."
+    - kind: changed
+      description: "Updated origin fetcher to v1.32.0 so S3/Wasabi origins honor Cache-Control and Expires TTLs and use AWS SDK v2."
+  artifacthub.io/signKey: |
+    fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+    url: https://kube.imageengine.io/pubkey.asc
+apiVersion: v2
+description: ImageEngine - cloud-native image optimization
+home: https://imageengine.io
+icon: https://imageengine.io/favicon.ico
+keywords:
+- - image-optimization
+- - image-cdn
+- - cdn
+- - imageengine
+- - varnish
+- - wurfl
+kubeVersion: '>=1.30.0-0'
+maintainers:
+- - email: support@scientiamobile.com
+  name: ScientiaMobile
+  url: https://www.scientiamobile.com
+name: imageengine-kube
+sources:
+- - https://kube.imageengine.io
+- - https://github.com/imgeng/imageengine-kube-helm
+type: application
+version: 1.9.4
+
+...
+files:
+  imageengine-kube-1.9.4.tgz: sha256:21ad59e3d919f576ccfaed002ad8fc4b5e8064790c478ed5c0b8e70011c759ef
+-----BEGIN PGP SIGNATURE-----
+
+wsFcBAEBCgAQBQJqqwAjCRBGMmYGCVfEswAA5mgQAEuT/3Stmy/qWlV+j91IbqPj
+hhwiYfS5ITiJIpGh27SHLc61bbHWfJcZWH7Hyu29kwmf70Sxxz2pK8ZJFRei5VPx
++AGu6jwI+MKdp9ftLtKfUMrGIwSIIYZv6oSerbWUZxefw01TbksJtJ0YrVmrMgdp
+TJNx6g3hH5iN5Znhor3UUAZaEPgjQVus78fiO3eSQb26qtNpN9loHH/ZcYmMZZc8
+0Qurpl+yiBKn9hc0KuOnLY73ZKbAMV6sZj7EvTGWEXEKP1OwuJH4mS+wiXjX4vBf
+wEXuHTBo54uD+cK+xFFxESIK4+PzkbvlJtlgv+Y1zROwx/FN/+0FnOodU8JdbMT7
+/B36zF3HIdPchZCqc7kLHXJ8i2DmgjwRVPWZkKX9A7Jzj46t7lx4+rtGJ+3WLVwp
+q70/dee/zTqQ2pHOFYICxBFaacSZI9uwURMlIwuX5VwtxQYeAN+pbwKijGySucTb
+dEKeOVuUOAbDcfcLa2j77mz4edL7oMZtyduHcJ1Yt+CCtucNGAwkkD66WWUyGhXs
+ai/+FZvOO/RtZxnAQbgjPEXD2x28ubo0g7I+Db//UDPWHeuYYYSH3IWMLUh7V8nc
+6Hk0aTIG4w2kxp6M0VXeqRKlWdSmYQQqcXLrtws+o6oxXvQNEqn9jzy/7eouVx22
+RxqxsiM5pcGTbqDGjzkD
+=2TO0
+-----END PGP SIGNATURE-----
