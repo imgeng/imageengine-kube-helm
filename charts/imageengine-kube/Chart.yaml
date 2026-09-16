@@ -2,7 +2,7 @@ apiVersion: v2
 name: imageengine-kube
 description: ImageEngine - cloud-native image optimization
 type: application
-version: 1.9.3
+version: 1.9.4
 kubeVersion: ">=1.30.0-0"
 home: https://imageengine.io
 sources:
@@ -26,4 +26,10 @@ annotations:
     url: https://kube.imageengine.io/pubkey.asc
   artifacthub.io/changes: |
     - kind: changed
+      description: "Updated component images to address security fixes: backend v2.16.0, origin fetcher v1.32.0, processor v3.30.0, and object storage cache v3.7.0."
+    - kind: changed
       description: "Updated edge component to v4.9.1 to allow user-adjustable settings to override the Link header."
+    - kind: changed
+      description: "Updated image processor to v3.30.0 to decode tiled HEIC/AVIF origins (including full-resolution iPhone photos) that previously failed libvips security limits."
+    - kind: changed
+      description: "Updated origin fetcher to v1.32.0 so S3/Wasabi origins honor Cache-Control and Expires TTLs and use AWS SDK v2."
