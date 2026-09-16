@@ -4,6 +4,45 @@ entries:
   - annotations:
       artifacthub.io/changes: |
         - kind: changed
+          description: "Updated component images to address security fixes: backend v2.16.0, origin fetcher v1.32.0, processor v3.30.0, and object storage cache v3.7.0."
+        - kind: changed
+          description: "Updated edge component to v4.9.1 to allow user-adjustable settings to override the Link header."
+        - kind: changed
+          description: "Updated image processor to v3.30.0 to decode tiled HEIC/AVIF origins (including full-resolution iPhone photos) that previously failed libvips security limits."
+        - kind: changed
+          description: "Updated origin fetcher to v1.32.0 so S3/Wasabi origins honor Cache-Control and Expires TTLs and use AWS SDK v2."
+      artifacthub.io/signKey: |
+        fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+        url: https://kube.imageengine.io/pubkey.asc
+    apiVersion: v2
+    created: "2026-09-16T20:46:31.466555904Z"
+    description: ImageEngine - cloud-native image optimization
+    digest: 21ad59e3d919f576ccfaed002ad8fc4b5e8064790c478ed5c0b8e70011c759ef
+    home: https://imageengine.io
+    icon: https://imageengine.io/favicon.ico
+    keywords:
+    - image-optimization
+    - image-cdn
+    - cdn
+    - imageengine
+    - varnish
+    - wurfl
+    kubeVersion: '>=1.30.0-0'
+    maintainers:
+    - email: support@scientiamobile.com
+      name: ScientiaMobile
+      url: https://www.scientiamobile.com
+    name: imageengine-kube
+    sources:
+    - https://kube.imageengine.io
+    - https://github.com/imgeng/imageengine-kube-helm
+    type: application
+    urls:
+    - imageengine-kube-1.9.4.tgz
+    version: 1.9.4
+  - annotations:
+      artifacthub.io/changes: |
+        - kind: changed
           description: "Updated edge component to v4.9.1 to allow user-adjustable settings to override the Link header."
       artifacthub.io/signKey: |
         fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
@@ -925,4 +964,4 @@ entries:
     urls:
     - imageengine-kube-0.8.0.tgz
     version: 0.8.0
-generated: "2026-08-17T18:05:06.944202799Z"
+generated: "2026-09-16T20:46:31.466860911Z"
