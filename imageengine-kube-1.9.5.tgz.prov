@@ -1,0 +1,60 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+annotations:
+  artifacthub.io/changes: |
+    - kind: fixed
+      description: "Overriding a component's API key in env no longer breaks emitter authentication. The chart's emitter key defaults interpolate $(API_KEY), which Kubernetes only resolves against a variable defined earlier in the container; an operator-supplied key renders later, leaving the literal string as the key. The chart now omits those derived emitter keys when you supply the API key yourself, so you set the emitter keys explicitly instead of getting an unresolvable reference."
+    - kind: fixed
+      description: "Env vars the chart sources from its own Secrets now step aside when defined under a component's env, instead of rendering a duplicate name that breaks helm upgrade. This covers the fetcher's ie-kube-fetcher cloud-storage credentials and the backend/OSC ImageEngine API key, which values.yaml already advertised as overridable."
+    - kind: added
+      description: "Each component's *_SENTRY_DSN may now be set under <component>.env, including as a secretKeyRef map, so a DSN can come from a Secret instead of being inlined in values. Unset, the sentry.*_DSN block behaves exactly as before."
+    - kind: added
+      description: "otel.env now follows the same scalar-or-map convention as a component's env, so a hosted collector credential such as OTEL_EXPORTER_OTLP_HEADERS can be sourced from a Secret rather than inlined."
+    - kind: changed
+      description: "values.schema.json now validates every component's env map (and otel.env), accepting scalars and valueFrom maps while rejecting malformed values such as lists."
+  artifacthub.io/signKey: |
+    fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+    url: https://kube.imageengine.io/pubkey.asc
+apiVersion: v2
+description: ImageEngine - cloud-native image optimization
+home: https://imageengine.io
+icon: https://imageengine.io/favicon.ico
+keywords:
+- - image-optimization
+- - image-cdn
+- - cdn
+- - imageengine
+- - varnish
+- - wurfl
+kubeVersion: '>=1.30.0-0'
+maintainers:
+- - email: support@scientiamobile.com
+  name: ScientiaMobile
+  url: https://www.scientiamobile.com
+name: imageengine-kube
+sources:
+- - https://kube.imageengine.io
+- - https://github.com/imgeng/imageengine-kube-helm
+type: application
+version: 1.9.5
+
+...
+files:
+  imageengine-kube-1.9.5.tgz: sha256:97649e5c188abab51514f71fcb8e6e91226fc706fc8d6df4eece770a14d8ada2
+-----BEGIN PGP SIGNATURE-----
+
+wsFcBAEBCgAQBQJqrD/3CRBGMmYGCVfEswAA3MsQAGjynqargaiYe8MO+XBqzL5E
+U1U7fhlYKdwDqgk17UZkA3QdM4FlzSjxRIw3hju2EEqHcB4yWpliV9pzJVPnfpad
+jTuBt1MNnHL5ip5leDrWpqaV9T8ngGA9lXtnmWsttI2+FQVtvrQNGbmUFNlz38Yy
+SUPChqVa6iJSjcupwaE9A+xfpYz28ua9bBgRBt/QxWVHCPz1z6IT+hCU/yyjwSu8
+AODk2SFFn3pf27Z993CQqZ7jQ9wCQFu+i2UK09CCSph+f5WCBhIJFOpTWa9r+R2q
+JamCBQoCitt6aOW5wFCjAtdkjf/itSJxek3533bX7nil26FRCNpokJ6zVJxOx32I
+GNRv2aAvGsAtqiE46mFymYzFjJ+HQ2Vh2ywzADALqvA7gw9FKo3hhcyDzzfZx9f2
+0hx20zN0SDOkjUb1Bh8vSWd6UaIpmqpoQSopxjAPCUVQC8oJ6WXY7d2BCpBgNr8S
+CcQTWju00YXBMrsbWdPBXLMUmER2hUeanVHs5nApjI29omie1fzRIH/6dafORrB5
+aKNuqkVRBzJKKY2mcy3iyyJXMRwn1OUwuTllo7uBx5z3uENwuQOrDOyOspRmCHas
+gWCrJ1b21otposjjarQkdcKwnZHzqPZCTDr17WNzmq/SkEPH/LUOAPfTUTsYumJ/
+OpqWi8oNZe3IdJG5gGFh
+=mPF2
+-----END PGP SIGNATURE-----
