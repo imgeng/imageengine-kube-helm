@@ -86,38 +86,18 @@ spec:
             {{- include "imageengine.oscShardEnv" . | nindent 12 }}
             - name: IE_PROCESSOR_URL
               value: "http://{{ include "imageengine.fullname" . }}-processor:80"
-            - name: IE_ORIGINFETCHER_SENTRY_DSN
-              value: {{ .Values.sentry.FETCHER_DSN | quote }}
+            {{- $fetcherEnv := default (dict) .Values.fetcher.env }}
+            {{- include "imageengine.derivedEnv" (dict "name" "IE_ORIGINFETCHER_SENTRY_DSN" "value" .Values.sentry.FETCHER_DSN "env" $fetcherEnv) | nindent 12 }}
             # Secrets
-            - name: IE_ORIGINFETCHER_AWS_ACCESS_KEY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: ie-kube-fetcher
-                  key: AWS_KEY
-                  optional: true
-            - name: IE_ORIGINFETCHER_AWS_SECRET_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: ie-kube-fetcher
-                  key: AWS_SECRET
-                  optional: true
-            - name: IE_ORIGINFETCHER_WASABI_ACCESS_KEY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: ie-kube-fetcher
-                  key: WASABI_KEY
-                  optional: true
-            - name: IE_ORIGINFETCHER_WASABI_SECRET_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: ie-kube-fetcher
-                  key: WASABI_SECRET
-                  optional: true
+            {{- include "imageengine.secretEnv" (dict "name" "IE_ORIGINFETCHER_AWS_ACCESS_KEY_ID" "secret" "ie-kube-fetcher" "key" "AWS_KEY" "optional" true "env" $fetcherEnv) | nindent 12 }}
+            {{- include "imageengine.secretEnv" (dict "name" "IE_ORIGINFETCHER_AWS_SECRET_ACCESS_KEY" "secret" "ie-kube-fetcher" "key" "AWS_SECRET" "optional" true "env" $fetcherEnv) | nindent 12 }}
+            {{- include "imageengine.secretEnv" (dict "name" "IE_ORIGINFETCHER_WASABI_ACCESS_KEY_ID" "secret" "ie-kube-fetcher" "key" "WASABI_KEY" "optional" true "env" $fetcherEnv) | nindent 12 }}
+            {{- include "imageengine.secretEnv" (dict "name" "IE_ORIGINFETCHER_WASABI_SECRET_ACCESS_KEY" "secret" "ie-kube-fetcher" "key" "WASABI_SECRET" "optional" true "env" $fetcherEnv) | nindent 12 }}
             # Env vars for statistics
             {{- include "imageengine.identityEnv" $ | nindent 12 }}
-            {{- include "imageengine.derivedEnv" (dict "name" "IE_ORIGINFETCHER_SENTRY_ENV" "value" (include "imageengine.appEnv" $) "env" $.Values.fetcher.env) | nindent 12 }}
+            {{- include "imageengine.derivedEnv" (dict "name" "IE_ORIGINFETCHER_SENTRY_ENV" "value" (include "imageengine.appEnv" $) "env" $fetcherEnv) | nindent 12 }}
             {{- include "imageengine.otelEnv" (dict "ctx" $ "enableVar" "IE_ORIGINFETCHER_OTEL_ENABLED") | nindent 12 }}
             # Env vars below this line are from values.yaml
-            {{- include "imageengine.renderEnv" .Values.fetcher.env | nindent 12 }}
+            {{- include "imageengine.renderEnv" $fetcherEnv | nindent 12 }}
 {{- end }}
 
