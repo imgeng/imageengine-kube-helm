@@ -3,6 +3,18 @@
   "title": "imageengine-kube values",
   "description": "Schema for the imageengine-kube Helm chart values. Catches the most common misconfigurations at install time.",
   "type": "object",
+  "definitions": {
+    "envMap": {
+      "description": "Container env vars. A scalar value renders as the variable's value:; an object is passed through verbatim as its valueFrom:, so the variable can be sourced from a Secret (secretKeyRef), ConfigMap (configMapKeyRef), or pod metadata (fieldRef). See docs/CUSTOMIZATIONS.md.",
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          { "type": ["string", "number", "boolean"] },
+          { "type": "object", "minProperties": 1 }
+        ]
+      }
+    }
+  },
   "properties": {
     "provider": {
       "description": "Cloud provider preset. Use 'custom' for bare metal, on-prem, or any self-managed cluster.",
@@ -106,25 +118,29 @@
             "storageClass": { "type": "string" },
             "size": { "type": "string", "minLength": 1 }
           }
-        }
+        },
+        "env": { "$ref": "#/definitions/envMap" }
       }
     },
     "edge": {
       "type": "object",
       "properties": {
-        "replicaCount": { "type": "integer", "minimum": 0 }
+        "replicaCount": { "type": "integer", "minimum": 0 },
+        "env": { "$ref": "#/definitions/envMap" }
       }
     },
     "varnish": {
       "type": "object",
       "properties": {
-        "replicaCount": { "type": "integer", "minimum": 0 }
+        "replicaCount": { "type": "integer", "minimum": 0 },
+        "env": { "$ref": "#/definitions/envMap" }
       }
     },
     "backend": {
       "type": "object",
       "properties": {
         "replicaCount": { "type": "integer", "minimum": 0 },
+        "env": { "$ref": "#/definitions/envMap" },
         "service": {
           "type": "object",
           "description": "Backend Service exposure (ADR 0021). ClusterIP by default; set type=LoadBalancer only for a backend-only install serving remote frontends, and keep it private / source-range restricted.",
@@ -151,6 +167,7 @@
       "type": "object",
       "properties": {
         "replicaCount": { "type": "integer", "minimum": 0 },
+        "env": { "$ref": "#/definitions/envMap" },
         "autoscaling": {
           "type": "object",
           "properties": {
@@ -166,6 +183,7 @@
       "type": "object",
       "properties": {
         "replicaCount": { "type": "integer", "minimum": 0 },
+        "env": { "$ref": "#/definitions/envMap" },
         "autoscaling": {
           "type": "object",
           "properties": {
@@ -202,7 +220,7 @@
           "type": "string",
           "description": "OTLP/gRPC collector endpoint (e.g. http://otel-collector.observability:4317). Empty relies on OpenTelemetry-Operator injection or the SDK default."
         },
-        "env": { "type": "object", "additionalProperties": { "type": "string" } },
+        "env": { "$ref": "#/definitions/envMap" },
         "networkPolicy": {
           "type": "object",
           "properties": {

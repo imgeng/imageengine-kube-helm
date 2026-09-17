@@ -140,6 +140,10 @@ imageengine:
   emitterServer: "wss://emitter.eleven45.net:443"
   imageEngineApiUrl: "https://control-api.imageengine.io"
 
+# Per-component Sentry DSNs, injected as each component's *_SENTRY_DSN. Set here
+# they are inlined in the manifest; to keep a DSN out of the values instead, set
+# the component's own *_SENTRY_DSN under <component>.env as a secretKeyRef map
+# (see the placeholder note below) — that overrides the value from this block.
 sentry:
   FRONTEND_DSN: ""
   BACKEND_DSN: ""
@@ -165,6 +169,13 @@ secrets:
 #           key: KEY
 # configMapKeyRef and fieldRef work the same way. The chart references Secrets by
 # name only — create them in the install namespace yourself. See CUSTOMIZATIONS.md.
+# Defining one of these variables also suppresses the chart's own definition of it,
+# so there is no duplicate env var. Note that overriding a component's API key
+# (EDGE_API_KEY / IE_BACKEND_IMAGEENGINE_API_KEY / IE_KUBE_API_KEY_RAW) means you
+# must also set that component's *_EMITTER_*_KEY vars: the chart's defaults for
+# those interpolate the API key, which Kubernetes can only resolve from a variable
+# defined earlier in the container, so the chart omits them rather than emit a
+# reference that would never resolve. See CUSTOMIZATIONS.md.
 
 # Deployment identity — labels stamped on every structured log record and trace
 # span (mapped to ECS service.* / cloud.* / host.*). Friendly camelCase keys; the

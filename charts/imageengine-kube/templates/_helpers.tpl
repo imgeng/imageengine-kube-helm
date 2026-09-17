@@ -45,7 +45,9 @@ component's *_OTEL_ENABLED flag, the OTLP endpoint (if configured; leave empty
 to rely on OpenTelemetry-Operator injection), a default
 OTEL_RESOURCE_ATTRIBUTES=deployment.environment=<identity.environment>
 (unless the caller supplies OTEL_RESOURCE_ATTRIBUTES in otel.env, which then
-wins), and any shared OTEL_* vars.
+wins), and any shared OTEL_* vars. otel.env follows the same scalar/map
+convention as a component's env (see imageengine.renderEnv), so a collector
+credential such as OTEL_EXPORTER_OTLP_HEADERS can come from a Secret.
 Usage: {{ include "imageengine.otelEnv" (dict "ctx" . "enableVar" "EDGE_OTEL_ENABLED") }}
 */}}
 {{- define "imageengine.otelEnv" -}}
@@ -65,10 +67,7 @@ Usage: {{ include "imageengine.otelEnv" (dict "ctx" . "enableVar" "EDGE_OTEL_ENA
 - name: OTEL_RESOURCE_ATTRIBUTES
   value: {{ printf "deployment.environment=%s" $env | quote }}
 {{- end }}
-{{- range $key, $value := $otel.env }}
-- name: {{ $key }}
-  value: {{ $value | quote }}
-{{- end }}
+{{- include "imageengine.renderEnv" $otel.env }}
 {{- end }}
 {{- end -}}
 
@@ -258,6 +257,26 @@ Usage: {{ include "imageengine.derivedEnv" (dict "name" "EDGE_EMITTER_SERVER" "v
 {{- if not (hasKey (default (dict) .env) .name) }}
 - name: {{ .name }}
   value: {{ .value | default "" | quote }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Emit a built-in env var sourced from one of the chart's own Secrets. Skipped when
+the component's env map already defines the key, so an operator who keeps the
+value in a differently-named Secret (or supplies it some other way) gets their
+definition instead of a duplicate name.
+Usage: {{ include "imageengine.secretEnv" (dict "name" "EDGE_API_KEY" "secret" "ie-kube-api-key" "key" "KEY" "env" $.Values.edge.env) | nindent 12 }}
+*/}}
+{{- define "imageengine.secretEnv" -}}
+{{- if not (hasKey (default (dict) .env) .name) }}
+- name: {{ .name }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ .secret }}
+      key: {{ .key }}
+      {{- if .optional }}
+      optional: true
+      {{- end }}
 {{- end }}
 {{- end -}}
 

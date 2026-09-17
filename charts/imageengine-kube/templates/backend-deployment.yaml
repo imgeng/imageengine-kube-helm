@@ -89,27 +89,26 @@ spec:
               value: "http://{{ include "imageengine.fullname" . }}-processor:80"
             # OSC sharding client: one OSC{N}_HOST per cache shard (see helper)
             {{- include "imageengine.oscShardEnv" . | nindent 12 }}
+            {{- $backendEnv := default (dict) .Values.backend.env }}
             # Secrets
-            - name: IE_BACKEND_IMAGEENGINE_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: ie-kube-api-key
-                  key: KEY
-            {{- if not (hasKey (default (dict) .Values.backend.env) "ORIGINCONF_EMITTER_CHANNEL_KEY") }}
-            - name: ORIGINCONF_EMITTER_CHANNEL_KEY
-              value: "api-key:$(IE_BACKEND_IMAGEENGINE_API_KEY)"
+            {{- include "imageengine.secretEnv" (dict "name" "IE_BACKEND_IMAGEENGINE_API_KEY" "secret" "ie-kube-api-key" "key" "KEY" "env" $backendEnv) | nindent 12 }}
+            {{- /* $(IE_BACKEND_IMAGEENGINE_API_KEY) only resolves against a var defined
+                   EARLIER in this list. An operator-supplied one renders further down
+                   (with the rest of backend.env), so skip this fallback in that case
+                   instead of emitting an unresolvable literal. */}}
+            {{- if not (hasKey $backendEnv "IE_BACKEND_IMAGEENGINE_API_KEY") }}
+            {{- include "imageengine.derivedEnv" (dict "name" "ORIGINCONF_EMITTER_CHANNEL_KEY" "value" "api-key:$(IE_BACKEND_IMAGEENGINE_API_KEY)" "env" $backendEnv) | nindent 12 }}
             {{- end }}
             - name: IE_BACKEND_IMAGEENGINE_API_URL
               value: {{ .Values.imageengine.imageEngineApiUrl | quote }}
             - name: IE_BACKEND_IMAGEENGINE_API_TIMEOUT
               value: "10s"
-            - name: IE_BACKEND_SENTRY_DSN
-              value: {{ .Values.sentry.BACKEND_DSN | quote }}
+            {{- include "imageengine.derivedEnv" (dict "name" "IE_BACKEND_SENTRY_DSN" "value" .Values.sentry.BACKEND_DSN "env" $backendEnv) | nindent 12 }}
             # Env vars for statistics
             {{- include "imageengine.identityEnv" $ | nindent 12 }}
-            {{- include "imageengine.derivedEnv" (dict "name" "IE_BACKEND_SENTRY_ENV" "value" (include "imageengine.appEnv" $) "env" $.Values.backend.env) | nindent 12 }}
-            {{- include "imageengine.derivedEnv" (dict "name" "ORIGINCONF_EMITTER_SERVER" "value" $.Values.imageengine.emitterServer "env" $.Values.backend.env) | nindent 12 }}
+            {{- include "imageengine.derivedEnv" (dict "name" "IE_BACKEND_SENTRY_ENV" "value" (include "imageengine.appEnv" $) "env" $backendEnv) | nindent 12 }}
+            {{- include "imageengine.derivedEnv" (dict "name" "ORIGINCONF_EMITTER_SERVER" "value" $.Values.imageengine.emitterServer "env" $backendEnv) | nindent 12 }}
             {{- include "imageengine.otelEnv" (dict "ctx" $ "enableVar" "IE_BACKEND_OTEL_ENABLED") | nindent 12 }}
             # Env vars below this line are from values.yaml
-            {{- include "imageengine.renderEnv" .Values.backend.env | nindent 12 }}
+            {{- include "imageengine.renderEnv" $backendEnv | nindent 12 }}
 {{- end }}

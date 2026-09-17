@@ -87,8 +87,7 @@ spec:
             # OSC sharding client: one OSC{N}_HOST per cache shard (see helper)
             {{- include "imageengine.oscShardEnv" . | nindent 12 }}
             # Secrets
-            - name: IE_PROCESSOR_SENTRY_DSN
-              value: {{ .Values.sentry.PROCESSOR_DSN | quote }}
+            {{- include "imageengine.derivedEnv" (dict "name" "IE_PROCESSOR_SENTRY_DSN" "value" .Values.sentry.PROCESSOR_DSN "env" $.Values.processor.env) | nindent 12 }}
             # Env vars for statistics
             {{- include "imageengine.identityEnv" $ | nindent 12 }}
             {{- include "imageengine.derivedEnv" (dict "name" "IE_PROCESSOR_SENTRY_ENV" "value" (include "imageengine.appEnv" $) "env" $.Values.processor.env) | nindent 12 }}

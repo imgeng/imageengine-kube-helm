@@ -438,7 +438,18 @@ otel:
 
 This flips on the `*_OTEL_ENABLED` flag for all five Go components (edge, backend, fetcher, processor, OSC), so one client request stitches `edge → backend → {OSC, fetcher, processor}` into a single trace. Varnish is a pure cache and is not instrumented — it passes trace context through on a miss.
 
-`deployment.environment` is set for you from `identity.environment`, so traces are tagged with your environment out of the box. Everything under `otel.env` is passed through verbatim as SDK-native `OTEL_*` vars (sampler, resource attributes, etc.); set your own `OTEL_RESOURCE_ATTRIBUTES` there to override the default.
+`deployment.environment` is set for you from `identity.environment`, so traces are tagged with your environment out of the box. Everything under `otel.env` is passed through verbatim as SDK-native `OTEL_*` vars (sampler, resource attributes, etc.); set your own `OTEL_RESOURCE_ATTRIBUTES` there to override the default. `otel.env` follows the same scalar-or-map convention as a component's `env` (see [Sourcing an env var from a Secret or ConfigMap](#sourcing-an-env-var-from-a-secret-or-configmap)), so a hosted collector's credential can come from a Secret rather than being inlined:
+
+```yaml
+otel:
+  enabled: true
+  endpoint: "https://otlp.example.com:4317"
+  env:
+    OTEL_EXPORTER_OTLP_HEADERS:
+      secretKeyRef:
+        name: otel-collector-auth
+        key: headers
+```
 
 ### Restricting OTLP egress with a NetworkPolicy
 
@@ -564,10 +575,33 @@ Secrets by name; you are responsible for creating them in the install namespace
 
 The whole map value is passed straight through to the container's `valueFrom:`, so
 any field Kubernetes accepts there works — including `optional: true` on a
-`secretKeyRef`/`configMapKeyRef` if the source may not exist. Note that env vars
-the chart already sets for a component (identity, Sentry/OTel, and the derived
-`*_SERVER`/`APP_ENV` vars above the `values.yaml` block) must not be redefined in
-`env` — a duplicate name breaks `helm upgrade`.
+`secretKeyRef`/`configMapKeyRef` if the source may not exist.
+
+### Overriding a variable the chart already sets
+
+Defining a variable in `env` that the chart also emits would produce a duplicate
+name, which breaks `helm upgrade`. Two classes of built-in therefore step aside
+when you define them yourself, so you can redefine them freely:
+
+- Anything the chart reads out of one of **its own Secrets** — the ImageEngine API
+  key and the fetcher's `ie-kube-fetcher` cloud-storage credentials. Override
+  these to keep the value in a Secret you name yourself.
+- Anything the chart **derives from a single values key** — `*_SENTRY_DSN`,
+  `*_SENTRY_ENV`, `*_EMITTER_SERVER`, `*_EMITTER_*_KEY`, `APP_ENV`, and
+  `OSC_FS_STORAGE_PATH`.
+
+Everything else the chart computes **structurally** must not be redefined: in-cluster
+service URLs, bind addresses, the `OSC{N}_HOST` shard list, `COMPONENT`, the
+deployment identity vars (`ENVIRONMENT`, `PROVIDER`, `REGION`, `AZ`, `DEPLOY`,
+`PRODUCT`, `HOST_*`), and the OTel enable flags.
+
+> **Overriding the API key means owning emitter auth.** By default the emitter keys
+> are derived from the API key via `$(...)` interpolation, which Kubernetes only
+> resolves against a variable defined *earlier* in the container's env list. Your
+> own definitions render after the chart's, so if you set the API key
+> (`EDGE_API_KEY`, `IE_BACKEND_IMAGEENGINE_API_KEY`, or `IE_KUBE_API_KEY_RAW`) the
+> chart omits those derived emitter keys instead of emitting an unresolvable
+> reference. Set the corresponding `*_EMITTER_*_KEY` yourself in the same `env` block.
 
 ## Next
 
