@@ -167,10 +167,11 @@ At this point you should be making sizing decisions from your own metrics, not f
 - Fetcher: HPA on, `maxReplicas` raised (e.g. 16+). Bandwidth to your origins becomes a real constraint here.
 - Processor: HPA on, `maxReplicas` 16+ (raise from default if you bench higher). Consider a dedicated CPU-optimized node pool via `nodeSelector` so a miss storm doesn't evict other workloads. Tune `IE_PROCESSOR_PROCESSINGTHREADS_PER_CORE` if you can keep cores busy without context-switch overhead.
 - OSC: **more shards** (e.g. 6–8+) on the fastest storage class your provider offers, each with a multi-hundred-GiB to TiB PVC so total capacity reaches multi-TiB. More shards both raise aggregate IO throughput and shrink per-shard blast radius. OSC IO latency directly affects every cache hit. Slow OSC disk shows up as backend memory pressure (because everything buffers in backend longer) and processor queue growth.
-- Cluster footprint: heterogeneous — small nodes for edge/varnish/backend, CPU-optimized nodes for processor/fetcher, and nodes with fast attached disks spread across AZs for the OSC shards.
+- Cluster footprint: heterogeneous — small nodes for edge/varnish/backend, CPU-optimized nodes for processor/fetcher (arm64 where available, e.g. Graviton `c7g`/`c8g` on AWS), and nodes with fast attached disks spread across AZs for the OSC shards.
 
 ## Cross-cutting notes
 
+- **Use arm64 nodes where your provider offers them.** arm64 is fully supported and gives the best price/performance at every tier, with the biggest payoff on the CPU-bound processor. The vCPU and memory figures above apply to either architecture. See [REQUIREMENTS.md](REQUIREMENTS.md#cpu-architecture) and your provider doc for node types.
 - **Look at Varnish hit ratio before scaling anything downstream.** A small hit-ratio improvement is usually worth more than doubling a downstream component.
 - `**replicaCount` is ignored** for components where `autoscaling.enabled: true` — the HPA owns it. Set `autoscaling.minReplicas` instead.
 - **Bench at realistic traffic** before locking in sizing. PoC traffic levels do not predict production cache behavior at all.

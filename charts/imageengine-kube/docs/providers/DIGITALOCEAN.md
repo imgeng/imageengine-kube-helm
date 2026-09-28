@@ -5,7 +5,7 @@ ImageEngine Kube on DigitalOcean Kubernetes with `provider: digitalocean`.
 ## Recommended cluster
 
 - **DOKS, Kubernetes 1.33+** (chart minimum is 1.30).
-- Worker nodes (x86-64 and arm64 are both supported — the chart's images are multi-arch, so arm64 droplet plans work where DO offers them):
+- Worker nodes: arm64 and x86-64 are both fully supported, and the chart's images are multi-arch. **Where DO offers arm64 droplet plans, prefer them** because arm64 gives the best price/performance. Otherwise use these x86-64 plans:
   - `s-4vcpu-8gb-amd` (4 vCPU / 8 GiB AMD EPYC) as the default — AMD nodes give better price/performance for image processing than Intel on DO.
   - `s-2vcpu-4gb` for PoC clusters.
 - At least 3 nodes for the chart's topology-spread to be meaningful.

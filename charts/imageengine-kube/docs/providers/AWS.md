@@ -37,12 +37,11 @@ ImageEngine Kube on Amazon EKS with `provider: aws`.
 
 - **EKS, Kubernetes 1.33+** (1.30 is the chart minimum; running on a still-supported upstream release saves you the EKS extended-support surcharge).
 - Cluster mode: **EKS Standard** for full control, or **EKS Auto Mode** if you want AWS to manage node provisioning, scaling, and add-ons (Karpenter, AWS LB Controller, EBS CSI driver) for you.
-- Worker nodes (x86-64 and arm64/Graviton are both supported — the chart's images are multi-arch, so `m7g`/`c7g` Graviton nodes work and often give better price/performance):
-  - `m7i.xlarge` (Sapphire Rapids, 4 vCPU / 16 GiB) as the modern x86-64 default.
-  - `m6i.xlarge` (Ice Lake, 4 vCPU / 16 GiB) as the conservative baseline.
-  - `c7i.xlarge` for processor pools that need more CPU per pod.
-  - `m7g.xlarge` / `c7g.xlarge` (Graviton) for arm64 pools.
-  - PoC clusters can run on `t3.large` (x86-64) or `t4g.large` (Graviton).
+- Worker nodes: **arm64 (Graviton) is recommended.** It's fully supported and gives the best price/performance. The chart's images are multi-arch, so no extra configuration is needed.
+  - `m7g.xlarge` (Graviton3, 4 vCPU / 16 GiB) as the default. Use `m8g.xlarge` (Graviton4) where it's available in your region.
+  - `c7g.xlarge` / `c8g.xlarge` for processor pools that need more CPU per pod.
+  - `t4g.large` for PoC clusters.
+  - x86-64 is also fully supported if you need it: `m7i.xlarge` (Sapphire Rapids) as the default, `c7i.xlarge` for processor pools, `t3.large` for PoC.
 - At least 3 nodes in 3 AZs so the chart's topology-spread constraint is meaningful.
 - **Karpenter** is the standard cluster autoscaler in 2026 — install it (or use EKS Auto Mode, which embeds it) and let it provision nodes on demand based on pod requests.
 

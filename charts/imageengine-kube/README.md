@@ -2,6 +2,8 @@
 
 ImageEngine Kube deploys the [ImageEngine](https://imageengine.io) image-optimization and delivery platform inside your own Kubernetes cluster — device-aware image transformation, multi-tier caching, and edge delivery, all running on infrastructure you control. See [imageengine.io/why-kube/](https://imageengine.io/why-kube/) for what the platform does and why you might want to self-host it.
 
+ImageEngine Kube runs on both **arm64** and **x86-64** nodes. arm64 is recommended wherever your provider offers it, since it gives the best price/performance (see [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md#cpu-architecture)).
+
 The chart is published to the Helm repository at `https://kube.imageengine.io`. Source and issue tracking live at [`imgeng/imageengine-kube-helm`](https://github.com/imgeng/imageengine-kube-helm) on GitHub.
 
 > **Active trial or subscription required.** A single ImageEngine API key is used for both runtime authentication (origin configs, device data, purges) and for pulling the chart's container images from `docker.scientiamobile.com`. You cannot install the chart without one. Sign up for a trial or subscription at [imageengine.io](https://imageengine.io) to get your key.
@@ -123,7 +125,7 @@ To pin a specific chart version: `helm upgrade ... --version 1.2.3 -f imageengin
 ## Where to next
 
 - [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) — full first-deployment walkthrough.
-- [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) — Kubernetes version, storage, network, and compute minimums.
+- [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) — Kubernetes version, CPU architecture (arm64 / x86-64), storage, network, and compute minimums.
 - [docs/SIZING.md](docs/SIZING.md) — recommended footprints for low / medium / high traffic.
 - [docs/CUSTOMIZATIONS.md](docs/CUSTOMIZATIONS.md) — replicas, autoscaling, ingress, TLS, OSC sizing, Varnish tuning, OpenTelemetry tracing, and the rest.
 - [docs/TOPOLOGIES.md](docs/TOPOLOGIES.md) — running the full pipeline (default) vs. splitting it into frontend-only / backend-only tiers across clusters or regions.

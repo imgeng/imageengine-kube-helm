@@ -9,7 +9,9 @@ The hard minimums for running ImageEngine Kube. If your environment doesn't meet
 
 ## CPU architecture
 
-- **`linux/amd64` (x86-64) and `linux/arm64` are both supported.** The chart's images are multi-arch manifests, so ARM64 (Graviton on AWS, Cobalt on Azure, Axion on GCP, etc.) worker nodes now pull the right variant automatically — no configuration needed. You can run all-x86-64, all-arm64, or mixed node pools. ARM64 often gives better price/performance for image processing.
+- **`linux/arm64` and `linux/amd64` (x86-64) are both fully supported for production.** Every component has been validated on arm64.
+- **arm64 is the recommended choice wherever your provider offers it.** It gives the best price/performance for ImageEngine Kube, especially for the CPU-bound processor. Examples are Graviton on AWS, Cobalt on Azure, and Axion on GCP. Your provider doc lists specific node types.
+- **No configuration is needed.** The chart's images are multi-arch manifests, so each node pulls the right variant automatically. You can run all-arm64, all-x86-64, or mixed node pools. To keep a component on one architecture in a mixed cluster, use a `kubernetes.io/arch` `nodeSelector` (see [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md#how-do-i-pin-pods-to-specific-nodes)).
 
 ## Storage
 

@@ -492,6 +492,14 @@ processor:
 
 `nodeSelector`, `tolerations`, and `affinity` are available on `edge`, `varnish`, `backend`, `fetcher`, `processor`, and `objectStorageCache`.
 
+In a mixed-architecture cluster you don't need to pin anything, because every image is multi-arch. To keep a component on your arm64 pool anyway (for example, so the processor always gets the better price/performance nodes), select on the standard architecture label:
+
+```yaml
+processor:
+  nodeSelector:
+    kubernetes.io/arch: arm64
+```
+
 The chart already adds a soft `topologySpreadConstraint` per component so replicas spread across nodes when possible.
 
 ## How do I enable Green Web Foundation carbon.txt?
