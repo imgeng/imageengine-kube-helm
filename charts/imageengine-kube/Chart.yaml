@@ -26,6 +26,6 @@ annotations:
     url: https://kube.imageengine.io/pubkey.asc
   artifacthub.io/changes: |
     - kind: changed
-      description: "Updated the edge image to v4.9.2 so access-log byte counts match the legacy frontends that SaaS billing reads."
+      description: "Updated the edge image to v4.9.2 so legacy access-log byte counts match the expected values."
     - kind: changed
       description: "Updated the Varnish image to 9.1.0-0 (Varnish 9.1.0) for upstream security fixes. This also includes ie-varnish-autoconfig Route53 backend resolution, so an IE_BACKENDS entry can be a route53:// URL."
