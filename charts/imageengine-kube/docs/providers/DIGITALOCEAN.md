@@ -44,6 +44,8 @@ service:
 
 Combine with `service.loadBalancerSourceRanges` to lock down inbound CIDRs.
 
+**Client IP:** with a LoadBalancer Service, `provider: digitalocean` enables PROXY protocol on the load balancer (`do-loadbalancer-enable-proxy-protocol: "true"`) and the edge reads it, so fair-share admission and the access log see real client addresses. DOKS nodes have public IPs, so allow the NodePort range only from the load balancer with a Cloud Firewall; see [How do I preserve the client IP?](../CUSTOMIZATIONS.md#how-do-i-preserve-the-client-ip), including the two-step upgrade for existing installs.
+
 ## Ingress options
 
 Two reasonable choices:

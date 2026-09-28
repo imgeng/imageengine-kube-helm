@@ -19,7 +19,7 @@ metadata:
   {{- end }}
 spec:
   type: {{ .Values.service.type }}
-  {{- with .Values.service.externalTrafficPolicy }}
+  {{- with include "imageengine.externalTrafficPolicy" . }}
   externalTrafficPolicy: {{ . }}
   {{- end }}
   {{- with .Values.service.loadBalancerSourceRanges }}

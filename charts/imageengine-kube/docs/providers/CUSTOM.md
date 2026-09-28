@@ -150,6 +150,8 @@ objectStorageCache:
 
 By setting `service.type: ClusterIP`, the chart's edge Service won't try to grab a MetalLB IP — only the ingress-nginx controller does. Cleaner setup.
 
+**Client IP:** the edge trusts the `X-Forwarded-For` entry ingress-nginx appends, so ingress-nginx must see the client's address itself. Install it with `--set controller.service.externalTrafficPolicy=Local` (MetalLB then announces only from nodes running a controller pod). On Path A the edge uses the connection's source address, which is the client only with `service.externalTrafficPolicy: Local`. A load balancer of your own that speaks PROXY protocol (HAProxy, an F5, Envoy) can send it to the edge instead: set `clientIP.mode: proxyProtocol`. See [How do I preserve the client IP?](../CUSTOMIZATIONS.md#how-do-i-preserve-the-client-ip).
+
 ## Storage gotchas
 
 - The OSC PVC is `ReadWriteOnce` — pods are pinned to whichever node owns the underlying volume. With **local-path-provisioner**, that means OSC effectively pins to a single node and won't reschedule if that node dies. For production durability use a CSI that replicates across nodes (Longhorn, Rook-Ceph, OpenEBS Mayastor) or accept the single-node failure mode.

@@ -62,6 +62,32 @@
         }
       }
     },
+    "clientIP": {
+      "type": "object",
+      "description": "How the edge learns the client IP for fair-share admission and the access log. See docs/CUSTOMIZATIONS.md.",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["auto", "proxyProtocol", "forwardedFor", "direct", "legacy"]
+        },
+        "forwardedHops": {
+          "description": "forwardedFor: proxies that append to X-Forwarded-For. 0 = auto (2 for GCE ingress, otherwise 1).",
+          "type": "integer",
+          "minimum": 0
+        },
+        "trustedProxies": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "proxyProtocol": {
+          "type": "object",
+          "properties": {
+            "policy": { "type": "string", "enum": ["optional", "required"] },
+            "annotateService": { "type": "boolean" }
+          }
+        }
+      }
+    },
     "ingress": {
       "type": "object",
       "properties": {

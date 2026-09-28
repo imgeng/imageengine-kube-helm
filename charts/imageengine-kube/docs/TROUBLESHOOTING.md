@@ -185,6 +185,38 @@ The edge sits in front of varnish, which sits in front of backend. A 502 means o
 
 ---
 
+## Every client shares one fair-share bucket
+
+**Symptom:** under real traffic `imageengine_edge_clients_tracked` stays near the number of nodes or load balancer addresses, and busy periods produce `imageengine_edge_reject_total{reason="fair_share"}` for everyone at once. Or the access log shows node or load balancer IPs as the client.
+
+**Diagnose:**
+
+```bash
+kubectl port-forward -n imageengine deploy/imageengine-kube-edge 9464:9464 &
+curl -s localhost:9464/metrics | grep -E 'clients_tracked|client_ip_resolutions_total'
+kubectl get deploy -n imageengine imageengine-kube-edge -o yaml | grep -A1 -E 'EDGE_(CLIENT_IP_SOURCE|PROXY_PROTOCOL|XFF_TRUSTED_HOPS|TRUSTED_PROXIES)'
+```
+
+**Fix:** the edge is not getting the client's address from the path your traffic takes. See [How do I preserve the client IP?](CUSTOMIZATIONS.md#how-do-i-preserve-the-client-ip):
+
+- No `client_ip_resolutions_total` series at all: the edge is in `legacy` mode, because `clientIP.mode` is `legacy` or `images.edge` is older than 4.10.0.
+- Mostly `remote_addr` but the IPs are nodes: nothing delivers the client's address. Behind a load balancer that supports PROXY protocol, use `clientIP.mode: proxyProtocol` (and on a `custom` provider add your load balancer's annotation to `service.annotations`). Otherwise set `service.externalTrafficPolicy: Local`.
+- `short_forwarded`: fewer `X-Forwarded-For` entries arrive than `clientIP.forwardedHops`. Lower it.
+- Mostly `forwarded` but the IPs belong to your CDN or load balancer: there is one more proxy than `forwardedHops` counts. Raise it by one.
+- `untrusted_peer`: `clientIP.trustedProxies` does not include the address your ingress controller connects from.
+
+---
+
+## Requests fail after switching to `proxyProtocol`
+
+**Symptom:** after enabling `clientIP.mode: proxyProtocol`, some or all requests get `400 Bad Request` or the connection is reset.
+
+- **400 during a rollout:** the load balancer already sends PROXY headers but some edge pods were started before the change and do not expect them. It clears when the rollout finishes; next time, upgrade in two steps with `clientIP.proxyProtocol.annotateService` (see [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md#how-do-i-preserve-the-client-ip)).
+- **Connections reset with `policy: required`:** the load balancer is not sending headers, so the annotation did not take effect. Check it on the Service (`kubectl get svc -n imageengine imageengine-kube-edge -o yaml`) and in your provider's console, or go back to `policy: optional`.
+- **400 from a load balancer you configured yourself:** it sends PROXY headers to an edge in another mode. Set `clientIP.mode: proxyProtocol` to match.
+
+---
+
 ## 504 Gateway Timeout / very slow first request
 
 **Symptom:** First request for a given URL takes 2+ seconds and sometimes times out. Subsequent requests for the same URL are fast.

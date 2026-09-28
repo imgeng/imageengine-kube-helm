@@ -47,6 +47,8 @@ service:
 
 Combine with `service.loadBalancerSourceRanges` to lock down inbound CIDRs.
 
+**Client IP:** Azure's Standard Load Balancer can't send PROXY headers, so with a LoadBalancer Service `provider: azure` sets `externalTrafficPolicy: Local` and the edge uses the connection's source address. Behind ingress-nginx or Application Gateway the edge trusts the `X-Forwarded-For` entry they append instead. See [How do I preserve the client IP?](../CUSTOMIZATIONS.md#how-do-i-preserve-the-client-ip).
+
 ## Ingress options
 
 Three reasonable choices:

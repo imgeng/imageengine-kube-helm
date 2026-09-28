@@ -47,6 +47,14 @@ Get the external IP of the edge LoadBalancer (give your cloud provider a
 minute to allocate it):
 
   kubectl --namespace {{ .Release.Namespace }} get svc {{ include "imageengine.fullname" . }}-edge
+{{- if and .Values.ingress.enabled (eq (include "imageengine.clientIPMode" .) "forwardedFor") }}
+
+Heads up: ingress.enabled is true and the edge Service is also a
+LoadBalancer. The edge trusts X-Forwarded-For from your ingress controller, so
+a client reaching the LoadBalancer directly can choose the client IP that
+fair-share admission and the access log see. Set service.type=ClusterIP unless
+you need both entry points.
+{{- end }}
 
 {{- else if .Values.ingress.enabled }}
 
