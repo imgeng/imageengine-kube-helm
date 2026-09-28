@@ -5,11 +5,10 @@ ImageEngine Kube on Google Kubernetes Engine with `provider: gke`.
 ## Recommended cluster
 
 - **GKE Standard, Kubernetes 1.34+** (chart minimum is 1.30). GKE Autopilot also works but constrains pod resource shapes — verify the chart's defaults pass Autopilot validation before committing to it.
-- Worker nodes (x86-64 and arm64/Axion are both supported — the chart's images are multi-arch, so `c4a`/`t2a` Arm nodes work and often give better price/performance):
-  - `n2-standard-4` (4 vCPU / 16 GiB) for general use; better single-thread performance than `e2`.
-  - `c4-standard-4` for processor pools needing more CPU per pod.
-  - `e2-standard-4` for cost-sensitive deployments.
-  - `c4a-standard-4` (Axion) for arm64 pools.
+- Worker nodes: **arm64 (Axion) is recommended where your region offers it.** It's fully supported and gives the best price/performance. The chart's images are multi-arch, so no extra configuration is needed.
+  - `c4a-standard-4` (Axion, 4 vCPU / 16 GiB) as the default. C4A supports only Hyperdisk, so point the OSC at a Hyperdisk storage class (see [Storage](#storage) below).
+  - `t2a-standard-4` (Ampere Altra) in regions without C4A. T2A works with the default `standard-rwo` class.
+  - x86-64 is also fully supported if arm64 isn't available: `n2-standard-4` for general use, `c4-standard-4` for processor pools needing more CPU per pod, `e2-standard-4` for cost-sensitive deployments.
 - At least 3 nodes across 3 zones so the chart's topology-spread is meaningful.
 
 See [SIZING.md](../SIZING.md) for traffic-tier sizing.
@@ -24,7 +23,8 @@ You can override any of these explicitly — see [CUSTOMIZATIONS.md](../CUSTOMIZ
 
 ## Storage
 
-- `standard-rwo` is the default and is fine for most deployments.
+- `standard-rwo` is the default and is fine for most deployments on Persistent Disk-capable nodes (`t2a`, `n2`, `e2`).
+- **On Axion (`c4a`) nodes you must use a Hyperdisk class.** C4A doesn't support Persistent Disk, so an OSC PVC on `standard-rwo` or `premium-rwo` won't attach and the OSC pod stays `Pending`. Set `objectStorageCache.persistence.storageClass: hyperdisk-balanced` as in the example below.
 - For higher OSC IO performance, consider `premium-rwo` (PD-SSD) or one of the **Hyperdisk** classes:
 
   ```yaml

@@ -10,6 +10,8 @@ For Kubernetes clusters you run yourself: bare metal, on-premise, hybrid, self-m
 
 You're responsible for telling the chart what storage class to actually use, what ingress class is actually installed, and so on. This doc walks you through the typical baseline.
 
+Both arm64 (e.g. Ampere-based servers) and x86-64 nodes are fully supported, and the chart's images are multi-arch. If you're choosing hardware, arm64 gives the best price/performance.
+
 ## What you'll need to install yourself
 
 A self-managed cluster usually doesn't ship with the cloud niceties that the managed offerings bundle. Most likely you'll need:
