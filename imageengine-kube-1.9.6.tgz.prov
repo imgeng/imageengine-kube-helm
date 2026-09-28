@@ -1,0 +1,54 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+annotations:
+  artifacthub.io/changes: |
+    - kind: changed
+      description: "Updated the edge image to v4.9.2 so legacy access-log byte counts match the expected values."
+    - kind: changed
+      description: "Updated the Varnish image to 9.1.0-0 (Varnish 9.1.0) for upstream security fixes. This also includes ie-varnish-autoconfig Route53 backend resolution, so an IE_BACKENDS entry can be a route53:// URL."
+  artifacthub.io/signKey: |
+    fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+    url: https://kube.imageengine.io/pubkey.asc
+apiVersion: v2
+description: ImageEngine - cloud-native image optimization
+home: https://imageengine.io
+icon: https://imageengine.io/favicon.ico
+keywords:
+- - image-optimization
+- - image-cdn
+- - cdn
+- - imageengine
+- - varnish
+- - wurfl
+kubeVersion: '>=1.30.0-0'
+maintainers:
+- - email: support@scientiamobile.com
+  name: ScientiaMobile
+  url: https://www.scientiamobile.com
+name: imageengine-kube
+sources:
+- - https://kube.imageengine.io
+- - https://github.com/imgeng/imageengine-kube-helm
+type: application
+version: 1.9.6
+
+...
+files:
+  imageengine-kube-1.9.6.tgz: sha256:0e661ef3f2c7bcb35f08231cdec121aadd98dca4c3665c7e3978cff564b7b2fd
+-----BEGIN PGP SIGNATURE-----
+
+wsFcBAEBCgAQBQJqutMCCRBGMmYGCVfEswAAbpYQAFaSN8XChVkaChLYANeFWWFH
+AaZiYwyj653qEp9XGCMcNfuqu9fgMqsCa+vB5CUZDVus9tvFj9FYKOA68/c39jfA
+2WdRDis4wJLM1aljg0tULsFmFZ/T/qas6u6M5LOpugTCnNGZLbF1YBaW0uM1TomI
+CaTC2LhvMxqb8Rb7sWUcZz5yIYTbfri97wKZ36r5nn4DYbSjEUywbeBdn4qXw32D
+CxvAReTozpSlRu0m87b9P0bEik5VkJubhFuNfJi5YEX1Y4hSbO7SGtbEiQ6rcif6
+1MxkrIkUWz9DaKM5B8s+xKa5eaHyKc5CYJGLS9ZmBgotMNbbYA7axkXPnW93d1vq
+TRzUqlpqJgwzQ0GdZk5W+6Z1DvELzSreHmNfJNT5RI1QlzL2uwW9rt781hicJvQ1
+P0xevaatNkyiopDHMB41F8ophyPeifgLyG+AA6v4RY6T8alzGPx7VPgy0riwdblk
+3AVP3pm7pI1phYwaEe79u83yoM1NxYJg9qzjKgB1l5o0YIk5ARhyygRVCMx19fiF
+OCSIsfWQerUog/jppgCnWqdDlrdWut4xl4ICwhuXtUv6y3zA1OuUcP9wW/Dbw3VC
+WAJ65CN7hQEvhIeRb/pYqAFhAv8b+YwoqOGRAGgvY2NTSd1GWU4Ta3ATOpjE8+YY
+MdPD6dti9K9KANm/ilpl
+=hnnU
+-----END PGP SIGNATURE-----
