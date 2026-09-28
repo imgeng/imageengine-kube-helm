@@ -3,6 +3,41 @@ entries:
   imageengine-kube:
   - annotations:
       artifacthub.io/changes: |
+        - kind: changed
+          description: "Updated the edge image to v4.9.2 so legacy access-log byte counts match the expected values."
+        - kind: changed
+          description: "Updated the Varnish image to 9.1.0-0 (Varnish 9.1.0) for upstream security fixes. This also includes ie-varnish-autoconfig Route53 backend resolution, so an IE_BACKENDS entry can be a route53:// URL."
+      artifacthub.io/signKey: |
+        fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+        url: https://kube.imageengine.io/pubkey.asc
+    apiVersion: v2
+    created: "2026-09-28T20:50:15.099009442Z"
+    description: ImageEngine - cloud-native image optimization
+    digest: 0e661ef3f2c7bcb35f08231cdec121aadd98dca4c3665c7e3978cff564b7b2fd
+    home: https://imageengine.io
+    icon: https://imageengine.io/favicon.ico
+    keywords:
+    - image-optimization
+    - image-cdn
+    - cdn
+    - imageengine
+    - varnish
+    - wurfl
+    kubeVersion: '>=1.30.0-0'
+    maintainers:
+    - email: support@scientiamobile.com
+      name: ScientiaMobile
+      url: https://www.scientiamobile.com
+    name: imageengine-kube
+    sources:
+    - https://kube.imageengine.io
+    - https://github.com/imgeng/imageengine-kube-helm
+    type: application
+    urls:
+    - imageengine-kube-1.9.6.tgz
+    version: 1.9.6
+  - annotations:
+      artifacthub.io/changes: |
         - kind: fixed
           description: "Overriding a component's API key in env no longer breaks emitter authentication. The chart's emitter key defaults interpolate $(API_KEY), which Kubernetes only resolves against a variable defined earlier in the container; an operator-supplied key renders later, leaving the literal string as the key. The chart now omits those derived emitter keys when you supply the API key yourself, so you set the emitter keys explicitly instead of getting an unresolvable reference."
         - kind: fixed
@@ -1005,4 +1040,4 @@ entries:
     urls:
     - imageengine-kube-0.8.0.tgz
     version: 0.8.0
-generated: "2026-09-17T19:31:08.786518794Z"
+generated: "2026-09-28T20:50:15.099296559Z"
