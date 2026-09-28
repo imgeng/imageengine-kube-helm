@@ -5,8 +5,8 @@ imagePullPolicy: Always
 ###################################################
 # Centralized image tags/versions for all components
 images:
-  edge: "4.9.1"
-  varnish: "9.0.3-8"
+  edge: "4.9.2"
+  varnish: "9.1.0-0"
   backend: "2.16.0"
   fetcher: "1.32.0"
   processor: "3.30.0"
