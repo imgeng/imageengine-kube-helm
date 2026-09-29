@@ -3,6 +3,39 @@ entries:
   imageengine-kube:
   - annotations:
       artifacthub.io/changes: |-
+        - kind: added
+          description: "edge.extraContainers adds sidecar containers to every edge pod, rendered with tpl so they can reference chart values such as identity.region. edge.extraImagePullSecrets adds pull Secrets for sidecar images from another registry."
+      artifacthub.io/signKey: |
+        fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+        url: https://kube.imageengine.io/pubkey.asc
+    apiVersion: v2
+    created: "2026-09-29T17:02:48.693846474Z"
+    description: ImageEngine - cloud-native image optimization
+    digest: cb650be00a5b200220e1c649c2059631337d90c3fb71ae39e1796b62ccae071d
+    home: https://imageengine.io
+    icon: https://imageengine.io/favicon.ico
+    keywords:
+    - image-optimization
+    - image-cdn
+    - cdn
+    - imageengine
+    - varnish
+    - wurfl
+    kubeVersion: '>=1.30.0-0'
+    maintainers:
+    - email: support@scientiamobile.com
+      name: ScientiaMobile
+      url: https://www.scientiamobile.com
+    name: imageengine-kube
+    sources:
+    - https://kube.imageengine.io
+    - https://github.com/imgeng/imageengine-kube-helm
+    type: application
+    urls:
+    - imageengine-kube-1.9.9.tgz
+    version: 1.9.9
+  - annotations:
+      artifacthub.io/changes: |-
         - kind: changed
           description: "Updated the edge image to v4.10.1, which exports response status codes and latency by cache layer. New metrics imageengine_edge_responses_total, imageengine_edge_response_duration_seconds, and imageengine_edge_internal_duration_seconds cover every response, including prechecks and admission rejections. The internal duration subtracts origin fetch time so a slow origin does not look like the cluster falling behind."
       artifacthub.io/signKey: |
@@ -1110,4 +1143,4 @@ entries:
     urls:
     - imageengine-kube-0.8.0.tgz
     version: 0.8.0
-generated: "2026-09-29T16:03:53.231593051Z"
+generated: "2026-09-29T17:02:48.693992407Z"
