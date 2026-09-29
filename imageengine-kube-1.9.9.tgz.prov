@@ -1,0 +1,52 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+annotations:
+  artifacthub.io/changes: |-
+    - kind: added
+      description: "edge.extraContainers adds sidecar containers to every edge pod, rendered with tpl so they can reference chart values such as identity.region. edge.extraImagePullSecrets adds pull Secrets for sidecar images from another registry."
+  artifacthub.io/signKey: |
+    fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+    url: https://kube.imageengine.io/pubkey.asc
+apiVersion: v2
+description: ImageEngine - cloud-native image optimization
+home: https://imageengine.io
+icon: https://imageengine.io/favicon.ico
+keywords:
+- - image-optimization
+- - image-cdn
+- - cdn
+- - imageengine
+- - varnish
+- - wurfl
+kubeVersion: '>=1.30.0-0'
+maintainers:
+- - email: support@scientiamobile.com
+  name: ScientiaMobile
+  url: https://www.scientiamobile.com
+name: imageengine-kube
+sources:
+- - https://kube.imageengine.io
+- - https://github.com/imgeng/imageengine-kube-helm
+type: application
+version: 1.9.9
+
+...
+files:
+  imageengine-kube-1.9.9.tgz: sha256:cb650be00a5b200220e1c649c2059631337d90c3fb71ae39e1796b62ccae071d
+-----BEGIN PGP SIGNATURE-----
+
+wsFcBAEBCgAQBQJqu+8yCRBGMmYGCVfEswAAH7gQAAqJB33xpUuMTLnpGS1XFiZR
+VFCnq8yNpmBuPK4bh43l6w1P2PYsrgFmy0oUa5Y1SETdht+aBAAorhwEJKOln2EG
+bZ4INOZ4iGAV7Vyn3oaT6RfO471qKNefiF7uKogZqRfr9cgPmYVuDW76feJbt1NL
+vwkiVdPxEKBY8BrwRBWY9FH9/6R/v6s4W6nr0tfh8Eyn5A3D/rMdkKkCGCFkdwIB
+YVXvk+mqOP2PyqjIJG5Wa2wVYgIl/OI269HHFp1KUCZ52anUIdZh8cqI671HZcnU
+RhEtCiehIhmiIJg36OzwzhfqEU49PWBDfem1obgnhhuIHBVequHYlygbjACr6nnd
+l34727ihkswLf9R/Qd9GXPx5y9DFENzkMxRyavqSWx8GqOL+CauAgkZaiA0b3/ph
+9vmD5E8glR6DsTvD+2OrnCUIKQv1z2AKLYajwoK8z9KsmDTUUs8XGTCeYoFqPscm
+cn3Ia75Dig72pWc4oWi2VGGompe7UGtp1YpSW2nKx9IU2EVrqmM0HSJ0dPEhjUfy
+lanx9yU0Eg8I6zWEiKuqbfORRIjOtcjBPZxJvr8V4V/k+rshdMpewhMM3DiFmYbg
+Ym+Xw2bvdvHgSZbEE1RI9TnSeQWZcuHbF0k4Yd9/WvimmxPq6TxMVDOAZ4cdom6u
+wfdTYNdXWvkxEMKicf1k
+=hU/x
+-----END PGP SIGNATURE-----
