@@ -2,6 +2,43 @@ apiVersion: v1
 entries:
   imageengine-kube:
   - annotations:
+      artifacthub.io/changes: |-
+        - kind: changed
+          description: "Updated the edge image to v4.10.0, which no longer has to trust a client-sent X-Forwarded-For and can read PROXY protocol headers. Fair-share admission and the access log now see the real client IP behind ingress controllers and cloud load balancers; previously a client could get a fresh fair-share bucket per request, or every client shared one."
+        - kind: added
+          description: "clientIP.mode (default auto) configures client-IP handling for your provider: PROXY protocol on AWS, DigitalOcean and Linode LoadBalancers (the chart adds the provider's annotation to the edge Service), externalTrafficPolicy Local on GKE and Azure LoadBalancers, and trusted X-Forwarded-For hops behind an Ingress. No CIDRs needed; clientIP.trustedProxies is optional."
+        - kind: added
+          description: "New edge metric imageengine_edge_client_ip_resolutions_total shows how each client IP was chosen, and an install note warns when an Ingress and a LoadBalancer Service both expose the edge."
+      artifacthub.io/signKey: |
+        fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+        url: https://kube.imageengine.io/pubkey.asc
+    apiVersion: v2
+    created: "2026-09-29T00:11:59.889961545Z"
+    description: ImageEngine - cloud-native image optimization
+    digest: 079546f757c38a81ba7bbcf64435fbae50008807dfc1015aaa84b79d0f3bae8a
+    home: https://imageengine.io
+    icon: https://imageengine.io/favicon.ico
+    keywords:
+    - image-optimization
+    - image-cdn
+    - cdn
+    - imageengine
+    - varnish
+    - wurfl
+    kubeVersion: '>=1.30.0-0'
+    maintainers:
+    - email: support@scientiamobile.com
+      name: ScientiaMobile
+      url: https://www.scientiamobile.com
+    name: imageengine-kube
+    sources:
+    - https://kube.imageengine.io
+    - https://github.com/imgeng/imageengine-kube-helm
+    type: application
+    urls:
+    - imageengine-kube-1.9.7.tgz
+    version: 1.9.7
+  - annotations:
       artifacthub.io/changes: |
         - kind: changed
           description: "Updated the edge image to v4.9.2 so legacy access-log byte counts match the expected values."
@@ -1040,4 +1077,4 @@ entries:
     urls:
     - imageengine-kube-0.8.0.tgz
     version: 0.8.0
-generated: "2026-09-28T20:50:15.099296559Z"
+generated: "2026-09-29T00:11:59.890289911Z"
