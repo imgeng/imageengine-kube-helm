@@ -2,7 +2,7 @@ apiVersion: v2
 name: imageengine-kube
 description: ImageEngine - cloud-native image optimization
 type: application
-version: 1.9.10
+version: 1.9.11
 kubeVersion: ">=1.30.0-0"
 home: https://imageengine.io
 sources:
@@ -26,6 +26,6 @@ annotations:
     url: https://kube.imageengine.io/pubkey.asc
   artifacthub.io/changes: |
     - kind: changed
-      description: "Updated the edge image to v4.10.2. Access-Control-Allow-Origin now echoes a single matching origin instead of the whole cors_allowed_origin list, which browsers reject. With no CORS setting the edge leaves the origin's CORS headers alone, and preflight-only headers stay on preflights."
+      description: "Updated the edge image to v4.10.3. The edge sets Date to the current time, so browsers no longer treat a cached object as already stale and revalidate it. Minimum Browser Cache TTL and Minimum Cache TTL only raise a shorter origin TTL and no longer shorten a longer one; the edge no longer sends X-Edge-TTL."
     - kind: changed
-      description: "Client disconnects before Varnish answers are recorded as status 499 (client_closed) instead of an upstream 503 in the response metrics and access log."
+      description: "With EDGE_ACCESS_LOG_SCHEMA=legacy the edge logs only final status 200, matching ie-varnish-logger. The chart default ecs schema still logs every proxied response."
