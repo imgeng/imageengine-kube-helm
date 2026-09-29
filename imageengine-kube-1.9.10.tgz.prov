@@ -1,0 +1,54 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+annotations:
+  artifacthub.io/changes: |-
+    - kind: changed
+      description: "Updated the edge image to v4.10.2. Access-Control-Allow-Origin now echoes a single matching origin instead of the whole cors_allowed_origin list, which browsers reject. With no CORS setting the edge leaves the origin's CORS headers alone, and preflight-only headers stay on preflights."
+    - kind: changed
+      description: "Client disconnects before Varnish answers are recorded as status 499 (client_closed) instead of an upstream 503 in the response metrics and access log."
+  artifacthub.io/signKey: |
+    fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+    url: https://kube.imageengine.io/pubkey.asc
+apiVersion: v2
+description: ImageEngine - cloud-native image optimization
+home: https://imageengine.io
+icon: https://imageengine.io/favicon.ico
+keywords:
+- - image-optimization
+- - image-cdn
+- - cdn
+- - imageengine
+- - varnish
+- - wurfl
+kubeVersion: '>=1.30.0-0'
+maintainers:
+- - email: support@scientiamobile.com
+  name: ScientiaMobile
+  url: https://www.scientiamobile.com
+name: imageengine-kube
+sources:
+- - https://kube.imageengine.io
+- - https://github.com/imgeng/imageengine-kube-helm
+type: application
+version: 1.9.10
+
+...
+files:
+  imageengine-kube-1.9.10.tgz: sha256:e9a7dd66fc03558810f5e8c7f47b3cbe0941a28f43365c6447f552d4a58914a9
+-----BEGIN PGP SIGNATURE-----
+
+wsFcBAEBCgAQBQJqvAwzCRBGMmYGCVfEswAAWcEQAEPCy3QQnbfMgBGCtiTQMtkD
+kKULf9/vgbVGE7JsrzllZlZNJREAAGWtbEVatCfW8trKDmSCrPub9ryGEYUbEbxj
+bdJLmEFiabQE2gWBCk3IDBKh+SP7U2XwTR5cBUsQyfdqIrEu32DX76IoEv4Ue8bO
+mYfwe8V5bbpv/h356iBujtuOr9x9xlBmmeBPbCECh2b8yGwipAh7KM7ME0I2Q6MG
+vUFKFSLjlDQ8G22lDBueaIUhpynyG+Y2nbhh8MVw6q8J9y1eB5zoeUYc4FjFDS9v
+qNrEBLquF8htqp01/k5xAroT1jMRNffKbxm2JmXF+vFuHGZJTOg1UzdS12MfPmqh
+w9GX7dtkcyBAXaUqSZTpZ2eFeQJyNj7ydZNCCqZCAqzX8FvTRQT/ZAbQB4UMRP58
+SgGrnLa+sbfPzIzYnT/yHjSr0eHdAEMpP3zsRmq/7A1zlcNl1c01+ZNqAsA9Tj1w
+QnuhdjQScNoLpKd2/t/woDfcuaw8XHGrHm18LHGGKFPO1uQebgcSTCfU5vJYvvKv
+/NDubn1kvNE2LFCs/lW1FLmU+PbDl19YVpcyv/ywvKxD/0FjD/XmJenNx3zAxsch
+Hq22dqx4l9rFDk1WB7bxDuANvPwFpMbLhN7E1tJqCdrpFAdQTMcIAL6wNhNSat0W
+Tq1h9AFAx+2Mx/NJSD6t
+=joDD
+-----END PGP SIGNATURE-----
