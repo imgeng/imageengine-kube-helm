@@ -393,6 +393,16 @@ edge:
     # AWS_SECRET_ACCESS_KEY: "<<SECRET: ie-kube-origin-conf.AWS_SECRET>>"
     # EDGE_ORIGIN_CONF_FILE_1: "s3://bucket/path/origin-configs.json"
     # EDGE_ORIGIN_CONF_FILE_2: "s3://bucket/path/origin-configs-fallback.json"
+  # Extra containers in every edge pod, such as a metrics adapter that scrapes
+  # the edge's admin listener at http://localhost:9464/metrics. Rendered with
+  # tpl, so strings may reference chart values, for example
+  # "{{ .Values.identity.region }}". A pod-level ResourceQuota applies to these
+  # containers too, so give them requests and limits.
+  extraContainers: []
+  # Image-pull Secret names added to the edge pod, for extraContainers images
+  # outside secrets.imagePullSecretName's registry. The Secrets must exist in
+  # the release namespace.
+  extraImagePullSecrets: []
 
   ###################################################
   # Green Web Foundation (GWF) Carbon.txt Verification

@@ -2,7 +2,7 @@ apiVersion: v2
 name: imageengine-kube
 description: ImageEngine - cloud-native image optimization
 type: application
-version: 1.9.8
+version: 1.9.9
 kubeVersion: ">=1.30.0-0"
 home: https://imageengine.io
 sources:
@@ -25,5 +25,5 @@ annotations:
     fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
     url: https://kube.imageengine.io/pubkey.asc
   artifacthub.io/changes: |
-    - kind: changed
-      description: "Updated the edge image to v4.10.1, which exports response status codes and latency by cache layer. New metrics imageengine_edge_responses_total, imageengine_edge_response_duration_seconds, and imageengine_edge_internal_duration_seconds cover every response, including prechecks and admission rejections. The internal duration subtracts origin fetch time so a slow origin does not look like the cluster falling behind."
+    - kind: added
+      description: "edge.extraContainers adds sidecar containers to every edge pod, rendered with tpl so they can reference chart values such as identity.region. edge.extraImagePullSecrets adds pull Secrets for sidecar images from another registry."
