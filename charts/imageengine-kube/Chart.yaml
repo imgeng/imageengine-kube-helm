@@ -2,7 +2,7 @@ apiVersion: v2
 name: imageengine-kube
 description: ImageEngine - cloud-native image optimization
 type: application
-version: 1.9.7
+version: 1.9.8
 kubeVersion: ">=1.30.0-0"
 home: https://imageengine.io
 sources:
@@ -26,8 +26,4 @@ annotations:
     url: https://kube.imageengine.io/pubkey.asc
   artifacthub.io/changes: |
     - kind: changed
-      description: "Updated the edge image to v4.10.0, which no longer has to trust a client-sent X-Forwarded-For and can read PROXY protocol headers. Fair-share admission and the access log now see the real client IP behind ingress controllers and cloud load balancers; previously a client could get a fresh fair-share bucket per request, or every client shared one."
-    - kind: added
-      description: "clientIP.mode (default auto) configures client-IP handling for your provider: PROXY protocol on AWS, DigitalOcean and Linode LoadBalancers (the chart adds the provider's annotation to the edge Service), externalTrafficPolicy Local on GKE and Azure LoadBalancers, and trusted X-Forwarded-For hops behind an Ingress. No CIDRs needed; clientIP.trustedProxies is optional."
-    - kind: added
-      description: "New edge metric imageengine_edge_client_ip_resolutions_total shows how each client IP was chosen, and an install note warns when an Ingress and a LoadBalancer Service both expose the edge."
+      description: "Updated the edge image to v4.10.1, which exports response status codes and latency by cache layer. New metrics imageengine_edge_responses_total, imageengine_edge_response_duration_seconds, and imageengine_edge_internal_duration_seconds cover every response, including prechecks and admission rejections. The internal duration subtracts origin fetch time so a slow origin does not look like the cluster falling behind."
