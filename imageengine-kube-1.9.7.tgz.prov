@@ -1,0 +1,56 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+annotations:
+  artifacthub.io/changes: |-
+    - kind: changed
+      description: "Updated the edge image to v4.10.0, which no longer has to trust a client-sent X-Forwarded-For and can read PROXY protocol headers. Fair-share admission and the access log now see the real client IP behind ingress controllers and cloud load balancers; previously a client could get a fresh fair-share bucket per request, or every client shared one."
+    - kind: added
+      description: "clientIP.mode (default auto) configures client-IP handling for your provider: PROXY protocol on AWS, DigitalOcean and Linode LoadBalancers (the chart adds the provider's annotation to the edge Service), externalTrafficPolicy Local on GKE and Azure LoadBalancers, and trusted X-Forwarded-For hops behind an Ingress. No CIDRs needed; clientIP.trustedProxies is optional."
+    - kind: added
+      description: "New edge metric imageengine_edge_client_ip_resolutions_total shows how each client IP was chosen, and an install note warns when an Ingress and a LoadBalancer Service both expose the edge."
+  artifacthub.io/signKey: |
+    fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+    url: https://kube.imageengine.io/pubkey.asc
+apiVersion: v2
+description: ImageEngine - cloud-native image optimization
+home: https://imageengine.io
+icon: https://imageengine.io/favicon.ico
+keywords:
+- - image-optimization
+- - image-cdn
+- - cdn
+- - imageengine
+- - varnish
+- - wurfl
+kubeVersion: '>=1.30.0-0'
+maintainers:
+- - email: support@scientiamobile.com
+  name: ScientiaMobile
+  url: https://www.scientiamobile.com
+name: imageengine-kube
+sources:
+- - https://kube.imageengine.io
+- - https://github.com/imgeng/imageengine-kube-helm
+type: application
+version: 1.9.7
+
+...
+files:
+  imageengine-kube-1.9.7.tgz: sha256:079546f757c38a81ba7bbcf64435fbae50008807dfc1015aaa84b79d0f3bae8a
+-----BEGIN PGP SIGNATURE-----
+
+wsFcBAEBCgAQBQJquwJMCRBGMmYGCVfEswAAzhYQAGhgpLpwbuVTs42yjkNg7EZu
+ZamIlsvU4VooK9d2EbarufFndZuz6mmOba9c3LRODy/ZQH2UH53FsGoMa6f2CvZE
+LWwQz6kkNFSQSP5cCmrbaccVDf1UufVcgymbE1YX+FUca5XtgsiAfIttkmeIKut6
+4T4TlfuC5krMi5wYhFJuJXZu5jATE1pqV1qpAzbtW9tNi19JYG84f+CG3GC2jLqj
+7dprwjVnukVVlcKaBt7ab9eRlCZgkzB43OFhP7582eHjS7NbfCMjp8cwtClvSQ8f
+sR1UZFB5Qw/981Obk5uxx+0dk8oIdUkHJKGfY0qZyupP9CXBfI/vh+quXK9Ivz1R
+/rxJ8BqNUt4NSA7WqgWMH4lFO80cl26Yocloy/0W2vMzq8QMn9rW8q4cbeoWc9R2
+GzcodniH85ndZx6Rb+R2FZBou7BFFK8BY47f+JbipLFd15IQyphpgNpmC72UgB9k
+rsjbC1SdYfm29LrfjX2Pqda4Co7ta7RRhYUr7jcGP0ZHDoXy7cucAF5d1Lej1hA+
+ES4YQFhnTUAdG19N7cD8t6hqhLpwYRGkCILllCSAMl3vuB+AvvqFchUgWvHYaRGb
+X5pGmn7v/Hu4t0zAJ+69SrUK8GFR240SVBiyJJTx9w6fnHL2iBWLfhJbNLHg1sG7
+oDgThNKnxPtzDlKIzH8X
+=Thuj
+-----END PGP SIGNATURE-----
