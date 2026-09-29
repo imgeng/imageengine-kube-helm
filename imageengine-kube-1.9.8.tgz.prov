@@ -1,0 +1,52 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+annotations:
+  artifacthub.io/changes: |-
+    - kind: changed
+      description: "Updated the edge image to v4.10.1, which exports response status codes and latency by cache layer. New metrics imageengine_edge_responses_total, imageengine_edge_response_duration_seconds, and imageengine_edge_internal_duration_seconds cover every response, including prechecks and admission rejections. The internal duration subtracts origin fetch time so a slow origin does not look like the cluster falling behind."
+  artifacthub.io/signKey: |
+    fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+    url: https://kube.imageengine.io/pubkey.asc
+apiVersion: v2
+description: ImageEngine - cloud-native image optimization
+home: https://imageengine.io
+icon: https://imageengine.io/favicon.ico
+keywords:
+- - image-optimization
+- - image-cdn
+- - cdn
+- - imageengine
+- - varnish
+- - wurfl
+kubeVersion: '>=1.30.0-0'
+maintainers:
+- - email: support@scientiamobile.com
+  name: ScientiaMobile
+  url: https://www.scientiamobile.com
+name: imageengine-kube
+sources:
+- - https://kube.imageengine.io
+- - https://github.com/imgeng/imageengine-kube-helm
+type: application
+version: 1.9.8
+
+...
+files:
+  imageengine-kube-1.9.8.tgz: sha256:ca4972c0dcebe62760a032411bce7dc9e24a3ddb2c94e59f2048e75802a3bd7b
+-----BEGIN PGP SIGNATURE-----
+
+wsFcBAEBCgAQBQJqu+FkCRBGMmYGCVfEswAA+/wQAKfgAQZZI1Pd/brMu/YcvrpX
+bn3tju9uyClDig7TW34fjTIrItO9Cgu8X9eLIJSKz/kxpuvOsvkyAqYzjZtlhG1O
+8aBQEcG3BdEh7jGp9wnr6RbD2ya9RsLCTE7StgLFHQjCVv9qNhkvpN6A1jVBvCsQ
+tibKoMnGl4G99d06Kiv5xpUF0p+Nj6f58yWuV6SMMQ2P5VDrdrw7m/xHpetw72x/
+rIWJblrk63KreLxqmz36s3aJpe+6I0k7cTX1AqptEeORyB7RKlh2ali0HXN0aVpv
+BTB+nMHbq5MoQpqrKcwGyYm8aVmiba92XWUwBHNRRJGu3o/dXPcQiv+qfenP0qQx
+55TklgubtTElLN8POt/pTfo6z/pY4kL/lJC89UT86WIq5iEZr64KL2Daj86xwTdt
+xyQuTQx6KDk0ep6U3XUfTP2hM79uLBqktm0ZUDcUOlIv5HYRp149eAd8ytVE/g9k
+fRWZ7KFi3G27yTPFHUVPfOz9yv5WgsePSFIt8rok66v405vcC5rQaKM8G4stBCM5
+wHfE8RZ1t5mmyIx5zA96WwLVZYJkzDz3BPxvrX5btObzTaGPQwoxqH1yeVREdPrX
+zveZUEWtFsDdBT7H3dILaFT35P1J7H6+3e21jDeHYmQe3pLU/h3YZveKX5AGny/+
+SMMb80ilTfaYsIcv2ZDf
+=H6um
+-----END PGP SIGNATURE-----
