@@ -269,6 +269,33 @@ Notes: a malformed target fails edge startup, and a reachable-but-down `tcp` col
 `IE_ORIGINFETCHER_FETCH_LOG_TARGET` (same grammar as `EDGE_ACCESS_LOG_TARGET`, default `stdout`)
 and `IE_ORIGINFETCHER_FETCH_LOG_SCHEMA` (`ecs` | `legacy`, default `ecs`).
 
+## How do I add a sidecar to the edge pod?
+
+`edge.extraContainers` appends containers to every edge pod. A typical use is a metrics adapter that scrapes the edge's admin listener on `http://localhost:9464/metrics` and forwards the series to a system that does not scrape Prometheus. The list is rendered with `tpl`, so strings can reference chart values:
+
+```yaml
+edge:
+  extraContainers:
+    - name: metrics-adapter
+      image: registry.example.com/metrics-adapter:1.0.0
+      env:
+        - name: SCRAPE_URL
+          value: "http://localhost:9464/metrics"
+        - name: REGION
+          value: "{{ .Values.identity.region }}"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef: { fieldPath: metadata.name }
+      resources:
+        requests: { cpu: 10m, memory: 32Mi }
+        limits: { memory: 64Mi }
+  # Only needed when the sidecar image is outside secrets.imagePullSecretName's registry.
+  extraImagePullSecrets:
+    - my-registry-pull
+```
+
+A sidecar shares the edge pod's lifecycle, so it scales with `edge.replicaCount` and each copy sees exactly one edge. If the namespace has a ResourceQuota, give the sidecar requests and limits and grow the quota to match.
+
 ## How do I split the frontend and backend across clusters?
 
 By default the chart deploys the whole pipeline (edge → varnish → backend →

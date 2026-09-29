@@ -32,6 +32,9 @@ spec:
         fsGroup: 1000
       imagePullSecrets:
         - name: {{ .Values.secrets.imagePullSecretName }}
+        {{- range .Values.edge.extraImagePullSecrets }}
+        - name: {{ . }}
+        {{- end }}
       {{- with .Values.edge.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -128,6 +131,9 @@ spec:
               subPath: carbon.txt
               readOnly: true
             {{- end }}
+        {{- with .Values.edge.extraContainers }}
+        {{- tpl (toYaml .) $ | nindent 8 }}
+        {{- end }}
       volumes:
         {{- if and .Values.edge.carbontxt.enabled .Values.edge.carbontxt.hash .Values.edge.carbontxt.content }}
         - name: carbontxt
