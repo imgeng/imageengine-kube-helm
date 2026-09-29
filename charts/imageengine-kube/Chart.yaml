@@ -2,7 +2,7 @@ apiVersion: v2
 name: imageengine-kube
 description: ImageEngine - cloud-native image optimization
 type: application
-version: 1.9.9
+version: 1.9.10
 kubeVersion: ">=1.30.0-0"
 home: https://imageengine.io
 sources:
@@ -25,5 +25,7 @@ annotations:
     fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
     url: https://kube.imageengine.io/pubkey.asc
   artifacthub.io/changes: |
-    - kind: added
-      description: "edge.extraContainers adds sidecar containers to every edge pod, rendered with tpl so they can reference chart values such as identity.region. edge.extraImagePullSecrets adds pull Secrets for sidecar images from another registry."
+    - kind: changed
+      description: "Updated the edge image to v4.10.2. Access-Control-Allow-Origin now echoes a single matching origin instead of the whole cors_allowed_origin list, which browsers reject. With no CORS setting the edge leaves the origin's CORS headers alone, and preflight-only headers stay on preflights."
+    - kind: changed
+      description: "Client disconnects before Varnish answers are recorded as status 499 (client_closed) instead of an upstream 503 in the response metrics and access log."
