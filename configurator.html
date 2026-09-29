@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="page-configurator">
 <head>
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-C7JXP0C43K"></script>
@@ -18,101 +18,46 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style>
-  * { box-sizing: border-box; }
-  html, body { margin: 0; background: #07080D; overflow-x: hidden; max-width: 100%; }
-  a { color: #A897FF; text-decoration: none; }
-  a:hover { color: #C3B8FF; }
-  pre { margin: 0; }
-  ::selection { background: #4F3BB8; color: #FFFFFF; }
-  .copy-btn:hover { border-color: #A897FF !important; color: #A897FF !important; }
-  input[type="range"] { width: 100%; accent-color: #A897FF; cursor: pointer; }
-  select, input[type="text"], input[type="number"] {
-    width: 100%; padding: 10px 12px; border-radius: 9px;
-    border: 1px solid #2D3039; background: #12141C; color: #F2F3F7;
-    font-family: 'IBM Plex Sans', sans-serif; font-size: 14px;
-  }
-  select:focus, input:focus { outline: none; border-color: #A897FF; }
-  .toggle { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
-  .toggle input { opacity: 0; width: 0; height: 0; }
-  .toggle-slider {
-    position: absolute; cursor: pointer; inset: 0;
-    background: #2D3039; border-radius: 24px; transition: .2s;
-  }
-  .toggle-slider:before {
-    position: absolute; content: ""; height: 18px; width: 18px;
-    left: 3px; bottom: 3px; background: #A4A9B6; border-radius: 50%; transition: .2s;
-  }
-  .toggle input:checked + .toggle-slider { background: #4F3BB8; }
-  .toggle input:checked + .toggle-slider:before { transform: translateX(20px); background: #FFFFFF; }
-  .prov-btn {
-    padding: 8px 13px; border-radius: 8px; border: 1px solid #2D3039;
-    background: #12141C; color: #A4A9B6;
-    font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; font-weight: 500;
-    cursor: pointer; transition: border-color .15s, color .15s, background .15s;
-  }
-  .prov-btn:hover { border-color: #444854; color: #D2D5DD; }
-  .prov-btn[aria-pressed="true"] { border-color: #A897FF; color: #A897FF; background: rgba(168,151,255,.10); }
-  /* Let grid/flex tracks shrink below their content so the <pre> blocks scroll
-     internally instead of forcing the whole page wider than the viewport. */
-  [data-panel] { min-width: 0; }
-  pre { -webkit-overflow-scrolling: touch; }
-  @media (max-width: 900px) {
-    [data-wrap] { padding-left: 24px !important; padding-right: 24px !important; }
-    [data-layout] { grid-template-columns: minmax(0, 1fr) !important; }
-    [data-summary-grid] { grid-template-columns: 1fr 1fr !important; }
-    [data-hero] { font-size: 32px !important; }
-  }
-  @media (max-width: 600px) {
-    [data-wrap] { padding-left: 16px !important; padding-right: 16px !important; }
-    [data-header] { padding-top: 32px !important; padding-bottom: 24px !important; }
-    [data-summary-grid] { grid-template-columns: 1fr !important; }
-    [data-nav] { flex-wrap: wrap !important; gap: 12px !important; }
-    [data-nav-links] { gap: 12px 18px !important; flex-wrap: wrap !important; }
-    [data-hero] { font-size: 26px !important; }
-    [data-lede] { font-size: 15px !important; }
-    [data-card] { padding: 18px !important; }
-  }
-</style>
+<link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
 
-<div style="background:#07080D; color:#F2F3F7; font-family:'IBM Plex Sans',sans-serif; min-height:100vh;">
+<div class="page">
 
   <!-- nav -->
-  <div style="border-bottom:1px solid #1A1C24;">
-    <div data-wrap="" data-nav="" style="max-width:1200px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:20px 48px;">
-      <a href="index.html" style="display:flex; align-items:center;">
-        <img src="assets/logo-white.png" alt="ImageEngine Kube" style="height:36px; width:auto; display:block;">
+  <div class="site-nav">
+    <div class="wrap bar">
+      <a href="index.html" class="brand">
+        <img src="assets/logo-white.png" alt="ImageEngine Kube">
       </a>
-      <div data-nav-links="" style="display:flex; align-items:center; gap:26px; font-size:14px;">
-        <a href="index.html" style="color:#A4A9B6;">Home</a>
-        <a href="configurator.html" style="color:#A897FF; font-weight:600;">Configurator</a>
-        <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/SIZING.md" style="color:#A4A9B6;">Sizing guide</a>
-        <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/GETTING_STARTED.md" style="color:#A4A9B6;">Docs</a>
-        <a href="https://github.com/imgeng/imageengine-kube-helm" style="color:#A4A9B6;">GitHub</a>
+      <div class="nav-links">
+        <a href="index.html" class="nav-link">Home</a>
+        <a href="configurator.html" class="nav-link" aria-current="page">Configurator</a>
+        <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/SIZING.md" class="nav-link">Sizing guide</a>
+        <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/GETTING_STARTED.md" class="nav-link">Docs</a>
+        <a href="https://github.com/imgeng/imageengine-kube-helm" class="nav-link">GitHub</a>
       </div>
     </div>
   </div>
 
   <!-- header -->
-  <div data-wrap="" data-header="" style="max-width:1200px; margin:0 auto; padding:48px 48px 32px;">
-    <div style="font-family:'IBM Plex Mono',monospace; font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:#A897FF; margin-bottom:14px;">Helm values generator</div>
-    <h1 data-hero="" style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:40px; line-height:1.08; letter-spacing:-.02em; margin:0 0 14px; max-width:720px;">Size your ImageEngine Kube cluster.</h1>
-    <p data-lede="" style="font-size:17px; line-height:1.6; color:#A4A9B6; margin:0; max-width:640px;">Turn a few workload knobs into a starting-point <span style="font-family:'IBM Plex Mono',monospace; color:#D2D5DD;">values-override.yaml</span>. These are bench-from numbers — re-measure after deploying. See the <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/SIZING.md">sizing guide</a> for the full rationale.</p>
+  <div class="wrap page-header">
+    <div class="eyebrow">Helm values generator</div>
+    <h1 class="page-title">Size your ImageEngine Kube cluster.</h1>
+    <p class="lede page-lede">Turn a few workload knobs into a starting-point <span class="inline-code inline-code-bright">values-override.yaml</span>. These are bench-from numbers — re-measure after deploying. See the <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/SIZING.md">sizing guide</a> for the full rationale.</p>
   </div>
 
   <!-- main layout -->
-  <div data-wrap="" data-layout="" style="max-width:1200px; margin:0 auto; padding:0 48px 72px; display:grid; grid-template-columns:minmax(0,380px) minmax(0,1fr); gap:32px; align-items:start;">
+  <div class="wrap layout">
 
     <!-- inputs panel -->
-    <div data-panel="" data-card="" style="border:1px solid #23262F; border-radius:14px; background:#0D0F16; padding:24px; display:flex; flex-direction:column; gap:22px;">
+    <div class="panel stack">
 
       <!-- mode header -->
-      <div style="display:flex; align-items:center; justify-content:space-between;">
-        <span id="mode-label" style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#6F7482;">Getting started</span>
-        <div style="display:flex; align-items:center; gap:10px;">
-          <label for="advanced-toggle" id="advanced-text" style="font-size:13px; font-weight:600; color:#A4A9B6; cursor:pointer; user-select:none;">Advanced</label>
+      <div class="mode-row">
+        <span id="mode-label" class="overline">Getting started</span>
+        <div class="mode-switch">
+          <label for="advanced-toggle" id="advanced-text" class="mode-switch-label">Advanced</label>
           <label class="toggle">
             <input type="checkbox" id="advanced-toggle">
             <span class="toggle-slider"></span>
@@ -122,8 +67,8 @@
 
       <!-- cloud provider (foundational) -->
       <div>
-        <label style="display:block; font-weight:600; font-size:14px; margin-bottom:8px;">Cloud provider</label>
-        <div id="provider-buttons" style="display:flex; flex-wrap:wrap; gap:8px;">
+        <label class="field-label">Cloud provider</label>
+        <div id="provider-buttons" class="provider-buttons">
           <button type="button" class="prov-btn" data-provider="aws">AWS</button>
           <button type="button" class="prov-btn" data-provider="azure">Azure</button>
           <button type="button" class="prov-btn" data-provider="digitalocean">DigitalOcean</button>
@@ -131,65 +76,65 @@
           <button type="button" class="prov-btn" data-provider="linode">Linode</button>
           <button type="button" class="prov-btn" data-provider="custom" aria-pressed="true">Custom</button>
         </div>
-        <p id="provider-note" style="font-size:12px; color:#6F7482; margin:8px 0 0; line-height:1.5;">Self-managed clusters have no cloud LB — front the edge with MetalLB or NodePort.</p>
+        <p id="provider-note" class="hint">Self-managed clusters have no cloud LB — front the edge with MetalLB or NodePort.</p>
       </div>
 
       <div>
-        <label style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
-          <span style="font-weight:600; font-size:14px;">Requests / sec (to the cluster)</span>
-          <span id="ops-label" style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#A897FF;">100/s</span>
+        <label class="field-head">
+          <span class="field-name">Requests / sec (to the cluster)</span>
+          <span id="ops-label" class="field-value">100/s</span>
         </label>
         <input type="range" id="ops-slider" min="0" max="1000" value="333" step="1">
-        <div style="display:flex; justify-content:space-between; font-size:11px; color:#6F7482; margin-top:4px;">
+        <div class="range-scale">
           <span>10/s</span><span>10,000/s</span>
         </div>
-        <p style="font-size:12px; color:#6F7482; margin:8px 0 0; line-height:1.5;">Total edge ingress. Cache layers pare this down: ~90% hit at Varnish, ~75% of the rest at OSC — so 1000/s ≈ 100/s at the backend and ~25/s of image processing.</p>
+        <p class="hint">Total edge ingress. Cache layers pare this down: ~90% hit at Varnish, ~75% of the rest at OSC — so 1000/s ≈ 100/s at the backend and ~25/s of image processing.</p>
       </div>
 
       <div>
-        <label style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
-          <span style="font-weight:600; font-size:14px;">Total origin image size</span>
-          <span id="origin-label" style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#A897FF;">1 TB</span>
+        <label class="field-head">
+          <span class="field-name">Total origin image size</span>
+          <span id="origin-label" class="field-value">1 TB</span>
         </label>
         <input type="range" id="origin-slider" min="0" max="1000" value="500" step="1">
-        <div style="display:flex; justify-content:space-between; font-size:11px; color:#6F7482; margin-top:4px;">
+        <div class="range-scale">
           <span>10 GB</span><span>100 TB</span>
         </div>
       </div>
 
       <!-- advanced knobs (hidden until Advanced is on) -->
-      <div id="advanced-fields" style="display:none; flex-direction:column; gap:22px;">
+      <div id="advanced-fields" class="reveal">
 
       <div>
-        <label style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
-          <span style="font-weight:600; font-size:14px;">Origin images to cache</span>
-          <span id="cache-label" style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#A897FF;">30%</span>
+        <label class="field-head">
+          <span class="field-name">Origin images to cache</span>
+          <span id="cache-label" class="field-value">30%</span>
         </label>
         <input type="range" id="cache-slider" min="10" max="100" value="30" step="1">
-        <div style="display:flex; justify-content:space-between; font-size:11px; color:#6F7482; margin-top:4px;">
+        <div class="range-scale">
           <span>10%</span><span>100%</span>
         </div>
-        <p style="font-size:12px; color:#6F7482; margin:8px 0 0; line-height:1.5;">Fraction of your origin catalog kept in OSC. Processed variants add ~2× more (20 variants/origin at ~10% of origin size each).</p>
+        <p class="hint">Fraction of your origin catalog kept in OSC. Processed variants add ~2× more (20 variants/origin at ~10% of origin size each).</p>
       </div>
 
-      <hr style="border:none; border-top:1px solid #23262F; margin:0;">
+      <hr class="divider">
 
-      <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#6F7482;">Cluster</div>
+      <div class="overline">Cluster</div>
 
       <div>
-        <label style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
-          <span style="font-weight:600; font-size:14px;">Worker node RAM</span>
-          <span id="node-ram-label" style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#A897FF;">8 GiB</span>
+        <label class="field-head">
+          <span class="field-name">Worker node RAM</span>
+          <span id="node-ram-label" class="field-value">8 GiB</span>
         </label>
         <input type="range" id="node-ram-slider" min="0" max="1000" value="250" step="1">
-        <div style="display:flex; justify-content:space-between; font-size:11px; color:#6F7482; margin-top:4px;">
+        <div class="range-scale">
           <span>4 GiB</span><span>64 GiB</span>
         </div>
-        <p style="font-size:12px; color:#6F7482; margin:8px 0 0; line-height:1.5;">Assumes X GiB RAM = X/2 vCPU. Drives node-count estimates, processor pod size, and caps Varnish memory/disk to your nodes.</p>
+        <p class="hint">Assumes X GiB RAM = X/2 vCPU. Drives node-count estimates, processor pod size, and caps Varnish memory/disk to your nodes.</p>
       </div>
 
       <div>
-        <label style="display:block; font-weight:600; font-size:14px; margin-bottom:8px;">Environment</label>
+        <label class="field-label">Environment</label>
         <select id="environment-select">
           <option value="production">production</option>
           <option value="staging">staging</option>
@@ -199,15 +144,15 @@
         </select>
       </div>
 
-      <hr style="border:none; border-top:1px solid #23262F; margin:0;">
+      <hr class="divider">
 
-      <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#6F7482;">Logging</div>
+      <div class="overline">Logging</div>
 
       <!-- edge access log -->
       <div>
-        <label style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
-          <span style="font-weight:600; font-size:14px;">Edge access log</span>
-          <span id="edge-log-eff" style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#A897FF;"></span>
+        <label class="field-head">
+          <span class="field-name">Edge access log</span>
+          <span id="edge-log-eff" class="field-value"></span>
         </label>
         <select id="edge-log-target">
           <option value="auto" selected>Auto — off in prod / high-traffic</option>
@@ -217,22 +162,22 @@
           <option value="tcp-ndjson">TCP collector — NDJSON</option>
           <option value="tcp-syslog">TCP collector — syslog</option>
         </select>
-        <input type="text" id="edge-log-endpoint" placeholder="vector.logging:9000" style="display:none; margin-top:8px;">
-        <div id="edge-log-schema-wrap" style="display:none; margin-top:8px;">
-          <label style="display:block; font-size:12px; color:#A4A9B6; margin-bottom:6px;">Field schema</label>
+        <input type="text" id="edge-log-endpoint" class="log-extra" placeholder="vector.logging:9000" hidden>
+        <div id="edge-log-schema-wrap" class="log-extra" hidden>
+          <label class="sub-label">Field schema</label>
           <select id="edge-log-schema">
             <option value="ecs" selected>ECS (default)</option>
             <option value="legacy">legacy</option>
           </select>
         </div>
-        <p style="font-size:12px; color:#6F7482; margin:8px 0 0; line-height:1.5;">Per-request structured JSON. High volume — <span style="font-family:'IBM Plex Mono',monospace; color:#D2D5DD;">Auto</span> disables it in production or above ~100/s to save I/O, CPU &amp; storage.</p>
+        <p class="hint">Per-request structured JSON. High volume — <span class="inline-code inline-code-bright">Auto</span> disables it in production or above ~100/s to save I/O, CPU &amp; storage.</p>
       </div>
 
       <!-- origin-fetcher log -->
       <div>
-        <label style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
-          <span style="font-weight:600; font-size:14px;">Origin-fetcher log</span>
-          <span id="fetcher-log-eff" style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#A897FF;"></span>
+        <label class="field-head">
+          <span class="field-name">Origin-fetcher log</span>
+          <span id="fetcher-log-eff" class="field-value"></span>
         </label>
         <select id="fetcher-log-target">
           <option value="stdout" selected>stdout (kubectl logs)</option>
@@ -241,34 +186,34 @@
           <option value="tcp-ndjson">TCP collector — NDJSON</option>
           <option value="tcp-syslog">TCP collector — syslog</option>
         </select>
-        <input type="text" id="fetcher-log-endpoint" placeholder="vector.logging:9001" style="display:none; margin-top:8px;">
-        <div id="fetcher-log-schema-wrap" style="display:none; margin-top:8px;">
-          <label style="display:block; font-size:12px; color:#A4A9B6; margin-bottom:6px;">Field schema</label>
+        <input type="text" id="fetcher-log-endpoint" class="log-extra" placeholder="vector.logging:9001" hidden>
+        <div id="fetcher-log-schema-wrap" class="log-extra" hidden>
+          <label class="sub-label">Field schema</label>
           <select id="fetcher-log-schema">
             <option value="ecs" selected>ECS (default)</option>
             <option value="legacy">legacy</option>
           </select>
         </div>
-        <p style="font-size:12px; color:#6F7482; margin:8px 0 0; line-height:1.5;">One record per origin fetch (cache misses on the cold path) — far lower volume than access logs, so it stays on by default.</p>
+        <p class="hint">One record per origin fetch (cache misses on the cold path) — far lower volume than access logs, so it stays on by default.</p>
       </div>
 
-      <hr style="border:none; border-top:1px solid #23262F; margin:0;">
+      <hr class="divider">
 
       <div>
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
-          <span style="font-weight:600; font-size:14px;">OpenTelemetry tracing</span>
+        <div class="toggle-row">
+          <span class="field-name">OpenTelemetry tracing</span>
           <label class="toggle">
             <input type="checkbox" id="otel-enabled">
             <span class="toggle-slider"></span>
           </label>
         </div>
-        <div id="otel-fields" style="display:none; flex-direction:column; gap:10px;">
+        <div id="otel-fields" class="reveal reveal-tight">
           <div>
-            <label style="display:block; font-size:12px; color:#A4A9B6; margin-bottom:6px;">OTLP endpoint</label>
+            <label class="sub-label">OTLP endpoint</label>
             <input type="text" id="otel-endpoint" placeholder="http://otel-collector.observability:4317">
           </div>
           <div>
-            <label style="display:block; font-size:12px; color:#A4A9B6; margin-bottom:6px;">Trace sample rate (0–1)</label>
+            <label class="sub-label">Trace sample rate (0–1)</label>
             <input type="number" id="otel-sample" min="0" max="1" step="0.01" value="0.05">
           </div>
         </div>
@@ -279,44 +224,44 @@
     </div>
 
     <!-- output panel -->
-    <div data-panel="" style="display:flex; flex-direction:column; gap:20px; min-width:0;">
+    <div class="output">
 
       <!-- summary -->
-      <div data-panel="" data-card="" style="border:1px solid #23262F; border-radius:14px; background:#0D0F16; padding:24px;">
-        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#6F7482; margin-bottom:16px;">Computed footprint</div>
-        <div data-summary-grid="" id="summary-grid" style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px;"></div>
-        <p id="summary-note" style="font-size:12.5px; color:#8E93A0; margin:16px 0 0; line-height:1.55;"></p>
+      <div class="panel">
+        <div class="overline overline-spaced">Computed footprint</div>
+        <div id="summary-grid" class="summary-grid"></div>
+        <p id="summary-note" class="summary-note"></p>
       </div>
 
       <!-- yaml output -->
-      <div data-panel="" style="border:1px solid #2E2A5C; border-radius:14px; background:#0D0B1F; overflow:hidden;">
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid #221E48;">
-          <span style="color:#A897FF; font-weight:600; font-size:11px; letter-spacing:.08em; text-transform:uppercase;">values-override.yaml</span>
-          <div style="display:flex; gap:8px;">
-            <button id="copy-yaml" class="copy-btn" style="display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border:1px solid #3A3478; border-radius:7px; background:#16132E; color:#A897FF; font-family:'IBM Plex Sans',sans-serif; font-weight:600; font-size:11px; cursor:pointer;"><span class="copy-label">Copy</span></button>
-            <button id="download-yaml" class="copy-btn" style="display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border:1px solid #3A3478; border-radius:7px; background:#16132E; color:#A897FF; font-family:'IBM Plex Sans',sans-serif; font-weight:600; font-size:11px; cursor:pointer;">Download</button>
+      <div class="code code-lg code-accent">
+        <div class="code-head">
+          <span class="code-label">values-override.yaml</span>
+          <div class="code-actions">
+            <button id="copy-yaml" class="copy-btn"><span class="copy-label">Copy</span></button>
+            <button id="download-yaml" class="copy-btn">Download</button>
           </div>
         </div>
-        <pre id="yaml-output" style="padding:16px; overflow:auto; color:#D2D5DD; font-family:'IBM Plex Mono',monospace; font-size:12.5px; line-height:1.65; max-height:480px;"></pre>
+        <pre id="yaml-output" class="code-body code-body-tall"></pre>
       </div>
 
       <!-- install command -->
-      <div data-panel="" style="border:1px solid #23262F; border-radius:14px; background:#08090E; overflow:hidden;">
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid #1B1E26;">
-          <span style="color:#6F7482; font-weight:600; font-size:11px; letter-spacing:.08em; text-transform:uppercase;">Install with override</span>
-          <button id="copy-install" class="copy-btn" style="display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border:1px solid #2D3039; border-radius:7px; background:#12141C; color:#A4A9B6; font-family:'IBM Plex Sans',sans-serif; font-weight:600; font-size:11px; cursor:pointer;"><span class="copy-label">Copy</span></button>
+      <div class="code code-lg">
+        <div class="code-head">
+          <span class="code-label">Install with override</span>
+          <button id="copy-install" class="copy-btn"><span class="copy-label">Copy</span></button>
         </div>
-        <pre id="install-output" style="padding:16px; overflow:auto; color:#D2D5DD; font-family:'IBM Plex Mono',monospace; font-size:12.5px; line-height:1.65;"></pre>
+        <pre id="install-output" class="code-body"></pre>
       </div>
 
     </div>
   </div>
 
   <!-- footer -->
-  <div style="border-top:1px solid #1A1C24;">
-    <div data-wrap="" style="max-width:1200px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:26px 48px; font-size:13px; color:#6F7482;">
-      <span>Maintained by <a href="https://www.scientiamobile.com" style="color:#A4A9B6;">ScientiaMobile</a></span>
-      <span style="font-family:'IBM Plex Mono',monospace;">kube.imageengine.io</span>
+  <div class="site-footer">
+    <div class="wrap bar">
+      <span>Maintained by <a href="https://www.scientiamobile.com">ScientiaMobile</a></span>
+      <span class="mono">kube.imageengine.io</span>
     </div>
   </div>
 
@@ -869,19 +814,19 @@
     }
 
     summaryGrid.innerHTML = cards.map(function (c) {
-      return '<div style="border:1px solid #1E2129; border-radius:10px; background:#0A0C12; padding:14px;">' +
-        '<div style="font-size:11px; color:#6F7482; text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px;">' + c.label + '</div>' +
-        '<div style="font-family:\'Space Grotesk\',sans-serif; font-weight:600; font-size:18px; color:#F2F3F7; margin-bottom:4px;">' + c.value + '</div>' +
-        '<div style="font-size:12px; color:#8E93A0;">' + c.sub + '</div></div>';
+      return '<div class="stat">' +
+        '<div class="stat-label">' + c.label + '</div>' +
+        '<div class="stat-value">' + c.value + '</div>' +
+        '<div class="stat-sub">' + c.sub + '</div></div>';
     }).join('');
 
     if (!advanced) {
-      summaryNote.style.display = 'none';
+      summaryNote.hidden = true;
       summaryNote.textContent = '';
       return;
     }
 
-    summaryNote.style.display = '';
+    summaryNote.hidden = false;
     summaryNote.textContent =
       'OSC working set ~' + formatBytes(s.oscWorkingSetGB) + ' (' +
       formatBytes(s.cachedOriginGB) + ' cached origin + ' +
@@ -936,11 +881,11 @@
     // effective sink each source resolves to (Auto depends on env + traffic).
     var isTcp = function (m) { return m === 'tcp-ndjson' || m === 'tcp-syslog'; };
     var edgeAutoDisable = inputs.environment === 'production' || s.ops > CONST.AUTOSCALE_THRESHOLD;
-    edgeLogEndpoint.style.display = isTcp(inputs.edgeLogTarget) ? 'block' : 'none';
-    edgeLogSchemaWrap.style.display = logSinkSelected(inputs.edgeLogTarget) ? 'block' : 'none';
+    edgeLogEndpoint.hidden = !isTcp(inputs.edgeLogTarget);
+    edgeLogSchemaWrap.hidden = !logSinkSelected(inputs.edgeLogTarget);
     edgeLogEff.textContent = resolveLogTarget(inputs.edgeLogTarget, inputs.edgeLogEndpoint, edgeAutoDisable).sink;
-    fetcherLogEndpoint.style.display = isTcp(inputs.fetcherLogTarget) ? 'block' : 'none';
-    fetcherLogSchemaWrap.style.display = logSinkSelected(inputs.fetcherLogTarget) ? 'block' : 'none';
+    fetcherLogEndpoint.hidden = !isTcp(inputs.fetcherLogTarget);
+    fetcherLogSchemaWrap.hidden = !logSinkSelected(inputs.fetcherLogTarget);
     fetcherLogEff.textContent = resolveLogTarget(inputs.fetcherLogTarget, inputs.fetcherLogEndpoint, false).sink;
 
     renderSummary(s, inputs);
@@ -976,14 +921,14 @@
   // the concise headline view and the full per-component breakdown.
   advancedToggle.addEventListener('change', function () {
     var on = advancedToggle.checked;
-    advancedFields.style.display = on ? 'flex' : 'none';
+    advancedFields.classList.toggle('is-open', on);
     modeLabel.textContent = on ? 'Advanced setup' : 'Getting started';
-    advancedText.style.color = on ? '#A897FF' : '#A4A9B6';
+    advancedText.classList.toggle('is-on', on);
     update();
   });
 
   otelEnabled.addEventListener('change', function () {
-    otelFields.style.display = otelEnabled.checked ? 'flex' : 'none';
+    otelFields.classList.toggle('is-open', otelEnabled.checked);
     update();
   });
   otelEndpoint.addEventListener('input', update);
@@ -1003,7 +948,7 @@
         fallbackCopy(text);
       }
       if (label) {
-        label.innerHTML = '<span style="color:#4FD1A5;">✓ Copied</span>';
+        label.innerHTML = '<span class="copied">✓ Copied</span>';
         clearTimeout(timer);
         timer = setTimeout(function () { label.textContent = 'Copy'; }, 1600);
       }
