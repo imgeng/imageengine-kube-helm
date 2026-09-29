@@ -4,6 +4,41 @@ entries:
   - annotations:
       artifacthub.io/changes: |-
         - kind: changed
+          description: "Updated the edge image to v4.10.3. The edge sets Date to the current time, so browsers no longer treat a cached object as already stale and revalidate it. Minimum Browser Cache TTL and Minimum Cache TTL only raise a shorter origin TTL and no longer shorten a longer one; the edge no longer sends X-Edge-TTL."
+        - kind: changed
+          description: "With EDGE_ACCESS_LOG_SCHEMA=legacy the edge logs only final status 200, matching ie-varnish-logger. The chart default ecs schema still logs every proxied response."
+      artifacthub.io/signKey: |
+        fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+        url: https://kube.imageengine.io/pubkey.asc
+    apiVersion: v2
+    created: "2026-09-29T21:41:18.905471836Z"
+    description: ImageEngine - cloud-native image optimization
+    digest: d35b5cd845b9fcd425a39d3da1c36da6b5de4a7e103d575dcade1ae84bac678d
+    home: https://imageengine.io
+    icon: https://imageengine.io/favicon.ico
+    keywords:
+    - image-optimization
+    - image-cdn
+    - cdn
+    - imageengine
+    - varnish
+    - wurfl
+    kubeVersion: '>=1.30.0-0'
+    maintainers:
+    - email: support@scientiamobile.com
+      name: ScientiaMobile
+      url: https://www.scientiamobile.com
+    name: imageengine-kube
+    sources:
+    - https://kube.imageengine.io
+    - https://github.com/imgeng/imageengine-kube-helm
+    type: application
+    urls:
+    - imageengine-kube-1.9.11.tgz
+    version: 1.9.11
+  - annotations:
+      artifacthub.io/changes: |-
+        - kind: changed
           description: "Updated the edge image to v4.10.2. Access-Control-Allow-Origin now echoes a single matching origin instead of the whole cors_allowed_origin list, which browsers reject. With no CORS setting the edge leaves the origin's CORS headers alone, and preflight-only headers stay on preflights."
         - kind: changed
           description: "Client disconnects before Varnish answers are recorded as status 499 (client_closed) instead of an upstream 503 in the response metrics and access log."
@@ -1178,4 +1213,4 @@ entries:
     urls:
     - imageengine-kube-0.8.0.tgz
     version: 0.8.0
-generated: "2026-09-29T19:06:33.619735659Z"
+generated: "2026-09-29T21:41:18.905841188Z"
