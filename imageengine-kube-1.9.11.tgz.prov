@@ -1,0 +1,54 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+annotations:
+  artifacthub.io/changes: |-
+    - kind: changed
+      description: "Updated the edge image to v4.10.3. The edge sets Date to the current time, so browsers no longer treat a cached object as already stale and revalidate it. Minimum Browser Cache TTL and Minimum Cache TTL only raise a shorter origin TTL and no longer shorten a longer one; the edge no longer sends X-Edge-TTL."
+    - kind: changed
+      description: "With EDGE_ACCESS_LOG_SCHEMA=legacy the edge logs only final status 200, matching ie-varnish-logger. The chart default ecs schema still logs every proxied response."
+  artifacthub.io/signKey: |
+    fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+    url: https://kube.imageengine.io/pubkey.asc
+apiVersion: v2
+description: ImageEngine - cloud-native image optimization
+home: https://imageengine.io
+icon: https://imageengine.io/favicon.ico
+keywords:
+- - image-optimization
+- - image-cdn
+- - cdn
+- - imageengine
+- - varnish
+- - wurfl
+kubeVersion: '>=1.30.0-0'
+maintainers:
+- - email: support@scientiamobile.com
+  name: ScientiaMobile
+  url: https://www.scientiamobile.com
+name: imageengine-kube
+sources:
+- - https://kube.imageengine.io
+- - https://github.com/imgeng/imageengine-kube-helm
+type: application
+version: 1.9.11
+
+...
+files:
+  imageengine-kube-1.9.11.tgz: sha256:d35b5cd845b9fcd425a39d3da1c36da6b5de4a7e103d575dcade1ae84bac678d
+-----BEGIN PGP SIGNATURE-----
+
+wsFcBAEBCgAQBQJqvDB6CRBGMmYGCVfEswAAoqAQACQ/r3Ct1OA1/Hg0x1s6giZ/
+1Pldo3lqlv1Xrb1kSjx3R5Ca8f/Dc+s5kIUsqKZjWmMuLae4KZ6ReS+xeOjDZEFI
+MXL8lb27TN90upe02/MYfTAVon0ZlFiCip1Ayf55REbHHTJLZCm+qSHQD3ttiyvB
+AeMMYdlpnoPsdRqzdsEijhWN1jwM1Qd4h6lfw7DO8KSQq/WHIe09xogENHmiG4U7
+3e7P3xrilZYOlwMP8yf5VcGrKl1WLiK4QcZebzm6d/Kp38byz+lJrJ8ZfScNcdxA
+hDZvGl+0pGQgCr7FJMBWfFoNqlnQUrx2qAoAwbI8bReWSvxlrQz4Y6fxqHS5vHMF
+YdoucIyZohRQloqsV9IBLYoF8puljrPxL+jBO2lFaMgETYMyT84HGzaq+93B1ZB4
+wHudsDJge6Hv3YjDe3GLccKOChN6IELXtH8YxwCtjwXqhsFeYfw6UATlvFN4IvGp
+d7mNue86odQq/ygvRwLDYgOjkf2VhMWyM4ldi/3GFcNmw5KqAS6bzBvG7+AmuPJY
+zckxAEc7gpD8VgEpxqMiL1Hiox0KBgFezoTRj+mvHQMTs9pf21x1UZev63nUH1Co
+l/oglYKNSSpwXBONi6TTWdW+Q0emAKN44ptzQF/EviSqmSPgl2dZm04VPgmk/ZVR
+52J2FWPnVEHkEhRZq0L4
+=dKNf
+-----END PGP SIGNATURE-----
