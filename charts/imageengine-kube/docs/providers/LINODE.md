@@ -44,6 +44,8 @@ LKE Enterprise customers can request a **Premium NodeBalancer** (different SKU, 
 
 Combine with `service.loadBalancerSourceRanges` to lock down inbound CIDRs.
 
+**Client IP:** with a LoadBalancer Service, `provider: linode` has the NodeBalancer send a PROXY v2 header (`linode-loadbalancer-default-proxy-protocol: v2`) and the edge read it, so fair-share admission and the access log see real client addresses. LKE nodes have public IPs, so allow the NodePort range only from the NodeBalancer with a Cloud Firewall; see [How do I preserve the client IP?](../CUSTOMIZATIONS.md#how-do-i-preserve-the-client-ip), including the two-step upgrade for existing installs.
+
 ## Ingress
 
 The `nginx` preset assumes you've installed `ingress-nginx` via its own Helm chart. The NodeBalancer fronts either the chart's edge Service directly (when `service.type: LoadBalancer`) or the ingress-nginx controller's Service (when `service.type: ClusterIP` and `ingress.enabled: true`).

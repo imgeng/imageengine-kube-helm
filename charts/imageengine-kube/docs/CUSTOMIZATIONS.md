@@ -328,7 +328,42 @@ Pick one of three exposure modes:
 
 `loadBalancerSourceRanges` is a CIDR allowlist (only respected when `type: LoadBalancer`). Empty = open to the world.
 
-`externalTrafficPolicy: Local` preserves the client source IP at the cost of uneven distribution across nodes. The default (`""` / `Cluster`) gives smoother load distribution but rewrites source IPs.
+`externalTrafficPolicy: Local` preserves the client source IP at the cost of uneven distribution across nodes. The default (`""` / `Cluster`) gives smoother load distribution but rewrites source IPs. On `gke` and `azure`, leaving it empty with a LoadBalancer sets `Local` (see the next section).
+
+## How do I preserve the client IP?
+
+The edge's fair-share admission control keys on the client IP (together with device form factor and browser family), so one heavy client is throttled before it can crowd out everyone else. The access log records it too. If the IP is lost, every visitor looks like your load balancer or node: they all share one fair-share bucket, and `imageengine_edge_clients_tracked` stays near the number of nodes.
+
+How the edge learns the IP depends on what sits in front of it. `clientIP.mode: auto` (the default) picks from your `provider`, `service.type` and `ingress.enabled`:
+
+| How traffic reaches the edge | `auto` resolves to | What the chart configures |
+|---|---|---|
+| `ingress.enabled: true` | `forwardedFor` | The edge trusts only the `X-Forwarded-For` entries your ingress controller (and any L7 load balancer in front of it) appended: 1 hop, or 2 for GCE ingress. |
+| LoadBalancer on `aws`, `digitalocean`, `linode` | `proxyProtocol` | The provider's PROXY protocol annotation on the edge Service, and the edge reads the header. |
+| LoadBalancer on `gke`, `azure` | `direct` | `externalTrafficPolicy: Local`, and the edge uses the connection's source address. Their standard load balancers do not send PROXY headers. |
+| Anything else (`custom`, NodePort, ClusterIP) | `direct` | The edge uses the connection's source address. |
+
+`auto` needs edge 4.10.0 or later; with an older `images.edge` it stays `legacy`. Set the mode yourself when your setup differs from the table:
+
+```yaml
+clientIP:
+  mode: forwardedFor     # auto | proxyProtocol | forwardedFor | direct | legacy
+  forwardedHops: 2       # e.g. a CDN or L7 load balancer in front of ingress-nginx
+```
+
+- **`proxyProtocol`**: the load balancer prepends the client's address to each TCP connection, and the edge reads it. `clientIP.proxyProtocol.policy: optional` (default) also serves connections without a header, which some load balancers' health checks are; `required` refuses them. On providers without a preset annotation, add your load balancer's own annotation to `service.annotations`.
+- **`forwardedFor`**: the client is the entry `forwardedHops` from the right of `X-Forwarded-For`, so anything a client put in the header itself is skipped. Count one hop per proxy that appends to the header between the client and the edge: ingress-nginx, Traefik and the AWS ALB append one each, GCE ingress two. If you front the ingress with an L7 load balancer or CDN, add one for it. If the proxies' addresses are known and stable, `clientIP.trustedProxies` (CIDRs) replaces the hop count: the header is then used only from those peers, and the client is its rightmost entry outside them. The ingress controller must itself see the client's address, or it appends a node IP: give the controller's own Service `externalTrafficPolicy: Local`, or enable PROXY protocol between its load balancer and the controller (for ingress-nginx, the provider's annotation on the controller Service plus `use-proxy-protocol: "true"` in the controller ConfigMap).
+- **`direct`**: the edge ignores forwarded headers and uses the connection's source address. That is the client only when nothing in between rewrites it, which in Kubernetes usually means `externalTrafficPolicy: Local`.
+- **`legacy`**: the edge's behaviour before 4.10.0: the leftmost `X-Forwarded-For` entry, which is whatever the client sent unless a proxy overwrites the header. Only for setups that rely on it.
+
+> **Moving an existing install to `proxyProtocol`.** The load balancer starts sending PROXY headers as soon as the Service annotation changes, but edge pods are replaced one at a time, and an edge that does not expect a header answers 400. Upgrade in two steps: first with `clientIP.proxyProtocol.annotateService: false` (every edge pod then accepts headers, and still serves plain connections), and once the rollout finishes, again with it back at `true`. A fresh install needs neither step.
+
+Two things keep a forged client address out:
+
+- **With `ingress.enabled`, set `service.type: ClusterIP`.** If the edge Service is also a LoadBalancer, clients can reach the edge without passing through the ingress controller and send whatever `X-Forwarded-For` they like.
+- **With `proxyProtocol`, block the Service's NodePorts on your nodes.** A LoadBalancer Service also opens a NodePort on every node. Where nodes have public IPs, a client connecting to a NodePort directly can send its own PROXY header, and after kube-proxy rewrites the source the edge cannot tell it from the load balancer. Allow the NodePort range (30000-32767 by default) only from the load balancer, with your provider's firewall or security group.
+
+To check what the edge is doing, read `imageengine_edge_client_ip_resolutions_total{result}` from the edge metrics port (9464). `remote_addr` and `forwarded` are normal. A steady rate of `short_forwarded`, `untrusted_peer` or `invalid_forwarded` means `forwardedHops` or `trustedProxies` does not match the path your traffic takes. See [TROUBLESHOOTING.md](TROUBLESHOOTING.md#every-client-shares-one-fair-share-bucket).
 
 ## How do I name or annotate the cloud LoadBalancer?
 

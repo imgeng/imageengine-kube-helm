@@ -56,6 +56,8 @@ GKE picks the LB name from the Service name; there's no separate "name" annotati
 
 Combine with `service.loadBalancerSourceRanges` to lock down inbound CIDRs.
 
+**Client IP:** GKE's passthrough load balancer can't send PROXY headers, so with a LoadBalancer Service `provider: gke` sets `externalTrafficPolicy: Local` and the edge uses the connection's source address. With GCE ingress the edge instead trusts the two `X-Forwarded-For` entries the ingress appends (client and load balancer). See [How do I preserve the client IP?](../CUSTOMIZATIONS.md#how-do-i-preserve-the-client-ip).
+
 ## Ingress options
 
 Three reasonable choices:

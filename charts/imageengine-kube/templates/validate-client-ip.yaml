@@ -1,0 +1,11 @@
+{{- /*
+clientIP validation. Renders no resources; it aborts the install when an
+explicit clientIP.mode cannot work with the pinned edge image. clientIP.mode:
+auto never fails here: it stays legacy on an older edge.
+*/ -}}
+{{- if .Values.frontend.enabled }}
+{{- $mode := (.Values.clientIP | default dict).mode | default "auto" }}
+{{- if and (not (has $mode (list "auto" "legacy"))) (not (include "imageengine.edgeSupportsClientIP" .)) }}
+{{- fail (printf "\n\nImageEngine: clientIP.mode=%s needs edge 4.10.0 or later, but images.edge is %q. An older edge ignores these settings, and in proxyProtocol mode answers every request carrying a PROXY header with 400. Upgrade images.edge, or set clientIP.mode: auto or legacy. See docs/CUSTOMIZATIONS.md." $mode (toString .Values.images.edge)) }}
+{{- end }}
+{{- end }}

@@ -5,7 +5,7 @@ imagePullPolicy: Always
 ###################################################
 # Centralized image tags/versions for all components
 images:
-  edge: "4.9.2"
+  edge: "4.10.0"
   varnish: "9.1.0-0"
   backend: "2.16.0"
   fetcher: "1.32.0"
@@ -97,16 +97,24 @@ providerPresets:
     # scheme back to "internal") for private deployments.
     serviceAnnotations:
       service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+    # Added to the edge Service in clientIP proxyProtocol mode. Honoured by the
+    # in-tree controller, the AWS Load Balancer Controller and EKS Auto Mode.
+    proxyProtocolAnnotations:
+      service.beta.kubernetes.io/aws-load-balancer-proxy-protocol: "*"
   digitalocean:
     storageClass: "do-block-storage"
     ingressClass: "nginx"
     ingressAnnotations: {}
     serviceAnnotations: {}
+    proxyProtocolAnnotations:
+      service.beta.kubernetes.io/do-loadbalancer-enable-proxy-protocol: "true"
   linode:
     storageClass: "linode-block-storage-retain"
     ingressClass: "nginx"
     ingressAnnotations: {}
     serviceAnnotations: {}
+    proxyProtocolAnnotations:
+      service.beta.kubernetes.io/linode-loadbalancer-default-proxy-protocol: "v2"
   gke:
     storageClass: "standard-rwo"
     ingressClass: "gce"
@@ -262,8 +270,46 @@ service:
   # CIDR allowlist for inbound traffic when type is LoadBalancer. Empty = open.
   loadBalancerSourceRanges: []
   # "" (default = Cluster) | "Local". Local preserves client source IP at the
-  # cost of uneven traffic distribution across nodes.
+  # cost of uneven traffic distribution across nodes. When empty, clientIP
+  # direct mode sets Local on gke and azure (see clientIP below).
   externalTrafficPolicy: ""
+
+###################################################
+# Client IP
+###################################################
+# The edge's fair-share admission keys on the client IP, and the access log
+# records it. If it is lost, every visitor shares one fair-share bucket.
+# See docs/CUSTOMIZATIONS.md, "How do I preserve the client IP?".
+clientIP:
+  # auto          -> forwardedFor with ingress.enabled; proxyProtocol for a
+  #                  LoadBalancer on aws, digitalocean or linode; otherwise direct
+  # proxyProtocol -> the load balancer sends a PROXY header, which the edge reads
+  # forwardedFor  -> trust only the X-Forwarded-For entries appended by the
+  #                  ingress controller or load balancers in front of the edge
+  # direct        -> use the connection's source address (with Local
+  #                  externalTrafficPolicy on gke and azure)
+  # legacy        -> the pre-4.10.0 edge behaviour: trust the leftmost
+  #                  X-Forwarded-For entry, which clients can forge
+  # auto stays legacy while images.edge is older than 4.10.0.
+  mode: auto
+  # forwardedFor: how many proxies append to X-Forwarded-For. 0 = auto
+  # (2 for GCE ingress, otherwise 1). Add one for each L7 load balancer in
+  # front of your ingress controller.
+  forwardedHops: 0
+  # CIDRs allowed to assert a client address. For forwardedFor it replaces
+  # forwardedHops: X-Forwarded-For is used only from these peers, and the
+  # client is its rightmost entry outside them. For proxyProtocol, only these
+  # peers may send a PROXY header. Empty = any peer. Rarely needed.
+  trustedProxies: []
+  proxyProtocol:
+    # optional also serves connections without a header (load balancer health
+    # checks); required refuses them.
+    policy: optional
+    # Add the provider's PROXY annotation to the edge Service. When moving an
+    # existing install to proxyProtocol, upgrade once with false so every edge
+    # pod accepts PROXY headers before the load balancer starts sending them,
+    # then again with true.
+    annotateService: true
 
 ###################################################
 # Component Resources — Chart-wide Note

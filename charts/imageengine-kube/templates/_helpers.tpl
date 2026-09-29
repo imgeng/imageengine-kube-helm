@@ -143,6 +143,8 @@ Usage: {{ include "imageengine.ingressAnnotations" . | nindent 4 }}
 Get merged edge Service annotations (provider defaults + explicit overrides).
 Explicit service.annotations take precedence over provider defaults, so a
 deployment can, for example, set the AWS LB scheme back to "internal".
+In clientIP proxyProtocol mode the provider's PROXY protocol annotation is added
+too, unless clientIP.proxyProtocol.annotateService is false.
 Usage: {{ include "imageengine.serviceAnnotations" . | nindent 4 }}
 */}}
 {{- define "imageengine.serviceAnnotations" -}}
@@ -153,6 +155,10 @@ Usage: {{ include "imageengine.serviceAnnotations" . | nindent 4 }}
 {{- if $preset.serviceAnnotations -}}
 {{- $annotations = merge $annotations $preset.serviceAnnotations -}}
 {{- end -}}
+{{- $pp := (.Values.clientIP | default dict).proxyProtocol | default dict -}}
+{{- if and $preset.proxyProtocolAnnotations (eq (include "imageengine.clientIPMode" .) "proxyProtocol") (eq .Values.service.type "LoadBalancer") (ne $pp.annotateService false) -}}
+{{- $annotations = merge $annotations $preset.proxyProtocolAnnotations -}}
+{{- end -}}
 {{- end -}}
 {{- /* Merge explicit annotations last so they win on conflicts */ -}}
 {{- if .Values.service.annotations -}}
@@ -162,6 +168,105 @@ Usage: {{ include "imageengine.serviceAnnotations" . | nindent 4 }}
 {{- range $key, $value := $annotations }}
 {{ $key }}: {{ $value | quote }}
 {{- end -}}
+{{- end -}}
+
+{{/*
+=============================================================================
+Client IP (docs/CUSTOMIZATIONS.md, "How do I preserve the client IP?")
+=============================================================================
+*/}}
+
+{{/*
+"true" when images.edge understands the EDGE_CLIENT_IP_SOURCE / EDGE_PROXY_PROTOCOL
+settings (edge 4.10.0+), else "". Tags that are not a version (e.g. "latest", a
+digest) are assumed to.
+*/}}
+{{- define "imageengine.edgeSupportsClientIP" -}}
+{{- $v := regexFind "^v?[0-9]+\\.[0-9]+\\.[0-9]+" (toString .Values.images.edge) -}}
+{{- if or (not $v) (semverCompare ">=4.10.0" $v) -}}true{{- end -}}
+{{- end -}}
+
+{{/*
+Effective clientIP mode: legacy | direct | proxyProtocol | forwardedFor.
+auto picks by how traffic reaches the edge:
+  ingress.enabled                                  -> forwardedFor
+  LoadBalancer on a provider with a PROXY preset   -> proxyProtocol
+  anything else                                    -> direct
+and stays legacy while images.edge predates 4.10.0.
+Usage: {{ include "imageengine.clientIPMode" . }}
+*/}}
+{{- define "imageengine.clientIPMode" -}}
+{{- $mode := (.Values.clientIP | default dict).mode | default "auto" -}}
+{{- if ne $mode "auto" -}}
+{{- $mode -}}
+{{- else if not (include "imageengine.edgeSupportsClientIP" .) -}}
+legacy
+{{- else if .Values.ingress.enabled -}}
+forwardedFor
+{{- else if and (eq .Values.service.type "LoadBalancer") (include "imageengine.hasProxyProtocolPreset" .) -}}
+proxyProtocol
+{{- else -}}
+direct
+{{- end -}}
+{{- end -}}
+
+{{/* "true" when the provider preset can make its load balancer send PROXY headers. */}}
+{{- define "imageengine.hasProxyProtocolPreset" -}}
+{{- if and .Values.provider (hasKey .Values.providerPresets .Values.provider) -}}
+{{- if (index .Values.providerPresets .Values.provider).proxyProtocolAnnotations -}}true{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Proxies that append to X-Forwarded-For in forwardedFor mode. clientIP.forwardedHops
+0 means auto: 2 for GCE ingress (it appends the client and its own address),
+otherwise 1.
+*/}}
+{{- define "imageengine.forwardedHops" -}}
+{{- $hops := int ((.Values.clientIP | default dict).forwardedHops | default 0) -}}
+{{- if gt $hops 0 -}}
+{{- $hops -}}
+{{- else if eq (include "imageengine.ingressClass" .) "gce" -}}
+2
+{{- else -}}
+1
+{{- end -}}
+{{- end -}}
+
+{{/*
+Edge Service externalTrafficPolicy. An explicit service.externalTrafficPolicy
+wins. In direct mode on a provider preset without PROXY support (gke, azure) a
+LoadBalancer gets Local, since that is the only way its peer is the client.
+*/}}
+{{- define "imageengine.externalTrafficPolicy" -}}
+{{- if .Values.service.externalTrafficPolicy -}}
+{{- .Values.service.externalTrafficPolicy -}}
+{{- else if and (eq .Values.service.type "LoadBalancer") (eq (include "imageengine.clientIPMode" .) "direct") (has .Values.provider (list "gke" "azure")) -}}
+Local
+{{- end -}}
+{{- end -}}
+
+{{/*
+Edge env for the effective clientIP mode. Each var is skipped when edge.env
+sets it, so an explicit override wins.
+Usage: {{ include "imageengine.clientIPEnv" . | nindent 12 }}
+*/}}
+{{- define "imageengine.clientIPEnv" -}}
+{{- $c := .Values.clientIP | default dict -}}
+{{- $env := default (dict) .Values.edge.env -}}
+{{- $mode := include "imageengine.clientIPMode" . -}}
+{{- if eq $mode "proxyProtocol" }}
+{{- include "imageengine.derivedEnv" (dict "name" "EDGE_PROXY_PROTOCOL" "value" (($c.proxyProtocol | default dict).policy | default "optional") "env" $env) }}
+{{- end }}
+{{- if or (eq $mode "proxyProtocol") (eq $mode "direct") }}
+{{- include "imageengine.derivedEnv" (dict "name" "EDGE_CLIENT_IP_SOURCE" "value" "remote-addr" "env" $env) }}
+{{- else if eq $mode "forwardedFor" }}
+{{- include "imageengine.derivedEnv" (dict "name" "EDGE_CLIENT_IP_SOURCE" "value" "x-forwarded-for" "env" $env) }}
+{{- include "imageengine.derivedEnv" (dict "name" "EDGE_XFF_TRUSTED_HOPS" "value" (include "imageengine.forwardedHops" .) "env" $env) }}
+{{- end }}
+{{- if and (ne $mode "legacy") $c.trustedProxies }}
+{{- include "imageengine.derivedEnv" (dict "name" "EDGE_TRUSTED_PROXIES" "value" (join "," $c.trustedProxies) "env" $env) }}
+{{- end }}
 {{- end -}}
 
 {{/*

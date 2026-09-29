@@ -126,6 +126,8 @@ service:
     service.beta.kubernetes.io/aws-load-balancer-scheme: internal
 ```
 
+**Client IP:** on this path `provider: aws` has the load balancer send a PROXY header (`aws-load-balancer-proxy-protocol: "*"`, understood by EKS Auto Mode, the AWS Load Balancer Controller and the in-tree provider) and the edge read it, so fair-share admission and the access log see real client addresses. Restrict the NodePort range on the node security group to the load balancer. On the ALB path below the edge instead trusts the one `X-Forwarded-For` entry the ALB appends. See [How do I preserve the client IP?](../CUSTOMIZATIONS.md#how-do-i-preserve-the-client-ip), including the two-step upgrade for existing installs.
+
 > Without the AWS Load Balancer Controller (and not on Auto Mode), a plain `type: LoadBalancer` falls back to the legacy in-tree provider, which creates a **Classic Load Balancer** (deprecated but functional). Adding `aws-load-balancer-type: external` forces a modern NLB, but **only works if the controller is installed** — otherwise no load balancer is created at all.
 
 ### Path 2 — ALB Ingress

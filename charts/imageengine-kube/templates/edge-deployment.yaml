@@ -110,6 +110,9 @@ spec:
             {{- include "imageengine.identityEnv" $ | nindent 12 }}
             {{- include "imageengine.derivedEnv" (dict "name" "EDGE_EMITTER_SERVER" "value" $.Values.imageengine.emitterServer "env" $edgeEnv) | nindent 12 }}
             {{- include "imageengine.otelEnv" (dict "ctx" $ "enableVar" "EDGE_OTEL_ENABLED") | nindent 12 }}
+            {{- with trim (include "imageengine.clientIPEnv" .) }}
+            {{- . | nindent 12 }}
+            {{- end }}
             {{- /* carbon.txt is served ONLY with BOTH a hash AND customer content. See values.yaml. */}}
             {{- if and .Values.edge.carbontxt.enabled .Values.edge.carbontxt.hash .Values.edge.carbontxt.content }}
             - name: EDGE_CARBONTXT_HASH
