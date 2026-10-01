@@ -153,7 +153,7 @@ private LB where your platform allows it.
 **The same warning applies to an Ingress.** On a backend-only install
 `ingress.enabled: true` points the Ingress at the backend Service (there is no
 edge to target), so the Ingress fronts that same unauthenticated, plain-HTTP
-listener. Worse, the chart's provider presets are edge-oriented: with
+listener. `httpRoute.enabled: true` does the same through your Gateway. Worse, the chart's provider presets are edge-oriented: with
 `provider: aws`, for example, the generated Ingress inherits
 `alb.ingress.kubernetes.io/scheme: internet-facing`, which would publish the
 backend to the internet. A backend-only Ingress is rarely useful anyway (Varnish

@@ -37,8 +37,8 @@ For anything beyond the quick-start below, see the docs linked in [Where to next
    ```yaml
    provider: aws
    ```
-   Prefer hostname routing through an Ingress instead? See your provider doc for the
-   right `service.type` / `ingress` combination (e.g. [AWS](docs/providers/AWS.md)).
+   Prefer hostname routing through an Ingress or a Gateway API `HTTPRoute` instead? See your provider doc for the
+   right `service.type` / `ingress` / `httpRoute` combination (e.g. [AWS](docs/providers/AWS.md)).
 
 4. **Install**
    ```bash
@@ -100,16 +100,16 @@ Full details — verifying every image, reading the SBOM/provenance, the vulnera
 
 ## Provider presets
 
-Setting `provider:` auto-configures the right storage class and ingress class for that platform. Explicit values in your file always take precedence. Cloud-LB-specific annotations (LB name, NLB type, scheme, etc.) live under `service.annotations` — see your provider doc ([AWS](docs/providers/AWS.md), [Azure](docs/providers/AZURE.md), [DigitalOcean](docs/providers/DIGITALOCEAN.md), [GKE](docs/providers/GKE.md), [Linode](docs/providers/LINODE.md), or [self-managed](docs/providers/CUSTOM.md)) for the right keys.
+Setting `provider:` auto-configures the right storage class for that platform, and the ingress class where the platform ships its own Ingress controller. Elsewhere the chart leaves the class unset, so the cluster's default IngressClass serves the Ingress. Explicit values in your file always take precedence. Cloud-LB-specific annotations (LB name, NLB type, scheme, etc.) live under `service.annotations` — see your provider doc ([AWS](docs/providers/AWS.md), [Azure](docs/providers/AZURE.md), [DigitalOcean](docs/providers/DIGITALOCEAN.md), [GKE](docs/providers/GKE.md), [Linode](docs/providers/LINODE.md), or [self-managed](docs/providers/CUSTOM.md)) for the right keys.
 
 | Provider | Storage Class | Ingress Class | Doc |
 |----------|--------------|---------------|-----|
 | `aws` | `gp3` | `alb` | [docs/providers/AWS.md](docs/providers/AWS.md) |
-| `azure` | `managed-csi-premium` | `nginx` | [docs/providers/AZURE.md](docs/providers/AZURE.md) |
-| `digitalocean` | `do-block-storage` | `nginx` | [docs/providers/DIGITALOCEAN.md](docs/providers/DIGITALOCEAN.md) |
+| `azure` | `managed-csi-premium` | cluster default | [docs/providers/AZURE.md](docs/providers/AZURE.md) |
+| `digitalocean` | `do-block-storage` | cluster default | [docs/providers/DIGITALOCEAN.md](docs/providers/DIGITALOCEAN.md) |
 | `gke` | `standard-rwo` | `gce` | [docs/providers/GKE.md](docs/providers/GKE.md) |
-| `linode` | `linode-block-storage-retain` | `nginx` | [docs/providers/LINODE.md](docs/providers/LINODE.md) |
-| `custom` | `standard` | `nginx` | [docs/providers/CUSTOM.md](docs/providers/CUSTOM.md) — bare metal, on-premise, self-managed |
+| `linode` | `linode-block-storage-retain` | cluster default | [docs/providers/LINODE.md](docs/providers/LINODE.md) |
+| `custom` | `standard` | cluster default | [docs/providers/CUSTOM.md](docs/providers/CUSTOM.md) — bare metal, on-premise, self-managed |
 
 ## Upgrading
 
@@ -127,7 +127,7 @@ To pin a specific chart version: `helm upgrade ... --version 1.2.3 -f imageengin
 - [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) — full first-deployment walkthrough.
 - [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) — Kubernetes version, CPU architecture (arm64 / x86-64), storage, network, and compute minimums.
 - [docs/SIZING.md](docs/SIZING.md) — recommended footprints for low / medium / high traffic.
-- [docs/CUSTOMIZATIONS.md](docs/CUSTOMIZATIONS.md) — replicas, autoscaling, ingress, TLS, HTTP/3, OSC sizing, Varnish tuning, OpenTelemetry tracing, and the rest.
+- [docs/CUSTOMIZATIONS.md](docs/CUSTOMIZATIONS.md) — replicas, autoscaling, ingress, Gateway API, TLS, HTTP/3, OSC sizing, Varnish tuning, OpenTelemetry tracing, and the rest.
 - [docs/TOPOLOGIES.md](docs/TOPOLOGIES.md) — running the full pipeline (default) vs. splitting it into frontend-only / backend-only tiers across clusters or regions.
 - [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — common issues and fixes.
 - Platform-specific guidance: [AWS](docs/providers/AWS.md), [Azure](docs/providers/AZURE.md), [DigitalOcean](docs/providers/DIGITALOCEAN.md), [GKE](docs/providers/GKE.md), [Linode](docs/providers/LINODE.md), [self-managed / bare metal](docs/providers/CUSTOM.md).

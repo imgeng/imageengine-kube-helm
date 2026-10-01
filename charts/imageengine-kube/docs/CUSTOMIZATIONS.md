@@ -350,7 +350,7 @@ service:
 Pick one of three exposure modes:
 
 - **`type: LoadBalancer`** (default): the cloud LB controller provisions a public IP and traffic flows directly into the chart. Use `service.annotations` for cloud-LB-specific tuning (LB name, NLB type, ACL annotations, etc. — see your provider doc ([AWS](providers/AWS.md), [Azure](providers/AZURE.md), [DigitalOcean](providers/DIGITALOCEAN.md), [GKE](providers/GKE.md), [Linode](providers/LINODE.md), or [self-managed](providers/CUSTOM.md)) for the right keys).
-- **`type: ClusterIP`**: the Service is reachable only inside the cluster. Pair this with `ingress.enabled: true` (below) so an ingress controller you've installed handles external traffic. Common for bare metal / on-prem and for installs that want hostname-based routing or TLS at the ingress layer.
+- **`type: ClusterIP`**: the Service is reachable only inside the cluster. Pair this with `ingress.enabled: true` or `httpRoute.enabled: true` (below) so an ingress controller or Gateway you've installed handles external traffic. Common for bare metal / on-prem and for installs that want hostname-based routing or TLS at the ingress layer.
 - **`type: NodePort`**: opens a port on every node. Useful for environments without a LB controller and without an ingress installed; rarely the right answer in production.
 
 `loadBalancerSourceRanges` is a CIDR allowlist (only respected when `type: LoadBalancer`). Empty = open to the world.
@@ -365,7 +365,7 @@ How the edge learns the IP depends on what sits in front of it. `clientIP.mode: 
 
 | How traffic reaches the edge | `auto` resolves to | What the chart configures |
 |---|---|---|
-| `ingress.enabled: true` | `forwardedFor` | The edge trusts only the `X-Forwarded-For` entries your ingress controller (and any L7 load balancer in front of it) appended: 1 hop, or 2 for GCE ingress. |
+| `ingress.enabled: true` or `httpRoute.enabled: true` | `forwardedFor` | The edge trusts only the `X-Forwarded-For` entries your ingress controller or Gateway (and any L7 load balancer in front of it) appended: 1 hop, or 2 for GCE ingress. |
 | LoadBalancer on `aws`, `digitalocean`, `linode` | `proxyProtocol` | The provider's PROXY protocol annotation on the edge Service, and the edge reads the header. |
 | LoadBalancer on `gke`, `azure` | `direct` | `externalTrafficPolicy: Local`, and the edge uses the connection's source address. Their standard load balancers do not send PROXY headers. |
 | Anything else (`custom`, NodePort, ClusterIP) | `direct` | The edge uses the connection's source address. |
@@ -375,11 +375,11 @@ How the edge learns the IP depends on what sits in front of it. `clientIP.mode: 
 ```yaml
 clientIP:
   mode: forwardedFor     # auto | proxyProtocol | forwardedFor | direct | legacy
-  forwardedHops: 2       # e.g. a CDN or L7 load balancer in front of ingress-nginx
+  forwardedHops: 2       # e.g. a CDN or L7 load balancer in front of your ingress controller
 ```
 
 - **`proxyProtocol`**: the load balancer prepends the client's address to each TCP connection, and the edge reads it. `clientIP.proxyProtocol.policy: optional` (default) also serves connections without a header, which some load balancers' health checks are; `required` refuses them. On providers without a preset annotation, add your load balancer's own annotation to `service.annotations`.
-- **`forwardedFor`**: the client is the entry `forwardedHops` from the right of `X-Forwarded-For`, so anything a client put in the header itself is skipped. Count one hop per proxy that appends to the header between the client and the edge: ingress-nginx, Traefik and the AWS ALB append one each, GCE ingress two. If you front the ingress with an L7 load balancer or CDN, add one for it. If the proxies' addresses are known and stable, `clientIP.trustedProxies` (CIDRs) replaces the hop count: the header is then used only from those peers, and the client is its rightmost entry outside them. The ingress controller must itself see the client's address, or it appends a node IP: give the controller's own Service `externalTrafficPolicy: Local`, or enable PROXY protocol between its load balancer and the controller (for ingress-nginx, the provider's annotation on the controller Service plus `use-proxy-protocol: "true"` in the controller ConfigMap).
+- **`forwardedFor`**: the client is the entry `forwardedHops` from the right of `X-Forwarded-For`, so anything a client put in the header itself is skipped. Count one hop per proxy that appends to the header between the client and the edge: Traefik, Envoy Gateway and the AWS ALB append one each; GCE ingress and the GKE Gateway controller two. If you front the ingress with an L7 load balancer or CDN, add one for it. If the proxies' addresses are known and stable, `clientIP.trustedProxies` (CIDRs) replaces the hop count: the header is then used only from those peers, and the client is its rightmost entry outside them. The ingress controller or Gateway must itself see the client's address, or it appends a node IP: give its own Service `externalTrafficPolicy: Local`, or enable PROXY protocol between its load balancer and it (for Traefik, the provider's annotation on its Service plus `proxyProtocol.trustedIPs` on its entry points; for Envoy Gateway, the annotation in the `EnvoyProxy`'s `envoyService.annotations` plus `proxyProtocol` in a `ClientTrafficPolicy`).
 - **`direct`**: the edge ignores forwarded headers and uses the connection's source address. That is the client only when nothing in between rewrites it, which in Kubernetes usually means `externalTrafficPolicy: Local`.
 - **`legacy`**: the edge's behaviour before 4.10.0: the leftmost `X-Forwarded-For` entry, which is whatever the client sent unless a proxy overwrites the header. Only for setups that rely on it.
 
@@ -387,7 +387,7 @@ clientIP:
 
 Two things keep a forged client address out:
 
-- **With `ingress.enabled`, set `service.type: ClusterIP`.** If the edge Service is also a LoadBalancer, clients can reach the edge without passing through the ingress controller and send whatever `X-Forwarded-For` they like.
+- **With `ingress.enabled` or `httpRoute.enabled`, set `service.type: ClusterIP`.** If the edge Service is also a LoadBalancer, clients can reach the edge without passing through the ingress controller or Gateway and send whatever `X-Forwarded-For` they like.
 - **With `proxyProtocol`, block the Service's NodePorts on your nodes.** A LoadBalancer Service also opens a NodePort on every node. Where nodes have public IPs, a client connecting to a NodePort directly can send its own PROXY header, and after kube-proxy rewrites the source the edge cannot tell it from the load balancer. Allow the NodePort range (30000-32767 by default) only from the load balancer, with your provider's firewall or security group.
 
 To check what the edge is doing, read `imageengine_edge_client_ip_resolutions_total{result}` from the edge metrics port (9464). `remote_addr` and `forwarded` are normal. A steady rate of `short_forwarded`, `untrusted_peer` or `invalid_forwarded` means `forwardedHops` or `trustedProxies` does not match the path your traffic takes. See [TROUBLESHOOTING.md](TROUBLESHOOTING.md#every-client-shares-one-fair-share-bucket).
@@ -426,7 +426,7 @@ service:
 
 ingress:
   enabled: true
-  className: nginx                  # leave empty to use the provider preset
+  className: traefik                # leave empty for the provider preset or the cluster's default IngressClass
   hosts:
     - images.example.com
     - images-staging.example.com
@@ -440,6 +440,39 @@ ingress:
 ```
 
 The Ingress is rendered by [templates/ingress.yaml](https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/templates/ingress.yaml) and routes all hosts to the edge Service. Provider-specific TLS guidance is in your provider doc.
+
+Which controller serves the Ingress:
+
+- `ingress.className`, when you set it.
+- Otherwise the provider preset, on platforms that ship their own controller: `alb` on `aws`, `gce` on `gke`.
+- Otherwise the chart sets no class, and the cluster's default IngressClass serves the Ingress. `kubectl get ingressclass` shows which one that is, if any (the one annotated `ingressclass.kubernetes.io/is-default-class: "true"`). With no default and no `className`, no controller picks the Ingress up.
+
+The chart doesn't install a controller. ingress-nginx was retired upstream in March 2026, so for a new cluster pick a maintained one, such as [Traefik](https://doc.traefik.io/traefik/), or route through a Gateway (next section).
+
+## How do I route through a Gateway (Gateway API)?
+
+If your cluster runs a Gateway API implementation (Envoy Gateway, Cilium, Istio, Traefik, or the GKE or DOKS Gateway controllers), the chart can attach an `HTTPRoute` to your Gateway instead of creating an Ingress. The chart creates only the route. The Gateway, its listeners and their TLS certificates stay yours.
+
+```yaml
+service:
+  type: ClusterIP             # the Gateway is the only way in
+
+httpRoute:
+  enabled: true
+  parentRefs:
+    - name: my-gateway
+      namespace: gateway
+      sectionName: https      # optional: attach to one listener only
+  hostnames:
+    - images.example.com      # empty: every hostname the listener accepts
+```
+
+- The listener must allow routes from the release's namespace (`allowedRoutes.namespaces` on the Gateway).
+- `clientIP.mode: auto` resolves to `forwardedFor` with one hop, which matches Gateways that append the client's address to `X-Forwarded-For`, such as Envoy Gateway. The GKE Gateway controller's load balancer appends two entries, like GCE ingress, so set `clientIP.forwardedHops: 2` there.
+- The Gateway must see the client's address itself. Behind a cloud load balancer that usually means PROXY protocol between them (see [How do I preserve the client IP?](#how-do-i-preserve-the-client-ip)).
+- The cluster needs the Gateway API CRDs (`gateway.networking.k8s.io/v1`), which every implementation installs or documents.
+
+To check the route, run `kubectl get httproute <release>-httproute -o yaml`: `status.parents` should show `Accepted: True` and `ResolvedRefs: True` for your Gateway.
 
 ## How do I serve HTTP/3?
 
@@ -462,7 +495,7 @@ A CDN or cloud L7 load balancer that supports HTTP/3 talks HTTP/3 to clients and
 
 You need all of these:
 
-- An ingress controller or gateway that terminates QUIC. ingress-nginx doesn't offer HTTP/3. Envoy Gateway does (`http3` in a `ClientTrafficPolicy`).
+- An ingress controller or Gateway that terminates QUIC, such as Envoy Gateway (`http3` in a `ClientTrafficPolicy`). Check your controller's documentation; many don't offer HTTP/3.
 - A cloud load balancer that carries UDP 443 next to TCP 443 on the same address and keeps the client's source address on UDP. The terminator's Service needs `externalTrafficPolicy: Local`.
 - The terminator seeing the real client address on both TCP and UDP, so the edge can use `clientIP.mode: forwardedFor` for both.
 

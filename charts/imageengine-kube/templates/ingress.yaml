@@ -16,7 +16,9 @@ metadata:
   annotations:
     {{- include "imageengine.ingressAnnotations" . | nindent 4 }}
 spec:
-  ingressClassName: {{ include "imageengine.ingressClass" . }}
+  {{- with include "imageengine.ingressClass" . }}
+  ingressClassName: {{ . }}
+  {{- end }}
   rules:
     {{- range .Values.ingress.hosts }}
     - host: "{{ . }}"

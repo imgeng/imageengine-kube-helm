@@ -322,14 +322,14 @@ kubectl describe ingress -n imageengine imageengine-kube-ingress
 Two things to check:
 
 1. **The hostname must match.** The chart creates a rule per host listed in `ingress.hosts`. A request with a `Host:` header that's not in that list will hit the ingress controller's default backend and 404.
-2. `**ingress.className` must match what's actually installed.** If your cluster has `nginx` but `ingress.className: gce` was rendered (e.g. you set `provider: gke` but installed nginx), the GCE controller is the one that's supposed to handle the Ingress and it's not there.
+2. `**ingress.className` must match what's actually installed.** If your cluster has Traefik but `ingress.className: gce` was rendered (e.g. you set `provider: gke` but installed Traefik), the GCE controller is the one that's supposed to handle the Ingress and it's not there.
 
 Fix:
 
 ```yaml
 ingress:
   enabled: true
-  className: nginx                # match the controller you actually installed
+  className: traefik              # match the controller you actually installed
   hosts:
     - images.example.com          # must match the Host header on incoming requests
 ```
@@ -338,9 +338,9 @@ ingress:
 
 ## Ingress never gets an ADDRESS
 
-**Symptom:** `kubectl get ingress` shows your Ingress but the `ADDRESS` column stays empty, and nothing routes to it. `kubectl describe ingress <name>` shows an event like `ingressClass 'nginx' not found` (or no events at all).
+**Symptom:** `kubectl get ingress` shows your Ingress but the `ADDRESS` column stays empty, and nothing routes to it. `kubectl describe ingress <name>` shows an event like `ingressClass 'traefik' not found` (or no events at all).
 
-**Cause:** No controller is watching that ingress class. The class is set, but the controller that's supposed to reconcile it isn't installed. The most common case is **EKS Auto Mode**, which ships the **ALB** controller (`alb`) but **not** `ingress-nginx` — so a `className: nginx` Ingress just sits there orphaned.
+**Cause:** No controller is watching the Ingress. Either its class names a controller that isn't installed, or it has no class and the cluster has no default IngressClass. The chart leaves the class unset on `azure`, `digitalocean`, `linode` and `custom`, so the Ingress waits for a default. On **EKS Auto Mode**, the preset's `alb` is the only controller, so an Ingress with any other class sits orphaned.
 
 **Diagnose:**
 
@@ -349,9 +349,29 @@ kubectl get ingressclass                          # which classes/controllers ac
 kubectl describe ingress -n imageengine imageengine-kube-ingress
 ```
 
-**Fix:** make `ingress.className` match a class that exists. On EKS (`provider: aws`) the preset already defaults to `alb`; if you previously pinned `nginx`, either remove that override or install `ingress-nginx`. See [providers/AWS.md](providers/AWS.md#exposing-the-edge--two-paths).
+**Fix:** make `ingress.className` match a class that exists, or mark your controller's IngressClass as the default (`ingressclass.kubernetes.io/is-default-class: "true"`). On EKS (`provider: aws`) the preset already defaults to `alb`; if you pinned another class, remove that override or install that controller. See [providers/AWS.md](providers/AWS.md#exposing-the-edge--two-paths).
 
 > Note: the chart's default exposure path on AWS is the LoadBalancer Service (NLB), which needs **no** Ingress controller at all. If you only need a public IP, leave `ingress.enabled: false`.
+
+---
+
+## HTTPRoute isn't accepted by the Gateway
+
+**Symptom:** with `httpRoute.enabled: true`, requests through the Gateway get 404 or a connection reset, although the edge pods are healthy.
+
+**Diagnose:**
+
+```bash
+kubectl get httproute -n imageengine imageengine-kube-httproute -o yaml   # status.parents[].conditions
+kubectl get gateway -A                                                   # the Gateway exists and is Programmed
+```
+
+**Fix**, by the condition that is not `True`:
+
+- **No `status.parents` entry at all:** no controller owns the Gateway in `httpRoute.parentRefs`. Check the `name` and `namespace` (the namespace defaults to the release's).
+- **`Accepted: False`, reason `NotAllowedByListeners`:** the listener's `allowedRoutes.namespaces` doesn't include the release's namespace. Allow it on the Gateway.
+- **`Accepted: False`, reason `NoMatchingListenerHostname`:** none of `httpRoute.hostnames` matches the listener's `hostname`. Fix one or the other.
+- **`ResolvedRefs: False`:** the route can't reach the edge Service. Check that the release installed it (`kubectl get svc -n imageengine`).
 
 ---
 

@@ -15,7 +15,7 @@ You need:
 
 ## Step 1 — Pick your provider
 
-ImageEngine Kube ships with presets for the major managed Kubernetes services. Setting `provider:` in your values file auto-configures the right storage class, ingress class, and load balancer annotations for that platform. Pick the doc that matches your cluster:
+ImageEngine Kube ships with presets for the major managed Kubernetes services. Setting `provider:` in your values file auto-configures the right storage class, ingress class (where the platform ships a controller), and load balancer annotations for that platform. Pick the doc that matches your cluster:
 
 - [providers/AWS.md](providers/AWS.md)
 - [providers/AZURE.md](providers/AZURE.md)
@@ -72,18 +72,13 @@ helm search repo imageengine/imageengine-kube --versions
 
 ## Step 4 — Write a minimal values file
 
-Create `imageengine-values.yaml`. The only thing you really need is `provider:` plus, optionally, your hostnames if you want an Ingress in front of the LoadBalancer:
+Create `imageengine-values.yaml`. The only thing you really need is `provider:`:
 
 ```yaml
 provider: aws
-
-ingress:
-  enabled: true
-  hosts:
-    - images.example.com
 ```
 
-That's it. Every other setting has a sensible default. When you're ready to scale or customize further, see [SIZING.md](SIZING.md) and [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md).
+That's it: the edge gets a public LoadBalancer from your cloud, with no Ingress controller or Gateway to install. To route hostnames through an Ingress controller or a Gateway you already run instead, see [How do I add an Ingress in front of the Service?](CUSTOMIZATIONS.md#how-do-i-add-an-ingress-in-front-of-the-service) and [How do I route through a Gateway?](CUSTOMIZATIONS.md#how-do-i-route-through-a-gateway-gateway-api). Every other setting has a sensible default. When you're ready to scale or customize further, see [SIZING.md](SIZING.md) and [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md).
 
 ## Step 5 — Install
 
@@ -152,6 +147,6 @@ Why this shape:
 
 - [REQUIREMENTS.md](REQUIREMENTS.md) — confirm your cluster meets the hard minimums.
 - [SIZING.md](SIZING.md) — pick a sensible footprint for your traffic volume.
-- [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md) — replicas, autoscaling, ingress, TLS, OSC sizing, and so on.
+- [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md) — replicas, autoscaling, ingress, Gateway API, TLS, OSC sizing, and so on.
 - [TROUBLESHOOTING.md](TROUBLESHOOTING.md) — when something doesn't work.
 

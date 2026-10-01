@@ -70,7 +70,9 @@ metrics:
 # Supported: aws | azure | digitalocean | gke | linode | custom
 # When set, provider-specific defaults are applied for:
 #   - Storage classes
-#   - Ingress annotations
+#   - Ingress class and annotations (only where the platform ships its own
+#     controller: alb on aws, gce on gke; elsewhere the Ingress has no class and
+#     the cluster's default IngressClass serves it)
 # You can still override any value explicitly. The default `custom` applies
 # no presets — use this for bare metal, on-prem, or any self-managed cluster.
 provider: "custom"
@@ -83,8 +85,8 @@ providerPresets:
     storageClass: "gp3"
     # EKS provides the ALB ingress controller natively (EKS Auto Mode) or via the
     # AWS Load Balancer Controller add-on, so "alb" is the right default ingress
-    # class. Clusters that instead run ingress-nginx should set
-    # ingress.className: nginx explicitly (see docs/providers/AWS.md).
+    # class. Clusters that run another controller should set its class in
+    # ingress.className (see docs/providers/AWS.md).
     ingressClass: "alb"
     # When ingress is enabled, make the ALB internet-facing and target Pod IPs
     # directly (required on EKS Auto Mode / the VPC CNI). Override via
@@ -103,14 +105,16 @@ providerPresets:
       service.beta.kubernetes.io/aws-load-balancer-proxy-protocol: "*"
   digitalocean:
     storageClass: "do-block-storage"
-    ingressClass: "nginx"
+    # No built-in Ingress controller: use the cluster's default IngressClass.
+    ingressClass: ""
     ingressAnnotations: {}
     serviceAnnotations: {}
     proxyProtocolAnnotations:
       service.beta.kubernetes.io/do-loadbalancer-enable-proxy-protocol: "true"
   linode:
     storageClass: "linode-block-storage-retain"
-    ingressClass: "nginx"
+    # No built-in Ingress controller: use the cluster's default IngressClass.
+    ingressClass: ""
     ingressAnnotations: {}
     serviceAnnotations: {}
     proxyProtocolAnnotations:
@@ -122,7 +126,9 @@ providerPresets:
     serviceAnnotations: {}
   azure:
     storageClass: "managed-csi-premium"
-    ingressClass: "nginx"
+    # AKS's controllers (application routing, AGIC) each have their own class;
+    # without one set, use the cluster's default IngressClass.
+    ingressClass: ""
     ingressAnnotations: {}
     serviceAnnotations: {}
 
@@ -238,7 +244,7 @@ otel:
 ingress:
   enabled: false     # Enable or disable the ingress controller
   annotations: {}   # Add any annotations for the ingress here (optional)
-  className: ""      # Leave empty to use provider preset, or specify explicitly (e.g., nginx, alb, gce)
+  className: ""      # Empty: the provider preset (alb on aws, gce on gke), else the cluster default IngressClass. Or set it (e.g. traefik, alb, gce)
   hosts:
     - images.example.com
     - images-staging.example.com
@@ -251,6 +257,25 @@ ingress:
   #       hosts:
   #         - images.example.com
   tls: []
+
+# Gateway API HTTPRoute (optional), an alternative to the Ingress above for
+# clusters that already run a Gateway (Envoy Gateway, Cilium, Istio, Traefik,
+# the GKE or DOKS Gateway controllers, ...). The chart creates only the route,
+# not the Gateway, and needs the Gateway API CRDs (gateway.networking.k8s.io/v1).
+# Pair it with service.type: ClusterIP, as for the Ingress.
+httpRoute:
+  enabled: false
+  annotations: {}
+  labels: {}
+  # The Gateway(s) to attach to, required when enabled. The listener must allow
+  # routes from this release's namespace.
+  #   parentRefs:
+  #     - name: my-gateway
+  #       namespace: gateway
+  #       sectionName: https
+  parentRefs: []
+  # Hostnames the route serves. Empty serves every hostname the listener accepts.
+  hostnames: []
 
 ###################################################
 # Edge Service (user-facing entry point)
