@@ -1,0 +1,58 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+annotations:
+  artifacthub.io/changes: |
+    - kind: changed
+      description: "The azure, digitalocean, linode and custom presets no longer set ingressClassName: nginx, since ingress-nginx was retired upstream. Their Ingress has no class, so the cluster's default IngressClass serves it; set ingress.className to pick a controller. The aws (alb) and gke (gce) presets are unchanged."
+    - kind: added
+      description: "Optional Gateway API HTTPRoute (httpRoute.enabled, httpRoute.parentRefs, httpRoute.hostnames) attaches the edge to a Gateway you already run. clientIP.mode auto then trusts the one X-Forwarded-For entry the Gateway appends, and the install notes show the route and warn when the edge Service is also a LoadBalancer."
+    - kind: added
+      description: "New HTTP/3 guidance (CUSTOMIZATIONS.md, How do I serve HTTP/3?): HTTP/3 belongs between clients and your TLS terminator, and a CDN or L7 load balancer is the recommended place for it, because UDP load balancers can't send PROXY headers and fair-share admission would lose the client IP. A per-provider table records what each load balancer supports; Linode NodeBalancers can't carry HTTP/3 today."
+    - kind: fixed
+      description: "Corrected the Linode guide: LKE is x86-64 only; HA control planes and Premium NodeBalancers don't need LKE Enterprise; the CCM has no label annotation and ignores loadBalancerSourceRanges (use firewall-acl); leave the NodeBalancer throttle off; Block Storage volumes go up to 16 TB. It now covers firewalling LKE nodes, so clients can't reach the NodePorts directly and forge a PROXY header, pinning the NodeBalancer IP with preserve and nodebalancer-id, NodeBalancer connection limits, and egress IPs that change with the autoscaler."
+  artifacthub.io/signKey: |
+    fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+    url: https://kube.imageengine.io/pubkey.asc
+apiVersion: v2
+description: ImageEngine - cloud-native image optimization
+home: https://imageengine.io
+icon: https://imageengine.io/favicon.ico
+keywords:
+- - image-optimization
+- - image-cdn
+- - cdn
+- - imageengine
+- - varnish
+- - wurfl
+kubeVersion: '>=1.30.0-0'
+maintainers:
+- - email: support@scientiamobile.com
+  name: ScientiaMobile
+  url: https://www.scientiamobile.com
+name: imageengine-kube
+sources:
+- - https://kube.imageengine.io
+- - https://github.com/imgeng/imageengine-kube-helm
+type: application
+version: 1.9.12
+
+...
+files:
+  imageengine-kube-1.9.12.tgz: sha256:af6e64c95248eb3b950a81e12c221797e6fcf69b8ce05df42589c515b4fe69ed
+-----BEGIN PGP SIGNATURE-----
+
+wsFcBAEBCgAQBQJqvmyCCRBGMmYGCVfEswAAK+EQAEAl3bHnksLNMo6TWj1Cit0J
+JyAfw/xF1vjRbZSfgV280O3IOpSOFMYZlXTac3gJ51ezzIthpfvHyxBktHYr5yfq
+59I69UA/s/oRW/Rfl0E1WrMKB2ejA6H+jBP+EpnW0cebxfaikMUenpx2TF8vHiYJ
+6D2gjWjlIJ7Ske1t2ZNJyJL1Ut2liH04SJLm7SQ22AOJnoH0c7ya/ZOguDxHwX9q
+bEZNWpcencTEYD1SOofpc5325k6UsuxyGsoI8iPG54B9AKSQ9JxSEVTC3blPVTIK
+2jLnWgoUEVj+okLO2J//Fsuj/+ip4HGP+pGljnGQra4T/uOihSXrzOvFu897FAGN
+jiBqtkBXlfHGnOM/5/rKFgnIzev8yZOOv/JfcBbjewbXN80CnI9sqS5GmKqqJgtK
+4DoZI53wB72IHMIenYrGAzT15V1UIJ5MJvuHETXvux6z/x7/uqI2U657RP6hFB7y
+k3opflSB73r1BlocVYzx8UXxIhVYVh/rKOak6CJX5zXhNas145X9l6p9Hw1teth8
+T3GPqRU0ieAEZ//mk5VpVFPN/0SlQy3ZetBgVwZ5OhLpZqnZcTNdF/KMN9KEjcyO
+h1eDkWT5dpksd8HsYEcDORaTLFy2tGrnzPfdKZ2dvEjpkYURd4fh+ldyisViNj2t
+aPvPb2IgSgxXYXLYktDw
+=kQQ7
+-----END PGP SIGNATURE-----
