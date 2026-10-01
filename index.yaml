@@ -2,6 +2,45 @@ apiVersion: v1
 entries:
   imageengine-kube:
   - annotations:
+      artifacthub.io/changes: |
+        - kind: changed
+          description: "The azure, digitalocean, linode and custom presets no longer set ingressClassName: nginx, since ingress-nginx was retired upstream. Their Ingress has no class, so the cluster's default IngressClass serves it; set ingress.className to pick a controller. The aws (alb) and gke (gce) presets are unchanged."
+        - kind: added
+          description: "Optional Gateway API HTTPRoute (httpRoute.enabled, httpRoute.parentRefs, httpRoute.hostnames) attaches the edge to a Gateway you already run. clientIP.mode auto then trusts the one X-Forwarded-For entry the Gateway appends, and the install notes show the route and warn when the edge Service is also a LoadBalancer."
+        - kind: added
+          description: "New HTTP/3 guidance (CUSTOMIZATIONS.md, How do I serve HTTP/3?): HTTP/3 belongs between clients and your TLS terminator, and a CDN or L7 load balancer is the recommended place for it, because UDP load balancers can't send PROXY headers and fair-share admission would lose the client IP. A per-provider table records what each load balancer supports; Linode NodeBalancers can't carry HTTP/3 today."
+        - kind: fixed
+          description: "Corrected the Linode guide: LKE is x86-64 only; HA control planes and Premium NodeBalancers don't need LKE Enterprise; the CCM has no label annotation and ignores loadBalancerSourceRanges (use firewall-acl); leave the NodeBalancer throttle off; Block Storage volumes go up to 16 TB. It now covers firewalling LKE nodes, so clients can't reach the NodePorts directly and forge a PROXY header, pinning the NodeBalancer IP with preserve and nodebalancer-id, NodeBalancer connection limits, and egress IPs that change with the autoscaler."
+      artifacthub.io/signKey: |
+        fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+        url: https://kube.imageengine.io/pubkey.asc
+    apiVersion: v2
+    created: "2026-10-01T14:21:59.20851847Z"
+    description: ImageEngine - cloud-native image optimization
+    digest: af6e64c95248eb3b950a81e12c221797e6fcf69b8ce05df42589c515b4fe69ed
+    home: https://imageengine.io
+    icon: https://imageengine.io/favicon.ico
+    keywords:
+    - image-optimization
+    - image-cdn
+    - cdn
+    - imageengine
+    - varnish
+    - wurfl
+    kubeVersion: '>=1.30.0-0'
+    maintainers:
+    - email: support@scientiamobile.com
+      name: ScientiaMobile
+      url: https://www.scientiamobile.com
+    name: imageengine-kube
+    sources:
+    - https://kube.imageengine.io
+    - https://github.com/imgeng/imageengine-kube-helm
+    type: application
+    urls:
+    - imageengine-kube-1.9.12.tgz
+    version: 1.9.12
+  - annotations:
       artifacthub.io/changes: |-
         - kind: changed
           description: "Updated the edge image to v4.10.3. The edge sets Date to the current time, so browsers no longer treat a cached object as already stale and revalidate it. Minimum Browser Cache TTL and Minimum Cache TTL only raise a shorter origin TTL and no longer shorten a longer one; the edge no longer sends X-Edge-TTL."
@@ -1213,4 +1252,4 @@ entries:
     urls:
     - imageengine-kube-0.8.0.tgz
     version: 0.8.0
-generated: "2026-09-29T21:41:18.905841188Z"
+generated: "2026-10-01T14:21:59.208901048Z"
