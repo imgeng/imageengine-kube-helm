@@ -46,6 +46,16 @@ Combine with `service.loadBalancerSourceRanges` to lock down inbound CIDRs.
 
 **Client IP:** with a LoadBalancer Service, `provider: linode` has the NodeBalancer send a PROXY v2 header (`linode-loadbalancer-default-proxy-protocol: v2`) and the edge read it, so fair-share admission and the access log see real client addresses. LKE nodes have public IPs, so allow the NodePort range only from the NodeBalancer with a Cloud Firewall; see [How do I preserve the client IP?](../CUSTOMIZATIONS.md#how-do-i-preserve-the-client-ip), including the two-step upgrade for existing installs.
 
+## HTTP/3
+
+Terminating HTTP/3 on an ingress controller or gateway behind a NodeBalancer isn't supported: clients get HTTP/2 and HTTP/1.1 there. NodeBalancers can't yet carry HTTP/3 in a way that keeps fair-share admission working. We tested this on October 1, 2026:
+
+- **UDP needs a Premium NodeBalancer, and is a beta.** Standard NodeBalancers, which the CCM creates by default, have no UDP. UDP on Premium NodeBalancers is a beta API feature that Akamai has to enable for your account. Without it, the API answers `UDP protocol option is not allowed`, even for a Premium NodeBalancer.
+- **No PROXY protocol over UDP.** NodeBalancers send PROXY headers only on TCP, and the CCM rejects a Service that combines `linode-loadbalancer-default-proxy-protocol` with a UDP port (`proxy protocol [v2] is not supported for UDP`). Whether a UDP NodeBalancer keeps the client's source address is still unconfirmed. If it doesn't, every HTTP/3 visitor shares one fair-share bucket.
+- **No TCP and UDP on the same port.** The CCM matches NodeBalancer configs by port number only, so a Service with both `443/TCP` and `443/UDP` (which HTTP/3 needs) fails to sync.
+
+To offer HTTP/3 to your clients on Linode today, terminate it at a CDN in front of the cluster and use `clientIP.mode: forwardedFor` on the cluster side. See [How do I serve HTTP/3?](../CUSTOMIZATIONS.md#how-do-i-serve-http3) for the general requirements.
+
 ## Ingress
 
 The `nginx` preset assumes you've installed `ingress-nginx` via its own Helm chart. The NodeBalancer fronts either the chart's edge Service directly (when `service.type: LoadBalancer`) or the ingress-nginx controller's Service (when `service.type: ClusterIP` and `ingress.enabled: true`).

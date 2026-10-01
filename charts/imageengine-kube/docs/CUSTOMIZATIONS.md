@@ -441,6 +441,41 @@ ingress:
 
 The Ingress is rendered by [templates/ingress.yaml](https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/templates/ingress.yaml) and routes all hosts to the edge Service. Provider-specific TLS guidance is in your provider doc.
 
+## How do I serve HTTP/3?
+
+HTTP/3 is a protocol between your clients and your TLS terminator, and nowhere else. The terminator is whatever you put in front of the edge: a CDN, a cloud L7 load balancer, or an ingress controller or gateway in your cluster. Behind it, from the terminator to the edge and between ImageEngine Kube's own components, the chart sets the protocols, and there is nothing to configure. The edge Service takes plain HTTP on port 80.
+
+HTTP/3 runs over QUIC on UDP port 443. Every hop between the client and the terminator therefore has to carry UDP, and the terminator still has to learn each client's real IP address. That is easy when the terminator sits in front of the cluster, and hard when it sits inside the cluster behind a cloud load balancer.
+
+### Why it is hard behind a cloud load balancer
+
+- **Fair-share admission loses the client IP.** This is the main problem. The edge's fair-share admission keys on the client IP (see [How do I preserve the client IP?](#how-do-i-preserve-the-client-ip)). Over TCP, the cloud load balancer sends a PROXY header with the client's address. Over UDP most load balancers can't, and QUIC terminators don't read PROXY headers anyway. Unless the load balancer passes the client's source address through unchanged and the terminator's Service uses `externalTrafficPolicy: Local`, the terminator sees the load balancer's or a node's address and appends that to `X-Forwarded-For`. Every HTTP/3 visitor then shares one fair-share bucket, so throttling meant for one heavy client hits all of them, and the access log loses their addresses. Browsers switch to HTTP/3 once it is advertised, so this can quickly become most of your traffic.
+- **TCP and UDP on the same port.** Clients find HTTP/3 through an `Alt-Svc` response header that, in practice, points at the same host and port they used for TCP. The terminator's Service needs both `443/TCP` and `443/UDP` on one IP address, which not every cloud controller can provision.
+- **It is advertised before it works.** Terminators send `Alt-Svc: h3=":443"; ma=86400` on TCP responses as soon as HTTP/3 is enabled, whether or not UDP reaches them. Browsers fall back to TCP, but they remember the advertisement for a day and keep retrying it. The same happens if you move a hostname to a load balancer without UDP. Enable HTTP/3 only after UDP works end to end (for example `curl --http3-only` against the load balancer's address).
+- **Connection migration needs a QUIC-aware load balancer.** QUIC connections can survive a change of client address, such as moving from Wi-Fi to mobile data. A load balancer that hashes on address and port sends the moved connection to a different pod, which drops it, and the client reconnects. This does no harm, but it removes one of HTTP/3's benefits.
+
+### Recommended: terminate HTTP/3 at a CDN or L7 load balancer
+
+A CDN or cloud L7 load balancer that supports HTTP/3 talks HTTP/3 to clients and adds the client's address to `X-Forwarded-For` before forwarding over TCP. On the cluster side, use `clientIP.mode: forwardedFor` and count one more hop for the CDN, or list its egress ranges in `clientIP.trustedProxies` (see [How do I preserve the client IP?](#how-do-i-preserve-the-client-ip)).
+
+### Terminating HTTP/3 at an ingress controller or gateway in your cluster
+
+You need all of these:
+
+- An ingress controller or gateway that terminates QUIC. ingress-nginx doesn't offer HTTP/3. Envoy Gateway does (`http3` in a `ClientTrafficPolicy`).
+- A cloud load balancer that carries UDP 443 next to TCP 443 on the same address and keeps the client's source address on UDP. The terminator's Service needs `externalTrafficPolicy: Local`.
+- The terminator seeing the real client address on both TCP and UDP, so the edge can use `clientIP.mode: forwardedFor` for both.
+
+Check the result before you rely on it. With HTTP/3 traffic flowing, `imageengine_edge_clients_tracked` should be far above your node count (see [TROUBLESHOOTING.md](TROUBLESHOOTING.md#every-client-shares-one-fair-share-bucket)).
+
+### Provider support
+
+We test each provider's load balancer against the requirements above. Providers not listed have not been tested yet. A CDN or L7 load balancer in front of the cluster works on every provider.
+
+| Provider | HTTP/3 at an ingress controller or gateway in the cluster | Why |
+|---|---|---|
+| `linode` | Not supported | NodeBalancers carry UDP only on Premium NodeBalancers, as a beta feature Akamai enables per account, and can't send PROXY headers over UDP. One Service can't carry TCP and UDP on the same port. See [providers/LINODE.md](providers/LINODE.md#http3). |
+
 ## How do I use my own image-pull secret name?
 
 If your org's convention has you naming it something other than `ie-kube-image-pull`:
