@@ -26,7 +26,7 @@ The chart's edge is exposed via a single Service whose type you choose with `ser
 - On managed Kubernetes (EKS / GKE / AKS / DOKS / LKE), the cloud's LB controller is built in.
 - On self-managed clusters (bare metal, on-prem, hybrid), install MetalLB or front the cluster with an external load balancer. See [providers/CUSTOM.md](providers/CUSTOM.md).
 
-Without a working LB integration the Service sits in `<pending>` forever and there's no way to reach the edge from outside the cluster. If you don't want a cloud LB at all, set `service.type: ClusterIP` and pair it with an Ingress (`ingress.enabled: true`) so an ingress controller you've installed handles external traffic. See [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md) for the full set of options.
+Without a working LB integration the Service sits in `<pending>` forever and there's no way to reach the edge from outside the cluster. If you don't want a cloud LB at all, set `service.type: ClusterIP` and pair it with an Ingress (`ingress.enabled: true`) or a Gateway API `HTTPRoute` (`httpRoute.enabled: true`), so an ingress controller or Gateway you've installed handles external traffic. See [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md) for the full set of options.
 
 ## Network egress
 

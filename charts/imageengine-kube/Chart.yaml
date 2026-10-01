@@ -2,7 +2,7 @@ apiVersion: v2
 name: imageengine-kube
 description: ImageEngine - cloud-native image optimization
 type: application
-version: 1.9.11
+version: 1.9.12
 kubeVersion: ">=1.30.0-0"
 home: https://imageengine.io
 sources:
@@ -26,6 +26,10 @@ annotations:
     url: https://kube.imageengine.io/pubkey.asc
   artifacthub.io/changes: |
     - kind: changed
-      description: "Updated the edge image to v4.10.3. The edge sets Date to the current time, so browsers no longer treat a cached object as already stale and revalidate it. Minimum Browser Cache TTL and Minimum Cache TTL only raise a shorter origin TTL and no longer shorten a longer one; the edge no longer sends X-Edge-TTL."
-    - kind: changed
-      description: "With EDGE_ACCESS_LOG_SCHEMA=legacy the edge logs only final status 200, matching ie-varnish-logger. The chart default ecs schema still logs every proxied response."
+      description: "The azure, digitalocean, linode and custom presets no longer set ingressClassName: nginx, since ingress-nginx was retired upstream. Their Ingress has no class, so the cluster's default IngressClass serves it; set ingress.className to pick a controller. The aws (alb) and gke (gce) presets are unchanged."
+    - kind: added
+      description: "Optional Gateway API HTTPRoute (httpRoute.enabled, httpRoute.parentRefs, httpRoute.hostnames) attaches the edge to a Gateway you already run. clientIP.mode auto then trusts the one X-Forwarded-For entry the Gateway appends, and the install notes show the route and warn when the edge Service is also a LoadBalancer."
+    - kind: added
+      description: "New HTTP/3 guidance (CUSTOMIZATIONS.md, How do I serve HTTP/3?): HTTP/3 belongs between clients and your TLS terminator, and a CDN or L7 load balancer is the recommended place for it, because UDP load balancers can't send PROXY headers and fair-share admission would lose the client IP. A per-provider table records what each load balancer supports; Linode NodeBalancers can't carry HTTP/3 today."
+    - kind: fixed
+      description: "Corrected the Linode guide: LKE is x86-64 only; HA control planes and Premium NodeBalancers don't need LKE Enterprise; the CCM has no label annotation and ignores loadBalancerSourceRanges (use firewall-acl); leave the NodeBalancer throttle off; Block Storage volumes go up to 16 TB. It now covers firewalling LKE nodes, so clients can't reach the NodePorts directly and forge a PROXY header, pinning the NodeBalancer IP with preserve and nodebalancer-id, NodeBalancer connection limits, and egress IPs that change with the autoscaler."

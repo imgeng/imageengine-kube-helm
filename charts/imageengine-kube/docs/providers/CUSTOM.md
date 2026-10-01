@@ -5,7 +5,7 @@ For Kubernetes clusters you run yourself: bare metal, on-premise, hybrid, self-m
 `provider: custom` is the chart's default. With it, the chart applies no cloud-specific presets and falls back to:
 
 - `storageClass: standard`
-- `ingressClass: nginx`
+- No ingress class: the cluster's default IngressClass serves the Ingress
 - No extra Service or ingress annotations
 
 You're responsible for telling the chart what storage class to actually use, what ingress class is actually installed, and so on. This doc walks you through the typical baseline.
@@ -18,7 +18,7 @@ A self-managed cluster usually doesn't ship with the cloud niceties that the man
 
 1. **A LoadBalancer implementation** (only if you use the chart's default `service.type: LoadBalancer`). On bare metal there's no cloud controller to satisfy a `Service type: LoadBalancer`, so the service sits in `<pending>` forever. The standard answer is **MetalLB**. Alternatively, set `service.type: ClusterIP` and front the chart with your own ingress (see Path B below) — no LB controller required.
 2. **A storage CSI driver.** The chart needs a `StorageClass` with dynamic provisioning and `ReadWriteOnce` for the OSC PVC. For single-node testing, use **local-path-provisioner**. For a real multi-node deployment, use a real CSI like **Longhorn**, **Rook-Ceph**, **OpenEBS Mayastor**, or your storage vendor's CSI.
-3. **(Optional) An ingress controller.** Only needed if you want hostname-based routing or TLS at the ingress layer instead of just exposing the LB IP. **ingress-nginx** is the standard answer.
+3. **(Optional) An ingress controller or Gateway.** Only needed if you want hostname-based routing or TLS at the ingress layer instead of just exposing the LB IP. **Traefik** is a common choice (k3s ships it already). A Gateway API implementation, such as Envoy Gateway or Cilium, works too, through the chart's `httpRoute` (see [How do I route through a Gateway?](../CUSTOMIZATIONS.md#how-do-i-route-through-a-gateway-gateway-api)). Don't start a new cluster on ingress-nginx: it was retired upstream in March 2026.
 
 The rest of this doc covers two common deployment shapes built on these.
 
@@ -98,23 +98,26 @@ objectStorageCache:
 
 `helm install`. Once MetalLB hands an IP to the edge Service, point your DNS at it.
 
-## Path B — MetalLB + ingress-nginx (recommended for production)
+## Path B — MetalLB + an Ingress controller (recommended for production)
 
-Better for any deployment that has a real hostname, multiple sites on one LB IP, or wants TLS termination at the ingress layer. MetalLB hands an IP to the **ingress-nginx controller's** Service; ingress-nginx routes per-hostname to ImageEngine's edge Service.
+Better for any deployment that has a real hostname, multiple sites on one LB IP, or wants TLS termination at the ingress layer. MetalLB hands an IP to the **Ingress controller's** Service, and the controller routes per hostname to ImageEngine's edge Service. The steps below use Traefik.
 
 ### Install MetalLB
 
 Same as Path A above.
 
-### Install ingress-nginx
+### Install Traefik
+
+Skip this on k3s, which already runs Traefik.
 
 ```bash
-helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-helm install ingress-nginx ingress-nginx/ingress-nginx \
-  --namespace ingress-nginx --create-namespace
+helm repo add traefik https://traefik.github.io/charts
+helm install traefik traefik/traefik \
+  --namespace traefik --create-namespace \
+  --set service.spec.externalTrafficPolicy=Local
 ```
 
-The ingress-nginx controller exposes itself as a `Service type: LoadBalancer`. MetalLB will assign it an IP from your pool. Point DNS for your hostnames at that IP.
+Traefik exposes itself as a `Service type: LoadBalancer`, and MetalLB assigns it an IP from your pool. Point DNS for your hostnames at that IP. Traefik's chart also makes its `traefik` IngressClass the cluster default, which is what the chart's Ingress uses when `ingress.className` is empty.
 
 ### Install storage
 
@@ -125,13 +128,13 @@ Same as Path A.
 ```yaml
 provider: custom
 
-# Set the chart's edge Service to ClusterIP — ingress-nginx is your external entry
+# Set the chart's edge Service to ClusterIP — the Ingress controller is your external entry
 service:
   type: ClusterIP
 
 ingress:
   enabled: true
-  className: nginx
+  className: traefik             # or leave empty for the cluster's default IngressClass
   hosts:
     - images.example.com
   # Optional: TLS via cert-manager (HTTP-01 works once your hostname resolves to the ingress LB IP)
@@ -148,9 +151,9 @@ objectStorageCache:
     size: 500Gi
 ```
 
-By setting `service.type: ClusterIP`, the chart's edge Service won't try to grab a MetalLB IP — only the ingress-nginx controller does. Cleaner setup.
+By setting `service.type: ClusterIP`, the chart's edge Service won't try to grab a MetalLB IP — only the Ingress controller does. Cleaner setup.
 
-**Client IP:** the edge trusts the `X-Forwarded-For` entry ingress-nginx appends, so ingress-nginx must see the client's address itself. Install it with `--set controller.service.externalTrafficPolicy=Local` (MetalLB then announces only from nodes running a controller pod). On Path A the edge uses the connection's source address, which is the client only with `service.externalTrafficPolicy: Local`. A load balancer of your own that speaks PROXY protocol (HAProxy, an F5, Envoy) can send it to the edge instead: set `clientIP.mode: proxyProtocol`. See [How do I preserve the client IP?](../CUSTOMIZATIONS.md#how-do-i-preserve-the-client-ip).
+**Client IP:** the edge trusts the `X-Forwarded-For` entry the Ingress controller appends, so the controller must see the client's address itself. That is why Traefik is installed with `externalTrafficPolicy=Local` (MetalLB then announces only from nodes running a Traefik pod). On Path A the edge uses the connection's source address, which is the client only with `service.externalTrafficPolicy: Local`. A load balancer of your own that speaks PROXY protocol (HAProxy, an F5, Envoy) can send it to the edge instead: set `clientIP.mode: proxyProtocol`. See [How do I preserve the client IP?](../CUSTOMIZATIONS.md#how-do-i-preserve-the-client-ip).
 
 ## Storage gotchas
 
@@ -161,7 +164,7 @@ By setting `service.type: ClusterIP`, the chart's edge Service won't try to grab
 
 cert-manager works the same on a self-managed cluster as anywhere else:
 
-- **HTTP-01:** simplest if your hostname resolves to the ingress-nginx LB IP and ports 80/443 are reachable from Let's Encrypt's validation servers.
+- **HTTP-01:** simplest if your hostname resolves to the Ingress controller's LB IP and ports 80/443 are reachable from Let's Encrypt's validation servers.
 - **DNS-01:** required if you're behind a private network or if Let's Encrypt can't reach you. Use the cert-manager webhook for whatever DNS provider you actually use.
 
 ## Network egress checklist
@@ -185,7 +188,7 @@ service:
 
 ingress:
   enabled: true
-  className: nginx
+  className: traefik             # or leave empty for the cluster's default IngressClass
   hosts:
     - images.example.com
 

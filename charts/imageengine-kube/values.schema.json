@@ -118,6 +118,52 @@
         }
       }
     },
+    "httpRoute": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "parentRefs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "namespace": { "type": "string" },
+              "sectionName": { "type": "string" },
+              "port": { "type": "integer" },
+              "group": { "type": "string" },
+              "kind": { "type": "string" }
+            }
+          }
+        },
+        "hostnames": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      },
+      "if": {
+        "properties": { "enabled": { "const": true } },
+        "required": ["enabled"]
+      },
+      "then": {
+        "properties": {
+          "parentRefs": {
+            "type": "array",
+            "minItems": 1,
+            "description": "httpRoute.parentRefs must name at least one Gateway when httpRoute.enabled is true"
+          }
+        }
+      }
+    },
     "secrets": {
       "type": "object",
       "properties": {

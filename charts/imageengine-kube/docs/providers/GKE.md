@@ -63,12 +63,12 @@ Combine with `service.loadBalancerSourceRanges` to lock down inbound CIDRs.
 Three reasonable choices:
 
 1. **GCE Ingress (default preset)** — uses Google's HTTP(S) Load Balancer. Pairs well with Google-managed certificates.
-2. **Gateway API** — mature on GKE 1.35.2+ (the GKE Gateway controller passes core conformance tests as of v1.5). An alternative to GCE Ingress, especially if you've standardized on Gateway API across the cluster. Leave `ingress.enabled: false` and create your own `Gateway` + `HTTPRoute` resources pointing at the chart's `*-edge` Service.
-3. **Self-managed `ingress-nginx`** — install `ingress-nginx` and override:
+2. **Gateway API** — mature on GKE 1.35.2+ (the GKE Gateway controller passes core conformance tests as of v1.5). An alternative to GCE Ingress, especially if you've standardized on Gateway API across the cluster. Leave `ingress.enabled: false`, set `service.type: ClusterIP`, and attach the chart's `HTTPRoute` to your Gateway with `httpRoute.enabled` and `httpRoute.parentRefs`. The GKE Gateway's load balancer appends two `X-Forwarded-For` entries, like GCE Ingress, so also set `clientIP.forwardedHops: 2`. See [How do I route through a Gateway?](../CUSTOMIZATIONS.md#how-do-i-route-through-a-gateway-gateway-api).
+3. **An Ingress controller you install**, such as [Traefik](https://doc.traefik.io/traefik/), with its class set explicitly:
    ```yaml
    ingress:
      enabled: true
-     className: nginx
+     className: traefik
      hosts:
        - images.example.com
    ```
@@ -77,7 +77,7 @@ Three reasonable choices:
 
 - **GCE Ingress:** use [Google-managed certificates](https://cloud.google.com/kubernetes-engine/docs/how-to/managed-certs) — create a `ManagedCertificate` resource and reference it via the `networking.gke.io/managed-certificates` annotation on the Ingress.
 - **Gateway API:** pair Gateway with `Certificate` resources; cert-manager works with Gateway API too.
-- **nginx-ingress:** cert-manager with the DNS-01 solver pointed at Cloud DNS, or HTTP-01 if your hostname already resolves to the LB.
+- **Your own Ingress controller:** cert-manager with the DNS-01 solver pointed at Cloud DNS, or HTTP-01 if your hostname already resolves to the LB.
 
 ## Workload Identity
 
@@ -91,13 +91,10 @@ GKE 1.33.0-gke.2248000+ also offers **managed workload identities** (Google-mana
 
 ## Sample minimal values
 
+With no `service` or `ingress` settings, the edge gets a public passthrough load balancer with `externalTrafficPolicy: Local`.
+
 ```yaml
 provider: gke
-
-ingress:
-  enabled: true
-  hosts:
-    - images.example.com
 
 objectStorageCache:
   persistence:

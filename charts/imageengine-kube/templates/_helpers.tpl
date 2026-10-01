@@ -97,17 +97,15 @@ standard
 
 {{/*
 Get the ingress class based on provider or explicit setting.
-Priority: explicit value > provider preset > "nginx"
+Priority: explicit value > provider preset > "" (no ingressClassName, so the
+cluster's default IngressClass picks the Ingress up).
 Usage: {{ include "imageengine.ingressClass" . }}
 */}}
 {{- define "imageengine.ingressClass" -}}
 {{- if .Values.ingress.className -}}
 {{- .Values.ingress.className -}}
 {{- else if and .Values.provider (hasKey .Values.providerPresets .Values.provider) -}}
-{{- $preset := index .Values.providerPresets .Values.provider -}}
-{{- $preset.ingressClass | default "nginx" -}}
-{{- else -}}
-nginx
+{{- (index .Values.providerPresets .Values.provider).ingressClass | default "" -}}
 {{- end -}}
 {{- end -}}
 
@@ -125,7 +123,7 @@ Usage: {{ include "imageengine.ingressAnnotations" . | nindent 4 }}
 {{- if and .Values.provider (hasKey .Values.providerPresets .Values.provider) -}}
 {{- $preset := index .Values.providerPresets .Values.provider -}}
 {{- $effectiveClass := include "imageengine.ingressClass" . -}}
-{{- if and $preset.ingressAnnotations (eq $effectiveClass ($preset.ingressClass | default "nginx")) -}}
+{{- if and $preset.ingressAnnotations $preset.ingressClass (eq $effectiveClass $preset.ingressClass) -}}
 {{- $annotations = merge $annotations $preset.ingressAnnotations -}}
 {{- end -}}
 {{- end -}}
@@ -201,7 +199,7 @@ Usage: {{ include "imageengine.clientIPMode" . }}
 {{- $mode -}}
 {{- else if not (include "imageengine.edgeSupportsClientIP" .) -}}
 legacy
-{{- else if .Values.ingress.enabled -}}
+{{- else if or .Values.ingress.enabled (.Values.httpRoute | default dict).enabled -}}
 forwardedFor
 {{- else if and (eq .Values.service.type "LoadBalancer") (include "imageengine.hasProxyProtocolPreset" .) -}}
 proxyProtocol

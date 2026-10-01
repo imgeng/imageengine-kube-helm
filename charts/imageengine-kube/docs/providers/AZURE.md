@@ -18,7 +18,7 @@ See [SIZING.md](../SIZING.md) for traffic-tier specific guidance.
 ## What `provider: azure` configures for you
 
 - **Storage class:** `managed-csi-premium` (Premium SSD via the Azure Disk CSI driver). On multi-AZ clusters with k8s 1.29+, AKS automatically backs this with **Premium ZRS** (Zone-Redundant Storage); single-AZ clusters get LRS.
-- **Ingress class:** `nginx`.
+- **Ingress class:** none. AKS's controllers each use their own class, so set `ingress.className` for the one you run; without it, the cluster's default IngressClass serves the Ingress.
 - **External DNS provider:** `azure` (used by metric tagging only — the chart doesn't deploy ExternalDNS itself).
 
 You can override any of these explicitly — see [CUSTOMIZATIONS.md](../CUSTOMIZATIONS.md).
@@ -47,14 +47,14 @@ service:
 
 Combine with `service.loadBalancerSourceRanges` to lock down inbound CIDRs.
 
-**Client IP:** Azure's Standard Load Balancer can't send PROXY headers, so with a LoadBalancer Service `provider: azure` sets `externalTrafficPolicy: Local` and the edge uses the connection's source address. Behind ingress-nginx or Application Gateway the edge trusts the `X-Forwarded-For` entry they append instead. See [How do I preserve the client IP?](../CUSTOMIZATIONS.md#how-do-i-preserve-the-client-ip).
+**Client IP:** Azure's Standard Load Balancer can't send PROXY headers, so with a LoadBalancer Service `provider: azure` sets `externalTrafficPolicy: Local` and the edge uses the connection's source address. Behind an Ingress controller, a Gateway or Application Gateway, the edge trusts the `X-Forwarded-For` entry they append instead. See [How do I preserve the client IP?](../CUSTOMIZATIONS.md#how-do-i-preserve-the-client-ip).
 
 ## Ingress options
 
-Three reasonable choices:
+The chart's default LoadBalancer Service needs no Ingress controller. If you want hostname routing in the cluster, three reasonable choices:
 
-1. **AKS Application Routing add-on (managed nginx)** — the easiest path. Microsoft installs and maintains an `ingress-nginx` controller for you. Enable the add-on, then leave `ingress.className: nginx`.
-2. **Self-managed `ingress-nginx`** — install via the upstream Helm chart if you want full control over versions/tuning.
+1. **AKS application routing add-on** — Microsoft installs and manages the controller. Its class is `webapprouting.kubernetes.azure.com`, so set `ingress.className` to that. The add-on is built on ingress-nginx, which was retired upstream in March 2026, so check Microsoft's support plans for it before you standardize on it.
+2. **A Gateway API implementation** (for example Envoy Gateway or Istio) — leave `ingress.enabled: false` and attach the chart's `HTTPRoute` to your Gateway; see [How do I route through a Gateway?](../CUSTOMIZATIONS.md#how-do-i-route-through-a-gateway-gateway-api).
 3. **Application Gateway Ingress Controller (AGIC)** — Azure-native, integrates with Application Gateway / WAF. Override:
    ```yaml
    service:
@@ -70,7 +70,7 @@ Three reasonable choices:
 ## TLS
 
 - **AGIC:** terminate TLS on Application Gateway with a certificate from Key Vault — see Microsoft's AGIC docs for the annotation syntax.
-- **nginx-ingress:** cert-manager with the DNS-01 solver pointed at Azure DNS (use Workload Identity for credentials), or HTTP-01 once your hostname resolves to the LB.
+- **Application routing, or your own controller or Gateway:** cert-manager with the DNS-01 solver pointed at Azure DNS (use Workload Identity for credentials), or HTTP-01 once your hostname resolves to the LB.
 
 ## Workload Identity (replacing AAD Pod Identity)
 
@@ -84,13 +84,10 @@ Enable Workload Identity on your AKS cluster (`--enable-workload-identity --enab
 
 ## Sample minimal values
 
+With no `service` or `ingress` settings, the edge gets a public Azure Load Balancer.
+
 ```yaml
 provider: azure
-
-ingress:
-  enabled: true
-  hosts:
-    - images.example.com
 
 objectStorageCache:
   persistence:

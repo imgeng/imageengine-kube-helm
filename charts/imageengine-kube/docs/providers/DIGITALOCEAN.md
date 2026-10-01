@@ -16,7 +16,7 @@ See [SIZING.md](../SIZING.md) for traffic-tier sizing — OSC wants a fast, larg
 ## What `provider: digitalocean` configures for you
 
 - **Storage class:** `do-block-storage` (DigitalOcean Block Storage CSI). The CSI driver is bundled with every DOKS cluster.
-- **Ingress class:** `nginx`.
+- **Ingress class:** none. DOKS ships no Ingress controller, so the cluster's default IngressClass serves the Ingress unless you set `ingress.className`.
 - **External DNS provider:** `digitalocean` (used by metric tagging only — the chart doesn't deploy ExternalDNS itself).
 
 You can override any of these explicitly — see [CUSTOMIZATIONS.md](../CUSTOMIZATIONS.md).
@@ -48,10 +48,10 @@ Combine with `service.loadBalancerSourceRanges` to lock down inbound CIDRs.
 
 ## Ingress options
 
-Two reasonable choices:
+The chart's default LoadBalancer Service needs neither. If you want hostname routing in the cluster, two reasonable choices:
 
-1. **Self-managed `ingress-nginx` (default preset)** — install via the upstream Helm chart. The DO LB ends up in front of the ingress-nginx controller's Service.
-2. **Gateway API** — enabled by default on DOKS clusters with VPC-native networking running k8s 1.33+. When you create a Gateway, DOKS auto-provisions a DO Network Load Balancer. This is an alternative to the chart's `Ingress` resource. To use it, leave `ingress.enabled: false` and create your own `Gateway` + `HTTPRoute` resources pointing at the chart's `*-edge` Service. Useful when you've standardized on Gateway API across the cluster.
+1. **Gateway API** — enabled by default on DOKS clusters with VPC-native networking running k8s 1.33+. When you create a Gateway, DOKS auto-provisions a DO Network Load Balancer. Leave `ingress.enabled: false`, set `service.type: ClusterIP`, and attach the chart's `HTTPRoute` to your Gateway with `httpRoute.enabled` and `httpRoute.parentRefs`; see [How do I route through a Gateway?](../CUSTOMIZATIONS.md#how-do-i-route-through-a-gateway-gateway-api).
+2. **An Ingress controller you install**, such as [Traefik](https://doc.traefik.io/traefik/). The DO LB ends up in front of the controller's Service. Make it the default IngressClass (Traefik's Helm chart does by default) or set `ingress.className`, and set `service.type: ClusterIP`.
 
 ## TLS
 
@@ -65,13 +65,10 @@ Alternatively, terminate TLS at the DO Load Balancer using a DO-managed certific
 
 ## Sample minimal values
 
+With no `service` or `ingress` settings, the edge gets a public DO Load Balancer with PROXY protocol.
+
 ```yaml
 provider: digitalocean
-
-ingress:
-  enabled: true
-  hosts:
-    - images.example.com
 
 objectStorageCache:
   persistence:

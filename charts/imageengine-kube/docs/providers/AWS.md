@@ -159,7 +159,7 @@ ingress:
 
 ### No ALB/NLB support (self-managed ingress)
 
-If your cluster has neither EKS Auto Mode nor the AWS Load Balancer Controller, install [`ingress-nginx`](https://kubernetes.github.io/ingress-nginx/) yourself and override the class explicitly:
+If your cluster has neither EKS Auto Mode nor the AWS Load Balancer Controller, install another Ingress controller, such as [Traefik](https://doc.traefik.io/traefik/), and set its class explicitly:
 
 ```yaml
 service:
@@ -167,17 +167,19 @@ service:
 
 ingress:
   enabled: true
-  className: nginx          # override the aws preset's "alb" default
+  className: traefik        # override the aws preset's "alb" default
   hosts:
     - images.example.com
 ```
+
+If you run a Gateway API implementation instead (for example Envoy Gateway), leave `ingress.enabled: false` and attach the chart's `HTTPRoute` to your Gateway; see [How do I route through a Gateway?](../CUSTOMIZATIONS.md#how-do-i-route-through-a-gateway-gateway-api).
 
 ## TLS
 
 Two common paths:
 
 - **ALB + ACM:** request a certificate in ACM, then add `alb.ingress.kubernetes.io/certificate-arn: <arn>` to the ingress annotations.
-- **nginx + cert-manager + Route53:** install cert-manager, configure a `ClusterIssuer` with the DNS-01 solver pointed at Route53.
+- **Your own Ingress controller or Gateway + cert-manager + Route53:** install cert-manager, configure a `ClusterIssuer` with the DNS-01 solver pointed at Route53.
 
 ## IAM for cluster-side workloads (ExternalDNS, cert-manager, fetcher S3)
 
