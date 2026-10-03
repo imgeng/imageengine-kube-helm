@@ -2,6 +2,59 @@ apiVersion: v1
 entries:
   imageengine-kube:
   - annotations:
+      artifacthub.io/changes: |-
+        - kind: changed
+          description: "Updated the Varnish image to 9.1.0-1, which adds ie-varnish-exporter: Prometheus metrics for each Varnish shard (imageengine_varnish_*), covering hits and misses, evictions per storage tier, threads and dropped sessions, backend health, and the pod's memory and CPU."
+        - kind: added
+          description: "Varnish pods declare the metrics container port (9464), like every other component, so metrics.podMonitor.enabled scrapes them. The port stays off the customer-facing Services."
+        - kind: added
+          description: "Varnish pods get POD_MEMORY_LIMIT and POD_CPU_REQUEST from the Downward API when varnish.resources sets them, so the exporter reports the container's real size instead of reading it from the cgroup."
+        - kind: fixed
+          description: "Updated the edge image to 4.10.4. Slow cache misses no longer fail with a 503 after 3 seconds: the edge now waits up to EDGE_VARNISH_RESPONSE_TIMEOUT (75s by default) for Varnish, answers a timeout with a 504, and no longer retries a slow request on a second Varnish shard, which started a second fetch from your origin. A load balancer or ingress in front of the edge needs a timeout of at least 75s; see TROUBLESHOOTING.md."
+        - kind: changed
+          description: "The 4.10.4 edge image updates libwurfl, the WURFL device-detection library, to 1.14.1.0."
+        - kind: added
+          description: "edge.env sets EDGE_VARNISH_RESPONSE_TIMEOUT (75) and documents the optional EDGE_REQUEST_TIMEOUT whole-request cap (0, off)."
+        - kind: added
+          description: "The aws preset's ALB Ingress sets idle_timeout.timeout_seconds=75 (the ALB default is 60s), and the HTTPRoute sets timeouts.request: 75s (httpRoute.timeouts.request; Envoy Gateway defaults to 15s), so neither cuts off a cache miss before the edge's 75s wait."
+        - kind: fixed
+          description: "ingress.annotations now override the provider preset's Ingress annotations, as documented. The preset's values used to win, so, for example, the aws preset's scheme could not be set back to internal."
+        - kind: added
+          description: "Varnish's tier size thresholds are configurable: VARNISH_TIER1_MAX_OBJECT_SIZE (default 16K, the largest object kept in memory) and VARNISH_TIER2_MAX_OBJECT_SIZE (default 1536K; larger objects go to tier 3). CUSTOMIZATIONS.md explains the tiers, the per-object memory cost of every cached object, and how to keep small images on disk for caches of many rarely requested images."
+        - kind: fixed
+          description: "A Varnish shard that is shutting down no longer holds requests. On SIGTERM varnishd keeps accepting connections it no longer answers while it waits for open sessions, about 20 seconds on Varnish 9.1, and the edge keeps routing to the shard until its pod is gone. With Varnish image 9.1.0-1 the preStop hook stops Varnish at once, so the edge sees refused connections and moves those requests to the next shard. Older images keep the drainSeconds sleep."
+        - kind: changed
+          description: "The Varnish headless Service publishes only Ready shards (varnish.publishNotReadyAddresses, default false; it was always true). A starting Varnish accepts connections before it can answer them, so the edge waited up to the 75s timeout on a shard that was still starting. Shards now join the edge's ring when their readiness probe passes; until then their images go to the next shard, as with failover."
+      artifacthub.io/signKey: |
+        fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+        url: https://kube.imageengine.io/pubkey.asc
+    apiVersion: v2
+    created: "2026-10-03T22:16:41.768917017Z"
+    description: ImageEngine - cloud-native image optimization
+    digest: f1200d674183816dc78d331ca3ccdf816435bdebb6515fa48f2882b1fd71a720
+    home: https://imageengine.io
+    icon: https://imageengine.io/favicon.ico
+    keywords:
+    - image-optimization
+    - image-cdn
+    - cdn
+    - imageengine
+    - varnish
+    - wurfl
+    kubeVersion: '>=1.30.0-0'
+    maintainers:
+    - email: support@scientiamobile.com
+      name: ScientiaMobile
+      url: https://www.scientiamobile.com
+    name: imageengine-kube
+    sources:
+    - https://kube.imageengine.io
+    - https://github.com/imgeng/imageengine-kube-helm
+    type: application
+    urls:
+    - imageengine-kube-1.9.13.tgz
+    version: 1.9.13
+  - annotations:
       artifacthub.io/changes: |
         - kind: changed
           description: "The azure, digitalocean, linode and custom presets no longer set ingressClassName: nginx, since ingress-nginx was retired upstream. Their Ingress has no class, so the cluster's default IngressClass serves it; set ingress.className to pick a controller. The aws (alb) and gke (gce) presets are unchanged."
@@ -1252,4 +1305,4 @@ entries:
     urls:
     - imageengine-kube-0.8.0.tgz
     version: 0.8.0
-generated: "2026-10-01T14:21:59.208901048Z"
+generated: "2026-10-03T22:16:41.769306356Z"
