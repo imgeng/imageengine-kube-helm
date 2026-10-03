@@ -59,8 +59,11 @@ spec:
 # (<release>-varnish-<n>.<release>-varnish-headless), which the edge discovers
 # via _varnish._tcp.<this-name> and shards across. The ClusterIP above is kept
 # only for debug/health — sharded clients must NOT use it (it round-robins).
-# publishNotReadyAddresses: true so a shard resolves during startup, keeping the
-# ring at full size while a pod warms (the edge fails over to a peer meanwhile).
+# Only Ready shards are published (varnish.publishNotReadyAddresses, default
+# false): Varnish accepts connections before it can answer them while starting,
+# and after SIGTERM, so the edge must not route to a shard until its readiness
+# probe passes. Rendezvous hashing moves only an absent shard's images, to the
+# same next-preference shard the edge's failover would pick.
 apiVersion: v1
 kind: Service
 metadata:
@@ -71,7 +74,7 @@ metadata:
 spec:
   type: ClusterIP
   clusterIP: None
-  publishNotReadyAddresses: true
+  publishNotReadyAddresses: {{ .Values.varnish.publishNotReadyAddresses | default false }}
   ports:
     - name: varnish
       port: 8080

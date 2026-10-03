@@ -516,9 +516,16 @@ varnish:
   # Optional scheduling priority. Requires the class to exist (set
   # priorityClass.create=true, or reference an externally-managed class).
   priorityClassName: ""
-  # Graceful shutdown tuning (see varnish-statefulset.yaml preStop hook).
+  # Shutdown (see the preStop hook in varnish-statefulset.yaml). Varnish images
+  # 9.1.0-1 and later stop varnishd at once, so the edge reroutes the shard's
+  # requests immediately; drainSeconds is the preStop sleep used only with
+  # older images.
   terminationGracePeriodSeconds: 30
   drainSeconds: 5
+  # Whether the headless Service publishes shards that are not Ready, which the
+  # edge discovers by SRV. Keep false: a starting or stopping Varnish accepts
+  # connections it does not answer, and the edge would wait on them.
+  publishNotReadyAddresses: false
   # PodDisruptionBudget. With multiple shards, maxUnavailable: 1 lets drains/rolls
   # cycle one shard at a time while protecting the rest (mirrors the OSC tier).
   pdb:
@@ -550,14 +557,24 @@ varnish:
     # Filesystem storage
     # VARNISH_STORAGE: "file,/u/cache/varnish.bin,MAX_DISK"
     #
-    # Tiered storage
+    # Tiered storage: each response is stored in one tier by its Content-Length.
     VARNISH_STORAGE: "tiered"
-    # Tier 1 is memory storage with 70% of available RAM
+    # Tier 1 is memory (malloc) with 70% of the RAM left after a fixed 2 GiB
+    # reserve; it holds objects up to VARNISH_TIER1_MAX_OBJECT_SIZE.
     VARNISH_STORAGE_1: "malloc,70%"
-    # Tier 2 is file storage
+    # Tier 2 is a file on the pod's local disk for mid-size objects, up to
+    # VARNISH_TIER2_MAX_OBJECT_SIZE.
     VARNISH_STORAGE_2: "file,/u/cache/varnish-tier2.bin,50%,8K"
-    # Tier 3 is file storage
+    # Tier 3 is a file for larger objects, kept apart so they do not fragment
+    # tier 2.
     VARNISH_STORAGE_3: "file,/u/cache/varnish-tier3.bin,8%,128K"
+    # Object size limits per tier: bytes, or a number with K, M or G (powers
+    # of 1024). Defaults 16K and 1536K. Every object, in any tier, also costs
+    # Varnish about 1.2-2 KB of heap in the pod's memory, so a cache of many
+    # small, rarely requested images can lower the tier 1 limit to keep their
+    # bodies on disk (see docs/CUSTOMIZATIONS.md).
+    # VARNISH_TIER1_MAX_OBJECT_SIZE: "16K"
+    # VARNISH_TIER2_MAX_OBJECT_SIZE: "1536K"
     #
     # Additional parameters to pass to varnishd
     # TODO: Compute these values based on the current instance's resources

@@ -35,9 +35,8 @@ spec:
     spec:
       securityContext:
         fsGroup: 1000
-      # Graceful shutdown: the preStop sleep gives kube-proxy/endpoints time to
-      # stop routing new requests and lets in-flight requests drain before
-      # varnishd receives SIGTERM, so a planned move doesn't error live traffic.
+      # Shutdown: the preStop hook (below) stops Varnish at once, so the edge
+      # reroutes the shard's traffic instead of waiting on a draining varnishd.
       terminationGracePeriodSeconds: {{ .Values.varnish.terminationGracePeriodSeconds | default 30 }}
       {{- with .Values.varnish.priorityClassName }}
       priorityClassName: {{ . }}
@@ -113,12 +112,22 @@ spec:
               - FOWNER
           resources:
             {{- toYaml .Values.varnish.resources | nindent 12 }}
-          {{- if gt (int .Values.varnish.drainSeconds) 0 }}
+          # preStop stops Varnish at once (varnish-stop-now, Varnish image
+          # 9.1.0-1 and later): on SIGTERM varnishd keeps accepting connections
+          # it no longer answers while its child waits for open sessions, and
+          # the edge keeps routing to a terminating shard until its pod is gone.
+          # With Varnish gone the edge sees refused connections and reroutes to
+          # the next shard at once. Older images without the script sleep
+          # drainSeconds instead.
           lifecycle:
             preStop:
               exec:
-                command: ["/bin/sh", "-c", "sleep {{ int .Values.varnish.drainSeconds }}"]
-          {{- end }}
+                command:
+                  - /bin/sh
+                  - -c
+                  - >-
+                    if command -v varnish-stop-now >/dev/null 2>&1; then varnish-stop-now;
+                    else sleep {{ int .Values.varnish.drainSeconds }}; fi
           ports:
             # The port NAME ("varnish") is what the headless Service publishes as
             # an SRV record (_varnish._tcp.<headless>), which the edge queries.
