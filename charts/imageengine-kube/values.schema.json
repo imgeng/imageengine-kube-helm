@@ -148,6 +148,12 @@
         "hostnames": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 }
+        },
+        "timeouts": {
+          "type": "object",
+          "properties": {
+            "request": { "type": "string" }
+          }
         }
       },
       "if": {

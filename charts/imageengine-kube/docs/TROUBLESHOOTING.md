@@ -223,6 +223,20 @@ kubectl get deploy -n imageengine imageengine-kube-edge -o yaml | grep -A1 -E 'E
 
 This is a cache miss path — fetcher pulls the original from your origin, processor transforms it, OSC writes it to disk, then the response comes back through varnish and edge. If your origin is slow or unreachable, the whole chain stalls.
 
+Who answered tells you where the wait ran out:
+
+- **`504` with body `upstream timeout`:** the edge waited `EDGE_VARNISH_RESPONSE_TIMEOUT` (75s by default) for Varnish. The image is usually still being fetched and processed, and is cached when it finishes, so retrying the same URL is often fast.
+- **`502` with `x-origin-status` / `x-origin-reason`:** the origin failed or timed out within that wait; the headers say why.
+- **A `504` sooner than 75s, or one from your load balancer or ingress:** something in front of the edge has a shorter timeout and cut the request off. Common defaults are shorter than the edge's 75s: AWS ALB idle timeout 60s, GCE Ingress backend timeout 30s, ingress-nginx `proxy-read-timeout` 60s, Envoy Gateway route timeout 15s. The chart already sets 75s where it creates the resource: the `aws` preset's ALB Ingress (`idle_timeout.timeout_seconds=75`) and the HTTPRoute (`httpRoute.timeouts.request: 75s`). For anything else, raise its timeout to at least `EDGE_VARNISH_RESPONSE_TIMEOUT`, for example:
+  ```yaml
+  ingress:
+    annotations:
+      # ingress-nginx
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "75"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "75"
+  ```
+  On GKE, attach a `BackendConfig` with `timeoutSec: 75` to the edge Service. If you set `alb.ingress.kubernetes.io/load-balancer-attributes` yourself (for example to turn on access logs), it replaces the preset's value, so include `idle_timeout.timeout_seconds=75` in it.
+
 **Diagnose:**
 
 ```bash

@@ -61,6 +61,13 @@ A 5% Varnish hit-ratio improvement is usually worth more than doubling any downs
 
 **Defaults:** 1 replica, 1 GiB / 500m CPU requests, 4 GiB memory limit, 10 GiB / 500 GiB ephemeral storage request/limit. Storage strategy via `varnish.env.VARNISH_STORAGE` and the per-tier knobs — see [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md) and the inline comments in [`values.yaml`](https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/values.yaml).
 
+**What to watch:** each Varnish pod serves Prometheus metrics on its `metrics` port (9464), like the other components, so `metrics.podMonitor.enabled` scrapes it too. The ones that answer sizing questions:
+
+- **Hit ratio:** `imageengine_varnish_main_cache_hit_total` against `imageengine_varnish_main_cache_miss_total`.
+- **Cache too small:** a rising `imageengine_varnish_main_n_lru_nuked_total`, or `imageengine_varnish_storage_c_fail_total{tier="tier2"}`, means a tier is full and evicting.
+- **Out of threads:** any increase in `imageengine_varnish_main_threads_limited_total`, `imageengine_varnish_main_sess_dropped_total` or a nonzero `imageengine_varnish_main_thread_queue_len` means Varnish is refusing or queueing work. Add shards or give each one more CPU.
+- **Memory pressure:** `imageengine_varnish_cgroup_memory_anon_bytes` against `imageengine_varnish_memory_limit_bytes`. Page cache (`imageengine_varnish_cgroup_memory_file_bytes`) is reclaimable and doesn't cause OOM kills.
+
 ### Backend
 
 **What it does:** Request orchestrator. For each request the edge can't satisfy from Varnish, the backend decides what's needed: serve a processed variant from OSC, transform an existing origin image via the processor, fetch a fresh origin image via the fetcher, etc. It then dispatches to those components and **buffers the in-flight image bytes in memory** as they move between layers.

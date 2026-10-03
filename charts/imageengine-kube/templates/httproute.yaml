@@ -35,4 +35,8 @@ spec:
     - backendRefs:
         - name: {{ $svcName }}
           port: {{ $svcPort }}
+      {{- with (.Values.httpRoute.timeouts | default dict).request }}
+      timeouts:
+        request: {{ . | quote }}
+      {{- end }}
 {{- end }}

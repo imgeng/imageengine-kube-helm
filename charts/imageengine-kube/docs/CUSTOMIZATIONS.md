@@ -232,6 +232,19 @@ edge:
 
 Both have sensible defaults; only touch them if you have a specific reason.
 
+## How long does the edge wait for a slow image?
+
+On a cache miss the edge waits for your origin and for processing. The default is 75 seconds, after which it answers `504`:
+
+```yaml
+edge:
+  env:
+    EDGE_VARNISH_RESPONSE_TIMEOUT: "75"   # seconds to wait for Varnish's response headers
+    # EDGE_REQUEST_TIMEOUT: "0"           # optional cap on the whole request, body included; 0 = off
+```
+
+The work is not cancelled when the edge gives up, so the image is usually cached for the next request. Whatever sits in front of the edge (load balancer, ingress, Gateway) must allow at least as long, or it cuts requests off first. The chart sets 75s on the `aws` preset's ALB Ingress and on its HTTPRoute; for anything else, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md#504-gateway-timeout--very-slow-first-request).
+
 ## How do I control the edge access logs?
 
 The edge proxy emits a structured JSON **access log** (one line per request). The sink is a single DSN, `EDGE_ACCESS_LOG_TARGET` (ADR 0008) — it governs the access log **only**; diagnostics always go to the pod's stderr regardless:
@@ -471,6 +484,7 @@ httpRoute:
 - `clientIP.mode: auto` resolves to `forwardedFor` with one hop, which matches Gateways that append the client's address to `X-Forwarded-For`, such as Envoy Gateway. The GKE Gateway controller's load balancer appends two entries, like GCE ingress, so set `clientIP.forwardedHops: 2` there.
 - The Gateway must see the client's address itself. Behind a cloud load balancer that usually means PROXY protocol between them (see [How do I preserve the client IP?](#how-do-i-preserve-the-client-ip)).
 - The cluster needs the Gateway API CRDs (`gateway.networking.k8s.io/v1`), which every implementation installs or documents.
+- The route's rule sets `timeouts.request: 75s` (`httpRoute.timeouts.request`), to match how long the edge waits for a cache miss; some Gateways default far lower (Envoy Gateway: 15s). Set it to `""` to use your Gateway's default. Route timeouts need Gateway API v1.2 or later.
 
 To check the route, run `kubectl get httproute <release>-httproute -o yaml`: `status.parents` should show `Accepted: True` and `ResolvedRefs: True` for your Gateway.
 
