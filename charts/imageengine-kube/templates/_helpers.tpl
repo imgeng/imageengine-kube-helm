@@ -127,9 +127,9 @@ Usage: {{ include "imageengine.ingressAnnotations" . | nindent 4 }}
 {{- $annotations = merge $annotations $preset.ingressAnnotations -}}
 {{- end -}}
 {{- end -}}
-{{- /* Merge explicit annotations (these take precedence) */ -}}
+{{- /* Merge explicit annotations last so they win on conflicts */ -}}
 {{- if .Values.ingress.annotations -}}
-{{- $annotations = merge $annotations .Values.ingress.annotations -}}
+{{- $annotations = mergeOverwrite $annotations .Values.ingress.annotations -}}
 {{- end -}}
 {{- /* Output the annotations */ -}}
 {{- range $key, $value := $annotations }}

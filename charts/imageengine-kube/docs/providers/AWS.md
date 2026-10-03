@@ -144,6 +144,7 @@ ingress:
     - images.example.com
   # className defaults to "alb" via the provider preset
   # annotations default to scheme: internet-facing + target-type: ip
+  # + load-balancer-attributes: idle_timeout.timeout_seconds=75
 ```
 
 Switch the Service to `ClusterIP` so you don't pay for an NLB *and* an ALB. Add more ALB annotations as needed, e.g.:
@@ -154,6 +155,8 @@ ingress:
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
     alb.ingress.kubernetes.io/certificate-arn: <acm-arn>
 ```
+
+> **ALB idle timeout:** the preset sets it to 75s (the ALB default is 60s), because a cache miss can take as long as the edge waits for it. `load-balancer-attributes` holds every ALB attribute, so if you set it yourself (for example to enable access logs), include `idle_timeout.timeout_seconds=75`.
 
 > **ALB health checks:** the ALB health-checks the edge target and expects a 2xx. Until a matching origin config exists, the edge may answer `/` with a 403 and the ALB will mark targets unhealthy. Point the health check at a path the edge always answers, e.g. `alb.ingress.kubernetes.io/healthcheck-path: /healthz` (or your configured probe path).
 

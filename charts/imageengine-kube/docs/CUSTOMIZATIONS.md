@@ -171,6 +171,32 @@ varnish:
     # VARNISH_STORAGE_3: "file,/u/cache/varnish-tier3.bin,100G,128K"
 ```
 
+### Which tier holds which images
+
+With `VARNISH_STORAGE: tiered`, Varnish stores each response in one tier, chosen by its `Content-Length`:
+
+| Tier | Storage | Holds objects | Set by |
+|---|---|---|---|
+| 1 | memory (`malloc`) | up to `VARNISH_TIER1_MAX_OBJECT_SIZE` (default `16K`) | `VARNISH_STORAGE_1` |
+| 2 | file on the pod's local disk | up to `VARNISH_TIER2_MAX_OBJECT_SIZE` (default `1536K`) | `VARNISH_STORAGE_2` |
+| 3 | file on the pod's local disk | anything larger | `VARNISH_STORAGE_3` |
+
+Tier 3 exists so that large objects do not fragment tier 2. A response without `Content-Length` is routed as 32 KB. Sizes are bytes or a number with `K`, `M` or `G` (powers of 1024), and tier 2's limit must be above tier 1's, or Varnish does not start.
+
+Every cached object, in any tier, also costs Varnish about 1.2-2 KB of heap, and the pod's memory limit counts it. Varnish has no limit on the number of objects of its own, so a pod whose file tiers hold more objects than its memory can index is OOM-killed rather than slowed down. Size the file tiers to the memory left after tier 1: roughly `(memory limit - tier 1 - 1.5 GiB) / 2 KB` objects, divided into the tier sizes by your average object size.
+
+For a cache of a very large number of rarely requested images, keep small images on disk instead of in memory, so the memory goes to that per-object heap:
+
+```yaml
+varnish:
+  env:
+    VARNISH_TIER1_MAX_OBJECT_SIZE: "4K"    # only the smallest objects in memory
+    VARNISH_STORAGE_1: "malloc,1G"
+    VARNISH_STORAGE_2: "file,/u/cache/varnish-tier2.bin,150G,8K"
+```
+
+Reads from tier 2 come from the page cache or local disk, which on local NVMe adds well under a millisecond per object. Avoid network-attached volumes for the file tiers: Varnish reads them in small pages, one at a time.
+
 Full list of varnishd parameters and storage options lives in the comments of [`values.yaml`](https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/values.yaml), in the `varnish:` block.
 
 ## How do I protect the cache tiers from disruption?
@@ -193,12 +219,12 @@ varnish:
 
 Note the Varnish trade-off: with a single replica, `minAvailable: 1` blocks node drains entirely (a drain will hang until forced). That's strong protection, but enable it deliberately. OSC's `maxUnavailable: 1` only bites once you run 2+ shards.
 
-**Graceful drain** for Varnish lets in-flight requests finish and endpoints deregister before shutdown:
+**Shutdown.** A Varnish pod that is stopping is stopped at once by its preStop hook (Varnish images 9.1.0-1 and later). The edge then sees refused connections and moves that shard's requests to the next shard; requests that were waiting on that shard are retried there. Draining it slowly does not help: on SIGTERM Varnish keeps accepting connections it no longer answers, and the edge keeps routing to the shard until its pod is gone. With older images the hook sleeps `drainSeconds` instead:
 
 ```yaml
 varnish:
   terminationGracePeriodSeconds: 30
-  drainSeconds: 5          # preStop sleep; set 0 to disable the hook
+  drainSeconds: 5          # preStop sleep, only for Varnish images before 9.1.0-1 (newer images stop Varnish at once)
 ```
 
 **PriorityClasses** make the cache tiers preempted-last and rescheduled-first. They're cluster-scoped, so creation is opt-in:
@@ -231,6 +257,19 @@ edge:
 ```
 
 Both have sensible defaults; only touch them if you have a specific reason.
+
+## How long does the edge wait for a slow image?
+
+On a cache miss the edge waits for your origin and for processing. The default is 75 seconds, after which it answers `504`:
+
+```yaml
+edge:
+  env:
+    EDGE_VARNISH_RESPONSE_TIMEOUT: "75"   # seconds to wait for Varnish's response headers
+    # EDGE_REQUEST_TIMEOUT: "0"           # optional cap on the whole request, body included; 0 = off
+```
+
+The work is not cancelled when the edge gives up, so the image is usually cached for the next request. Whatever sits in front of the edge (load balancer, ingress, Gateway) must allow at least as long, or it cuts requests off first. The chart sets 75s on the `aws` preset's ALB Ingress and on its HTTPRoute; for anything else, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md#504-gateway-timeout--very-slow-first-request).
 
 ## How do I control the edge access logs?
 
@@ -471,6 +510,7 @@ httpRoute:
 - `clientIP.mode: auto` resolves to `forwardedFor` with one hop, which matches Gateways that append the client's address to `X-Forwarded-For`, such as Envoy Gateway. The GKE Gateway controller's load balancer appends two entries, like GCE ingress, so set `clientIP.forwardedHops: 2` there.
 - The Gateway must see the client's address itself. Behind a cloud load balancer that usually means PROXY protocol between them (see [How do I preserve the client IP?](#how-do-i-preserve-the-client-ip)).
 - The cluster needs the Gateway API CRDs (`gateway.networking.k8s.io/v1`), which every implementation installs or documents.
+- The route's rule sets `timeouts.request: 75s` (`httpRoute.timeouts.request`), to match how long the edge waits for a cache miss; some Gateways default far lower (Envoy Gateway: 15s). Set it to `""` to use your Gateway's default. Route timeouts need Gateway API v1.2 or later.
 
 To check the route, run `kubectl get httproute <release>-httproute -o yaml`: `status.parents` should show `Accepted: True` and `ResolvedRefs: True` for your Gateway.
 

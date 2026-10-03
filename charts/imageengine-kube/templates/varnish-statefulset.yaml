@@ -35,9 +35,8 @@ spec:
     spec:
       securityContext:
         fsGroup: 1000
-      # Graceful shutdown: the preStop sleep gives kube-proxy/endpoints time to
-      # stop routing new requests and lets in-flight requests drain before
-      # varnishd receives SIGTERM, so a planned move doesn't error live traffic.
+      # Shutdown: the preStop hook (below) stops Varnish at once, so the edge
+      # reroutes the shard's traffic instead of waiting on a draining varnishd.
       terminationGracePeriodSeconds: {{ .Values.varnish.terminationGracePeriodSeconds | default 30 }}
       {{- with .Values.varnish.priorityClassName }}
       priorityClassName: {{ . }}
@@ -113,17 +112,31 @@ spec:
               - FOWNER
           resources:
             {{- toYaml .Values.varnish.resources | nindent 12 }}
-          {{- if gt (int .Values.varnish.drainSeconds) 0 }}
+          # preStop stops Varnish at once (varnish-stop-now, Varnish image
+          # 9.1.0-1 and later): on SIGTERM varnishd keeps accepting connections
+          # it no longer answers while its child waits for open sessions, and
+          # the edge keeps routing to a terminating shard until its pod is gone.
+          # With Varnish gone the edge sees refused connections and reroutes to
+          # the next shard at once. Older images without the script sleep
+          # drainSeconds instead.
           lifecycle:
             preStop:
               exec:
-                command: ["/bin/sh", "-c", "sleep {{ int .Values.varnish.drainSeconds }}"]
-          {{- end }}
+                command:
+                  - /bin/sh
+                  - -c
+                  - >-
+                    if command -v varnish-stop-now >/dev/null 2>&1; then varnish-stop-now;
+                    else sleep {{ int .Values.varnish.drainSeconds }}; fi
           ports:
             # The port NAME ("varnish") is what the headless Service publishes as
             # an SRV record (_varnish._tcp.<headless>), which the edge queries.
             - containerPort: 8080
               name: varnish
+            # ie-varnish-exporter (VARNISH_METRICS_ADDR, default :9464), the
+            # same port name as every other component so the PodMonitor finds it.
+            - containerPort: 9464
+              name: metrics
           readinessProbe:
             httpGet:
               path: /api/v1/health
@@ -137,6 +150,27 @@ spec:
               value: "varnish"
             - name: VARNISH_LISTEN_PORT
               value: "8080"
+            {{- /* The pod's real size for ie-varnish-exporter, which otherwise reads
+                   it from the cgroup. Only set when the value exists: without a
+                   memory limit the Downward API reports the node's allocatable
+                   memory, which the exporter would then trust over the cgroup. */}}
+            {{- $varnishEnv := default (dict) .Values.varnish.env }}
+            {{- $res := default (dict) .Values.varnish.resources }}
+            {{- if and (dig "limits" "memory" "" $res) (not (hasKey $varnishEnv "POD_MEMORY_LIMIT")) }}
+            - name: POD_MEMORY_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  containerName: varnish
+                  resource: limits.memory
+            {{- end }}
+            {{- if and (or (dig "requests" "cpu" "" $res) (dig "limits" "cpu" "" $res)) (not (hasKey $varnishEnv "POD_CPU_REQUEST")) }}
+            - name: POD_CPU_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  containerName: varnish
+                  resource: requests.cpu
+                  divisor: 1m
+            {{- end }}
             {{- include "imageengine.identityEnv" $ | nindent 12 }}
             {{- include "imageengine.derivedEnv" (dict "name" "APP_ENV" "value" (include "imageengine.appEnv" $) "env" $.Values.varnish.env) | nindent 12 }}
             {{- include "imageengine.renderEnv" .Values.varnish.env | nindent 12 }}

@@ -5,8 +5,8 @@ imagePullPolicy: Always
 ###################################################
 # Centralized image tags/versions for all components
 images:
-  edge: "4.10.3"
-  varnish: "9.1.0-0"
+  edge: "4.10.4"
+  varnish: "9.1.0-1"
   backend: "2.16.0"
   fetcher: "1.32.0"
   processor: "3.30.0"
@@ -48,7 +48,8 @@ backendStack:
 # kept OFF the customer-facing edge LoadBalancer. See docs/operations/metrics.md.
 metrics:
   # The metrics port is fixed at 9464 (the binary defaults for
-  # EDGE_METRICS_ADDR / IE_*_METRICS_ADDR / OSC_METRICS_ADDR), exposed as the
+  # EDGE_METRICS_ADDR / IE_*_METRICS_ADDR / OSC_METRICS_ADDR /
+  # VARNISH_METRICS_ADDR), exposed as the
   # container port named "metrics" and scraped by the PodMonitor by name.
   # Optional Prometheus Operator PodMonitor. Requires the Prometheus Operator
   # CRDs (monitoring.coreos.com) to be installed in the cluster. Scrapes pods
@@ -94,6 +95,11 @@ providerPresets:
     ingressAnnotations:
       alb.ingress.kubernetes.io/scheme: "internet-facing"
       alb.ingress.kubernetes.io/target-type: "ip"
+      # A cache miss can take as long as the edge waits for it (75s,
+      # EDGE_VARNISH_RESPONSE_TIMEOUT); the ALB's default idle timeout is 60s.
+      # This annotation holds every ALB attribute, so to add others (e.g. access
+      # logs) set it in ingress.annotations with idle_timeout included.
+      alb.ingress.kubernetes.io/load-balancer-attributes: "idle_timeout.timeout_seconds=75"
     # EKS (especially Auto Mode) defaults the edge NLB to "internal"; expose it
     # to the internet by default. Override via service.annotations (e.g. set the
     # scheme back to "internal") for private deployments.
@@ -276,6 +282,11 @@ httpRoute:
   parentRefs: []
   # Hostnames the route serves. Empty serves every hostname the listener accepts.
   hostnames: []
+  # Gateway API rule timeouts. A cache miss can take as long as the edge waits
+  # for it (75s, EDGE_VARNISH_RESPONSE_TIMEOUT); some Gateways default far lower
+  # (Envoy Gateway: 15s). Set request to "" to use the Gateway's default.
+  timeouts:
+    request: 75s
 
 ###################################################
 # Edge Service (user-facing entry point)
@@ -378,6 +389,14 @@ edge:
     EDGE_MAX_TTL: 604800
     # Natural-width LRU cache size (entries)
     EDGE_WIDTH_CACHE_SIZE: "10000000"
+    # Seconds the edge waits for Varnish's response headers before answering 504.
+    # A cache miss waits here for the origin fetch and processing, and origins may
+    # be given up to 120s, so keep this long. Any load balancer or ingress in front
+    # of the edge must allow at least this long (see docs/TROUBLESHOOTING.md).
+    EDGE_VARNISH_RESPONSE_TIMEOUT: "75"
+    # Optional cap (seconds) on a whole request inside the edge, response body
+    # included; answered with 504. 0 = no cap.
+    # EDGE_REQUEST_TIMEOUT: "0"
     # Access-log sink for the edge's structured JSON access logs (ADR 0008).
     # A single DSN; governs the access log only (diagnostics always go to stderr):
     #   stdout | stderr  -> the pod's stdout/stderr (`kubectl logs`); default stdout
@@ -497,9 +516,16 @@ varnish:
   # Optional scheduling priority. Requires the class to exist (set
   # priorityClass.create=true, or reference an externally-managed class).
   priorityClassName: ""
-  # Graceful shutdown tuning (see varnish-statefulset.yaml preStop hook).
+  # Shutdown (see the preStop hook in varnish-statefulset.yaml). Varnish images
+  # 9.1.0-1 and later stop varnishd at once, so the edge reroutes the shard's
+  # requests immediately; drainSeconds is the preStop sleep used only with
+  # older images.
   terminationGracePeriodSeconds: 30
   drainSeconds: 5
+  # Whether the headless Service publishes shards that are not Ready, which the
+  # edge discovers by SRV. Keep false: a starting or stopping Varnish accepts
+  # connections it does not answer, and the edge would wait on them.
+  publishNotReadyAddresses: false
   # PodDisruptionBudget. With multiple shards, maxUnavailable: 1 lets drains/rolls
   # cycle one shard at a time while protecting the rest (mirrors the OSC tier).
   pdb:
@@ -531,14 +557,24 @@ varnish:
     # Filesystem storage
     # VARNISH_STORAGE: "file,/u/cache/varnish.bin,MAX_DISK"
     #
-    # Tiered storage
+    # Tiered storage: each response is stored in one tier by its Content-Length.
     VARNISH_STORAGE: "tiered"
-    # Tier 1 is memory storage with 70% of available RAM
+    # Tier 1 is memory (malloc) with 70% of the RAM left after a fixed 2 GiB
+    # reserve; it holds objects up to VARNISH_TIER1_MAX_OBJECT_SIZE.
     VARNISH_STORAGE_1: "malloc,70%"
-    # Tier 2 is file storage
+    # Tier 2 is a file on the pod's local disk for mid-size objects, up to
+    # VARNISH_TIER2_MAX_OBJECT_SIZE.
     VARNISH_STORAGE_2: "file,/u/cache/varnish-tier2.bin,50%,8K"
-    # Tier 3 is file storage
+    # Tier 3 is a file for larger objects, kept apart so they do not fragment
+    # tier 2.
     VARNISH_STORAGE_3: "file,/u/cache/varnish-tier3.bin,8%,128K"
+    # Object size limits per tier: bytes, or a number with K, M or G (powers
+    # of 1024). Defaults 16K and 1536K. Every object, in any tier, also costs
+    # Varnish about 1.2-2 KB of heap in the pod's memory, so a cache of many
+    # small, rarely requested images can lower the tier 1 limit to keep their
+    # bodies on disk (see docs/CUSTOMIZATIONS.md).
+    # VARNISH_TIER1_MAX_OBJECT_SIZE: "16K"
+    # VARNISH_TIER2_MAX_OBJECT_SIZE: "1536K"
     #
     # Additional parameters to pass to varnishd
     # TODO: Compute these values based on the current instance's resources
