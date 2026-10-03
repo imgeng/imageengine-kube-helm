@@ -124,6 +124,10 @@ spec:
             # an SRV record (_varnish._tcp.<headless>), which the edge queries.
             - containerPort: 8080
               name: varnish
+            # ie-varnish-exporter (VARNISH_METRICS_ADDR, default :9464), the
+            # same port name as every other component so the PodMonitor finds it.
+            - containerPort: 9464
+              name: metrics
           readinessProbe:
             httpGet:
               path: /api/v1/health
@@ -137,6 +141,27 @@ spec:
               value: "varnish"
             - name: VARNISH_LISTEN_PORT
               value: "8080"
+            {{- /* The pod's real size for ie-varnish-exporter, which otherwise reads
+                   it from the cgroup. Only set when the value exists: without a
+                   memory limit the Downward API reports the node's allocatable
+                   memory, which the exporter would then trust over the cgroup. */}}
+            {{- $varnishEnv := default (dict) .Values.varnish.env }}
+            {{- $res := default (dict) .Values.varnish.resources }}
+            {{- if and (dig "limits" "memory" "" $res) (not (hasKey $varnishEnv "POD_MEMORY_LIMIT")) }}
+            - name: POD_MEMORY_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  containerName: varnish
+                  resource: limits.memory
+            {{- end }}
+            {{- if and (or (dig "requests" "cpu" "" $res) (dig "limits" "cpu" "" $res)) (not (hasKey $varnishEnv "POD_CPU_REQUEST")) }}
+            - name: POD_CPU_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  containerName: varnish
+                  resource: requests.cpu
+                  divisor: 1m
+            {{- end }}
             {{- include "imageengine.identityEnv" $ | nindent 12 }}
             {{- include "imageengine.derivedEnv" (dict "name" "APP_ENV" "value" (include "imageengine.appEnv" $) "env" $.Values.varnish.env) | nindent 12 }}
             {{- include "imageengine.renderEnv" .Values.varnish.env | nindent 12 }}
