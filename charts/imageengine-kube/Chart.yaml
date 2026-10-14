@@ -2,7 +2,7 @@ apiVersion: v2
 name: imageengine-kube
 description: ImageEngine - cloud-native image optimization
 type: application
-version: 1.9.13
+version: 1.9.14
 kubeVersion: ">=1.30.0-0"
 home: https://imageengine.io
 sources:
@@ -26,24 +26,14 @@ annotations:
     url: https://kube.imageengine.io/pubkey.asc
   artifacthub.io/changes: |
     - kind: changed
-      description: "Updated the Varnish image to 9.1.0-1, which adds ie-varnish-exporter: Prometheus metrics for each Varnish shard (imageengine_varnish_*), covering hits and misses, evictions per storage tier, threads and dropped sessions, backend health, and the pod's memory and CPU."
+      description: "Updated the edge image to 4.10.5. A 502 from the edge now always means your origin failed. The edge used to pass on every 502 from behind it, including failures of the install: the backend unable to reach the fetcher, the fetcher shedding load (x-origin-status 4) or failing a TIFF conversion (2), and a proxy in front of a remote backend. Those are now answered as 503 (Retry-After: 1), or 504 when the backend's own wait for the fetcher ran out, so they land in a general 5xx alert instead of an origin-error alert. The x-origin-status and x-origin-reason headers stay on the response."
     - kind: added
-      description: "Varnish pods declare the metrics container port (9464), like every other component, so metrics.podMonitor.enabled scrapes them. The port stays off the customer-facing Services."
-    - kind: added
-      description: "Varnish pods get POD_MEMORY_LIMIT and POD_CPU_REQUEST from the Downward API when varnish.resources sets them, so the exporter reports the container's real size instead of reading it from the cgroup."
+      description: "imageengine_edge_upstream_502_total{to,reason} counts every 502 the edge received from the install, by the status it answered (to) and why (reason: customer_origin, no_origin_status, backend_timeout, imageengine_failure, …). TROUBLESHOOTING.md explains each reason."
     - kind: fixed
-      description: "Updated the edge image to 4.10.4. Slow cache misses no longer fail with a 503 after 3 seconds: the edge now waits up to EDGE_VARNISH_RESPONSE_TIMEOUT (75s by default) for Varnish, answers a timeout with a 504, and no longer retries a slow request on a second Varnish shard, which started a second fetch from your origin. A load balancer or ingress in front of the edge needs a timeout of at least 75s; see TROUBLESHOOTING.md."
+      description: "The edge's imageengine_edge_requests_total{method} label is now GET, HEAD, OPTIONS or other. It used to be whatever method token the client sent, so a scanner could create a new metric series per invented method and grow the edge's memory and scrape size without bound."
     - kind: changed
-      description: "The 4.10.4 edge image updates libwurfl, the WURFL device-detection library, to 1.14.1.0."
-    - kind: added
-      description: "edge.env sets EDGE_VARNISH_RESPONSE_TIMEOUT (75) and documents the optional EDGE_REQUEST_TIMEOUT whole-request cap (0, off)."
-    - kind: added
-      description: "The aws preset's ALB Ingress sets idle_timeout.timeout_seconds=75 (the ALB default is 60s), and the HTTPRoute sets timeouts.request: 75s (httpRoute.timeouts.request; Envoy Gateway defaults to 15s), so neither cuts off a cache miss before the edge's 75s wait."
+      description: "Updated the Varnish image to 9.1.0-2. ie-varnish-autoconfig, the backend-discovery sidecar process in every Varnish pod, leaked about 1 MiB an hour for as long as the pod ran (a shard up for two weeks carried about 350 MiB of it against its memory limit). Fixed; long-lived shards no longer creep towards their memory limit."
     - kind: fixed
-      description: "ingress.annotations now override the provider preset's Ingress annotations, as documented. The preset's values used to win, so, for example, the aws preset's scheme could not be set back to internal."
-    - kind: added
-      description: "Varnish's tier size thresholds are configurable: VARNISH_TIER1_MAX_OBJECT_SIZE (default 16K, the largest object kept in memory) and VARNISH_TIER2_MAX_OBJECT_SIZE (default 1536K; larger objects go to tier 3). CUSTOMIZATIONS.md explains the tiers, the per-object memory cost of every cached object, and how to keep small images on disk for caches of many rarely requested images."
+      description: "imageengine_varnish_memory_limit_bytes follows an in-place resize of the Varnish container. It read POD_MEMORY_LIMIT first, which is fixed when the container starts; it now reads the live cgroup limit first and uses POD_MEMORY_LIMIT only when no cgroup limit can be read."
     - kind: fixed
-      description: "A Varnish shard that is shutting down no longer holds requests. On SIGTERM varnishd keeps accepting connections it no longer answers while it waits for open sessions, about 20 seconds on Varnish 9.1, and the edge keeps routing to the shard until its pod is gone. With Varnish image 9.1.0-1 the preStop hook stops Varnish at once, so the edge sees refused connections and moves those requests to the next shard. Older images keep the drainSeconds sleep."
-    - kind: changed
-      description: "The Varnish headless Service publishes only Ready shards (varnish.publishNotReadyAddresses, default false; it was always true). A starting Varnish accepts connections before it can answer them, so the edge waited up to the 75s timeout on a shard that was still starting. Shards now join the edge's ring when their readiness probe passes; until then their images go to the next shard, as with failover."
+      description: "TROUBLESHOOTING.md: rewrote \"502 Bad Gateway from the edge\". A 502 means your origin failed; the edge and Varnish never answer 502 for their own failures. The section explains each x-origin-status value, how the edge answers failures of the install (503/504, with the reason in imageengine_edge_upstream_502_total), and how to alert on 502 separately from other 5xx."
