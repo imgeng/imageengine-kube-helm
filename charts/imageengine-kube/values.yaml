@@ -581,7 +581,6 @@ varnish:
     VARNISH_PARAMS: "-p thread_pools=2
       -p thread_pool_min=500
       -p thread_pool_max=5000
-      -p thread_pool_add_delay=2
       -p send_timeout=15
       -p listen_depth=65536
       -p workspace_client=128k
