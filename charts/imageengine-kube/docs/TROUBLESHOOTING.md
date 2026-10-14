@@ -165,23 +165,47 @@ true so voluntary disruptions cycle one shard at a time).
 
 ## 502 Bad Gateway from the edge
 
-**Symptom:** `curl` against the edge returns 502.
+**Symptom:** `curl` against the edge returns 502, or `imageengine_edge_responses_total{code="502"}` is rising.
 
-**Diagnose:**
+**What a 502 means:** ImageEngine uses 502 for one thing, **your origin failed**. Neither the edge nor Varnish ever answers 502 for its own failures: the edge uses 503 (Varnish unavailable or edge overloaded), 504 (Varnish too slow) and 499 (client went away), and Varnish answers a failed backend fetch with 503. A 502 is passed on from the backend, which returns it when the origin fetch fails. Your site's users and crawlers can request URLs your origin can't serve, for example malformed query strings, so some 502s are normal and not a problem with the install.
+
+**Diagnose:** look at `x-origin-status` and `x-origin-reason` on the 502:
 
 ```bash
-kubectl get pods -n imageengine -l app=imageengine-kube
-kubectl logs -n imageengine deploy/imageengine-kube-edge --tail=50
-kubectl logs -n imageengine deploy/imageengine-kube-varnish --tail=50
-kubectl logs -n imageengine deploy/imageengine-kube-backend --tail=50
+curl -s -o /dev/null -D - "https://<your-host>/<path-that-fails>" | grep -i '^x-origin-'
 ```
 
-The edge sits in front of varnish, which sits in front of backend. A 502 means one of the downstream services is not Ready or is returning errors.
+| `x-origin-status` | Meaning | Where to look |
+|---|---|---|
+| `500`-`599` | The origin answered with that error | Your origin's logs, for that URL |
+| `300`-`399` | The origin sent a redirect that can't be followed (no `Location`, `304`, …) | Your origin |
+| `1` | Couldn't connect to the origin: refused, reset, TLS failure, too many redirects | Origin reachability from the cluster's egress, firewall allowlists |
+| `3` | The origin didn't answer in time | Origin response time |
+| `5` | The origin resolves or redirects to a private IP address, which is blocked | Origin DNS, or `IE_ORIGINFETCHER_ALLOWED_PRIVATE_NETWORKS` if that's intended |
+| `6` | The origin's hostname didn't resolve | Origin DNS. If the reason says `server misbehaving` or `i/o timeout`, check the cluster's DNS instead |
+| `0` | The origin connection failed part-way through the response | Origin, then fetcher logs |
 
-**Fix:**
+**Failures of the install are not 502s.** With edge image 4.10.5 and later, a 502 that the install produced for its own failure is answered by the edge as 503 or 504, so it lands in your 5xx alert rather than your origin alert. The `x-origin-*` headers stay on the response, and `imageengine_edge_upstream_502_total{to,reason}` counts every 502 the edge received from the install, by the status it answered (`to`) and why (`reason`):
 
-- If varnish or backend pods are not `Ready`, check their logs and `kubectl describe`. Most often this is a configuration error in your values file.
-- If they're Ready but logs show errors, the failure is downstream — fetcher origin reachability, processor crashing on a bad image, etc.
+| `reason` | `to` | What happened | Where to look |
+|---|---|---|---|
+| `customer_origin` | 502 | One of the `x-origin-status` values in the table above | Your origin |
+| `no_origin_status` | 503 | No `x-origin-status`. With `x-origin-reason: origin-fetcher http client error: [...]`, the backend couldn't get an answer from the fetcher. With no `x-origin-*` headers at all and an HTML error body, something between Varnish and the backend made its own 502; Varnish doesn't | Fetcher pods `Ready` and not restarting (`kubectl get pods -n imageengine`, `kubectl logs -n imageengine deploy/imageengine-kube-fetcher`) and `imageengine_backend_fetch_errors_total`; any proxy or load balancer in front of a remote backend (`varnish.ieBackends`); backend pods restarting mid-request |
+| `backend_timeout` | 504 | The backend's own wait for the fetcher ran out (`Client.Timeout` in `x-origin-reason`): either the origin is very slow or the fetcher is saturated | Origin response time; fetcher load |
+| `imageengine_failure` | 503 | `x-origin-status: 4`: the fetcher's queue for that origin is full, so it is shedding load (`imageengine_fetcher_queue_full_total`), usually one slow origin with a burst of requests. `x-origin-status: 2`: the origin served a TIFF and converting it through the processor failed | Add fetcher replicas or see the fetcher section of [SIZING.md](SIZING.md); processor health and logs |
+
+Edge images before 4.10.5 pass all of these on as 502; the same `x-origin-*` headers tell them apart.
+
+If all your origins return 502 at once, suspect the install (fetcher, backend, egress or DNS) before suspecting every origin.
+
+**Alerting:** alert on 502 separately from other 5xx. Leave `code="502"` out of a general 5xx alert, so your origin's errors don't page you as an outage, and use a separate, less sensitive alert for 502 that says it is about origin errors. For example:
+
+```promql
+# ImageEngine 5xx, excluding origin errors
+sum(rate(imageengine_edge_responses_total{code=~"5..", code!="502"}[5m]))
+# Origin errors
+sum(rate(imageengine_edge_responses_total{code="502"}[5m]))
+```
 
 ---
 
