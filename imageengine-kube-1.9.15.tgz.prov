@@ -1,0 +1,62 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+annotations:
+  artifacthub.io/changes: |
+    - kind: changed
+      description: "Updated the edge image to 4.10.5. A 502 from the edge now always means your origin failed. The edge used to pass on every 502 from behind it, including failures of the install: the backend unable to reach the fetcher, the fetcher shedding load (x-origin-status 4) or failing a TIFF conversion (2), and a proxy in front of a remote backend. Those are now answered as 503 (Retry-After: 1), or 504 when the backend's own wait for the fetcher ran out, so they land in a general 5xx alert instead of an origin-error alert. The x-origin-status and x-origin-reason headers stay on the response."
+    - kind: added
+      description: "imageengine_edge_upstream_502_total{to,reason} counts every 502 the edge received from the install, by the status it answered (to) and why (reason: customer_origin, no_origin_status, backend_timeout, imageengine_failure, …). TROUBLESHOOTING.md explains each reason."
+    - kind: fixed
+      description: "The edge's imageengine_edge_requests_total{method} label is now GET, HEAD, OPTIONS or other. It used to be whatever method token the client sent, so a scanner could create a new metric series per invented method and grow the edge's memory and scrape size without bound."
+    - kind: changed
+      description: "Updated the Varnish image to 9.1.0-2. ie-varnish-autoconfig, the backend-discovery sidecar process in every Varnish pod, leaked about 1 MiB an hour for as long as the pod ran (a shard up for two weeks carried about 350 MiB of it against its memory limit). Fixed; long-lived shards no longer creep towards their memory limit."
+    - kind: fixed
+      description: "imageengine_varnish_memory_limit_bytes follows an in-place resize of the Varnish container. It read POD_MEMORY_LIMIT first, which is fixed when the container starts; it now reads the live cgroup limit first and uses POD_MEMORY_LIMIT only when no cgroup limit can be read."
+    - kind: fixed
+      description: "TROUBLESHOOTING.md: rewrote \"502 Bad Gateway from the edge\". A 502 means your origin failed; the edge and Varnish never answer 502 for their own failures. The section explains each x-origin-status value, how the edge answers failures of the install (503/504, with the reason in imageengine_edge_upstream_502_total), and how to alert on 502 separately from other 5xx."
+  artifacthub.io/signKey: |
+    fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+    url: https://kube.imageengine.io/pubkey.asc
+apiVersion: v2
+description: ImageEngine - cloud-native image optimization
+home: https://imageengine.io
+icon: https://imageengine.io/favicon.ico
+keywords:
+- - image-optimization
+- - image-cdn
+- - cdn
+- - imageengine
+- - varnish
+- - wurfl
+kubeVersion: '>=1.30.0-0'
+maintainers:
+- - email: support@scientiamobile.com
+  name: ScientiaMobile
+  url: https://www.scientiamobile.com
+name: imageengine-kube
+sources:
+- - https://kube.imageengine.io
+- - https://github.com/imgeng/imageengine-kube-helm
+type: application
+version: 1.9.15
+
+...
+files:
+  imageengine-kube-1.9.15.tgz: sha256:1341ec4cc73d674d641ed7601ee0a06c42d9b0a75b99dd14edce3fe5c7c898fc
+-----BEGIN PGP SIGNATURE-----
+
+wsFcBAEBCgAQBQJqz/TLCRBGMmYGCVfEswAAyi4QABOGzQPqZNyFTCtw/5j1QHz7
+dkNPhQFWM4PhFRecmryc5EkKAzPKUMmrHsrJA8LiiUAWpD+ES2zR5yVQf0++nZe1
++Ki3Ri6/PL1gy15ZVvyG7OJGGMIegV5h2MtX3Ch9YUmqY6AxCVL9jDLO9RWHaMP3
+/+FUzHkGpoIoVR1G6AkWfaXpgz11JFagrjxAKTO0ZTh0eXsSl7ld+TgosQl1GEHk
+uVTyNzLWsmPOW60tniEtAMoCi+BudWQ6c6qz7ZfKQ285/ZvGxMxkTE0bOjYwB2xT
+eBZFY+iAJdqpYkyxCWfXdvZ6o+ExEEOLw8G3OHe/RVNUlfSMdU4irigzbqCTKA8a
+KD9SHWEQWM6pbxKMG4Q5lPRrZAve0khiWvdxOky/C4J1i1Qah7alGG2wl1jojc1u
+uYCd4Mq+5aGJgFahiOJwvzYZ7n+ll2xQrxElJr5b2MJhWK8VfA9OClluI8BTfd5i
+Ae/xQ49e7kW1FO+odKPIvtaAixU3UoWtger+F90609xwC55lzNGJN8dpkLPmHUiD
+kUXLF93EMA9ejvX6PWybGuUP9eXrZkQMQ7G/RcHzW/+mkxNNLuNWp/w5Ez0ltE1X
+El1Dyljk0WCFK10luEfLOx82JL/BtgmbgoYIxDxhW+wudjAn1Ztx6HyBUQnLNh4t
+9FODz6WKGBhZRb7IjWXk
+=tuiV
+-----END PGP SIGNATURE-----
