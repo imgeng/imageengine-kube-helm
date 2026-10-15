@@ -3,6 +3,41 @@ entries:
   imageengine-kube:
   - annotations:
       artifacthub.io/changes: |
+        - kind: fixed
+          description: "Lowered the edge's EDGE_WIDTH_CACHE_SIZE default from 10,000,000 to 2,500,000 entries. A full natural-width store costs about 180 bytes per entry on top of a ~400 MiB baseline, so 10M entries needed about 2.1 GiB and could never fit the 1 GiB edge memory limit: an edge that ran long enough to fill its store was OOMKilled and started again with an empty one. 2.5M fits the 1 GiB limit with headroom. If you set a larger size, raise edge.resources.limits.memory with it."
+        - kind: added
+          description: "SIZING.md: \"Edge memory and the natural-width store\" gives the memory formula, a table of store sizes and matching memory limits, and the imageengine_edge_kvcache_* metrics that show whether the store is big enough. CUSTOMIZATIONS.md and TROUBLESHOOTING.md (edge OOMKilled after running for days) point to it."
+      artifacthub.io/signKey: |
+        fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+        url: https://kube.imageengine.io/pubkey.asc
+    apiVersion: v2
+    created: "2026-10-15T18:25:36.48750605Z"
+    description: ImageEngine - cloud-native image optimization
+    digest: d75bc2909b5fba53b627a8e8748f479503e42653c8ae1d1373012a31af7ff7ea
+    home: https://imageengine.io
+    icon: https://imageengine.io/favicon.ico
+    keywords:
+    - image-optimization
+    - image-cdn
+    - cdn
+    - imageengine
+    - varnish
+    - wurfl
+    kubeVersion: '>=1.30.0-0'
+    maintainers:
+    - email: support@scientiamobile.com
+      name: ScientiaMobile
+      url: https://www.scientiamobile.com
+    name: imageengine-kube
+    sources:
+    - https://kube.imageengine.io
+    - https://github.com/imgeng/imageengine-kube-helm
+    type: application
+    urls:
+    - imageengine-kube-1.9.16.tgz
+    version: 1.9.16
+  - annotations:
+      artifacthub.io/changes: |
         - kind: changed
           description: "Updated the edge image to 4.10.5. A 502 from the edge now always means your origin failed. The edge used to pass on every 502 from behind it, including failures of the install: the backend unable to reach the fetcher, the fetcher shedding load (x-origin-status 4) or failing a TIFF conversion (2), and a proxy in front of a remote backend. Those are now answered as 503 (Retry-After: 1), or 504 when the backend's own wait for the fetcher ran out, so they land in a general 5xx alert instead of an origin-error alert. The x-origin-status and x-origin-reason headers stay on the response."
         - kind: added
@@ -1391,4 +1426,4 @@ entries:
     urls:
     - imageengine-kube-0.8.0.tgz
     version: 0.8.0
-generated: "2026-10-14T21:31:59.942902131Z"
+generated: "2026-10-15T18:25:36.487851281Z"
