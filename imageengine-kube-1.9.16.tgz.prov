@@ -1,0 +1,54 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+annotations:
+  artifacthub.io/changes: |
+    - kind: fixed
+      description: "Lowered the edge's EDGE_WIDTH_CACHE_SIZE default from 10,000,000 to 2,500,000 entries. A full natural-width store costs about 180 bytes per entry on top of a ~400 MiB baseline, so 10M entries needed about 2.1 GiB and could never fit the 1 GiB edge memory limit: an edge that ran long enough to fill its store was OOMKilled and started again with an empty one. 2.5M fits the 1 GiB limit with headroom. If you set a larger size, raise edge.resources.limits.memory with it."
+    - kind: added
+      description: "SIZING.md: \"Edge memory and the natural-width store\" gives the memory formula, a table of store sizes and matching memory limits, and the imageengine_edge_kvcache_* metrics that show whether the store is big enough. CUSTOMIZATIONS.md and TROUBLESHOOTING.md (edge OOMKilled after running for days) point to it."
+  artifacthub.io/signKey: |
+    fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+    url: https://kube.imageengine.io/pubkey.asc
+apiVersion: v2
+description: ImageEngine - cloud-native image optimization
+home: https://imageengine.io
+icon: https://imageengine.io/favicon.ico
+keywords:
+- - image-optimization
+- - image-cdn
+- - cdn
+- - imageengine
+- - varnish
+- - wurfl
+kubeVersion: '>=1.30.0-0'
+maintainers:
+- - email: support@scientiamobile.com
+  name: ScientiaMobile
+  url: https://www.scientiamobile.com
+name: imageengine-kube
+sources:
+- - https://kube.imageengine.io
+- - https://github.com/imgeng/imageengine-kube-helm
+type: application
+version: 1.9.16
+
+...
+files:
+  imageengine-kube-1.9.16.tgz: sha256:d75bc2909b5fba53b627a8e8748f479503e42653c8ae1d1373012a31af7ff7ea
+-----BEGIN PGP SIGNATURE-----
+
+wsFcBAEBCgAQBQJq0RqbCRBGMmYGCVfEswAAVUYQAG2DCvVg7cz/xZ7IFUsqqrMc
+mcGRNj5LFuximSB25E110TmC5Ln42Kbc6lsAkg+/rgKGz7DFhI6uuJpewkQY4BF7
+e71j9TW+PVgTm2bNooBq2e/zrSSDGauarKaQMI0CGwRPAADaDHhNWoWACYM87dhS
+uuixzHIsjXfgX2bkxkRlmIZy8wwYYC4+abRQPpcQ0hHdtVCFtGt2G0fN33eegp7S
+YziQ9q+fGwNZ5ewifmhYWo3IQm/SbSnesOEPKmZ3JNhdRpH3C4B3Tlb1qcrAoh/5
+bnZojkdKPDABHlYwWiM4TJxlNWhiygZXYIBAmXM3WEku5l+aYOrnzc7li8B9hjzm
+HwYyKrUxXzxzsdtFG+ir4gfFMlSFjU+ku7lDiSFXzHAtCiAsr3My1O3iaxQ7UHP4
+f+m3Y2ebDFOk42x+TAuDq9hiWdWgCBEpII1/7oeK5/TwsIks3tZ8O0zkcDtomQHJ
+PYXG04rFcpInpksB1amr9qt3fbaDrzVjTKtTO31OTNbcYF/ds+B4LGpLJspbfph+
+6DCvkKk+e3rqqWG7ci0+jlIHbcT6DUaNmYvbUuot4H0xT4hpltwPujMmQ616WVKI
+6ED0f1t9JFP5VeT1zFnIXbNxidqla5sx+W+9TAx9C3bLzF1JOJeFNqE9kxzuCFKC
+8EhjDUojZaMtQZwcPYwJ
+=v71W
+-----END PGP SIGNATURE-----
