@@ -427,6 +427,8 @@ kubectl top nodes
 
 **Fix:**
 
+**Edge OOMKilled after running for days**, with a restart count but no traffic spike: its natural-width store has filled towards `EDGE_WIDTH_CACHE_SIZE` and no longer fits `edge.resources.limits.memory`. Check `imageengine_edge_kvcache_entries` against `imageengine_edge_kvcache_capacity`, then lower the size or raise the limit as in [SIZING.md](SIZING.md#edge-memory-and-the-natural-width-store) (about 180 bytes per entry plus a ~400 MiB baseline).
+
 Most often this is backend memory or processor CPU. Backend buffers full images in memory between layers — if the limit is too tight it OOMs exactly when traffic spikes. Don't trim backend memory:
 
 ```yaml

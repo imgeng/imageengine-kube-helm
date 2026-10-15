@@ -387,8 +387,11 @@ edge:
   env:
     # Max cache TTL (seconds); backend TTLs above this are clamped (604800 = 7 days)
     EDGE_MAX_TTL: 604800
-    # Natural-width LRU cache size (entries)
-    EDGE_WIDTH_CACHE_SIZE: "10000000"
+    # Natural-width LRU cache size (entries). Each entry costs about 180 bytes of
+    # edge memory when the store is full, on top of a ~400 MiB baseline, so
+    # 2.5M entries fits the 1Gi limit above. Raise limits.memory with it; see
+    # docs/SIZING.md, "Edge memory and the natural-width store".
+    EDGE_WIDTH_CACHE_SIZE: "2500000"
     # Seconds the edge waits for Varnish's response headers before answering 504.
     # A cache miss waits here for the origin fetch and processing, and origins may
     # be given up to 120s, so keep this long. Any load balancer or ingress in front

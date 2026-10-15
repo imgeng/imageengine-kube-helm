@@ -40,6 +40,40 @@ Each section below covers what the component does, how it behaves under load, an
 
 **Defaults:** 1 replica, 256 MiB / 250m CPU requests, 1 GiB memory limit. (No CPU limit — chart-wide policy, see the note above.)
 
+#### Edge memory and the natural-width store
+
+Each edge pod keeps an in-memory LRU of the natural (original) width of every origin image it has seen, so it can stop asking for a resize wider than the original. Its capacity is `edge.env.EDGE_WIDTH_CACHE_SIZE`, in entries; one entry is one distinct origin image. The store only grows: it fills with each new image the pod sees and stays full once it reaches capacity, evicting the least recently used. A pod that runs for days on a large image catalogue therefore ends up at capacity, and its memory limit has to cover a full store. A container restart empties the store; it is a cache, so nothing is lost but the pod's knowledge of widths, which it relearns from traffic.
+
+Plan edge memory as:
+
+```
+memory ≈ 400 MiB baseline + EDGE_WIDTH_CACHE_SIZE × 180 bytes
+```
+
+- **Baseline (~400 MiB):** the edge process without the store, including the WURFL device-detection data. Busier pods use somewhat more for connections and buffers.
+- **180 bytes per entry:** about 110 bytes of live data (key, value, LRU list node and hash-map slot) plus the headroom Go's garbage collector leaves before it collects (`GOGC=100`), measured on a full store.
+- Keep the result at or below **85% of `limits.memory`**. Past the limit the kernel kills the container (`OOMKilled`) and the store starts empty again.
+
+| `EDGE_WIDTH_CACHE_SIZE` | Store when full | Edge total (approx.) | Memory limit |
+| ----------------------- | --------------- | -------------------- | ------------ |
+| 1,000,000               | ~170 MiB        | ~570 MiB             | 768 MiB      |
+| **2,500,000 (default)** | ~430 MiB        | ~830 MiB             | **1 GiB**    |
+| 5,000,000               | ~860 MiB        | ~1.25 GiB            | 1.5 GiB      |
+| 10,000,000              | ~1.7 GiB        | ~2.1 GiB             | 2.5 GiB      |
+
+Change the size and the limit together:
+
+```yaml
+edge:
+  env:
+    EDGE_WIDTH_CACHE_SIZE: "5000000"
+  resources:
+    limits:
+      memory: "1536Mi"
+```
+
+**Is the store big enough?** The edge exports `imageengine_edge_kvcache_entries` and `imageengine_edge_kvcache_capacity` (fill level) and `imageengine_edge_kvcache_evictions_total`. A store that never reaches capacity is big enough, and lowering the size changes nothing but the worst case. Steady evictions with a falling `imageengine_edge_kvcache_lookups_total{result="hit"}` share mean the catalogue outgrows the store; raise both values per the table. Watch `container_memory_working_set_bytes` for the edge container against its limit as the store fills.
+
 **Access logs at scale:** the edge writes a structured JSON access log — one line per request — and `EDGE_ACCESS_LOG_TARGET` defaults to `stdout`. At high request volume this is a real cost (stdout I/O, CPU, and downstream log storage) for no benefit if nothing is ingesting it. **For high-traffic load tests and production, set `edge.env.EDGE_ACCESS_LOG_TARGET: none`** unless you are actively collecting these logs (`stdout`, `stderr`, or a `tcp://…` collector). See [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md) for the full breakdown.
 
 ### Varnish
