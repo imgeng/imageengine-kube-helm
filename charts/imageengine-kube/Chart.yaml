@@ -31,5 +31,7 @@ annotations:
       description: "edge.widthSync.networkPolicy: an optional NetworkPolicy that limits the edge admin port (9464) to the release's own edges and the scrapers you list in metricsFrom, while customer traffic on 8080 stays open."
     - kind: changed
       description: "Updated the edge image to 4.11.0, which adds the width cache sharing (off unless edge.widthSync.enabled)."
+    - kind: changed
+      description: "Every image is pinned by digest: images: values are now \"<tag>@sha256:<digest>\", so a chart version always deploys exactly the images it was released with, and a release is refused unless every image it pins is cosign-signed. Setting a plain tag still works and pulls by tag. If you mirror the images, copy them with cosign copy (or crane copy, or skopeo copy --all) to keep their digests; SECURITY.md, \"Mirroring the images\", explains."
     - kind: added
       description: "TROUBLESHOOTING.md: \"An edge roll stalls with one new pod missing\" (a ResourceQuota without room for the surge pod) and \"An edge starts with an empty width cache\" (what each imageengine_edge_kvcache_bootstrap_total result means)."

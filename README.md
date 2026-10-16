@@ -81,11 +81,26 @@ optional in-cluster signature enforcement (Kyverno / sigstore policy-controller)
   chart. Issues, feature requests, and pull requests against the chart are
   welcome here.
 
+## Releasing (maintainers)
+
+Every image a chart release deploys must be pinned by digest and cosign-signed:
+
+1. Set the new tags in `images:` in `charts/imageengine-kube/values.yaml` and bump the chart
+   `version`.
+2. Run `scripts/pin-digests.sh`. It resolves each tag to its digest, checks the image's
+   signature with the published key, and rewrites the values as `<tag>@sha256:…`. It refuses,
+   and changes nothing, if any image is missing or unsigned. Commit the result.
+3. The "Verify chart images" check runs `scripts/verify-images.sh` on the pull request, and
+   the release workflow runs it again before publishing: a chart version whose images are not
+   all pinned and signed is not released. Both need the `IMAGE_REGISTRY_USER` and
+   `IMAGE_REGISTRY_TOKEN` repository secrets (read access to the image registry).
+
 ## Repository layout
 
 ```
 charts/imageengine-kube/   # the chart itself: templates, values, docs
-.github/workflows/         # chart-releaser-action release pipeline
+.github/workflows/         # chart-releaser-action release pipeline, image verification
+scripts/                   # pin-digests.sh, verify-images.sh, release-gate.sh
 ```
 
 The `gh-pages` branch hosts the served Helm repo: `index.yaml`, signed `.tgz`

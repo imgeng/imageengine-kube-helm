@@ -23,7 +23,25 @@ All customer-facing images are published to `docker.scientiamobile.com/iekube`:
 | Processor | `docker.scientiamobile.com/iekube/imageengine-processor.server` |
 | Origin Cache (OSC) | `docker.scientiamobile.com/iekube/object-storage-cache.server` |
 
-The exact tags deployed are pinned in the chart's `images:` map in `values.yaml`.
+The exact images deployed are pinned in the chart's `images:` map in `values.yaml`, **by
+digest**: each value is `<tag>@sha256:<digest>`, so the image is pulled by its digest and the tag
+is only for reading. A chart release is refused unless every image it pins is signed (see
+below), so verifying the chart's GPG signature also tells you exactly which images it deploys.
+
+### Mirroring the images
+
+To run the images from your own registry, copy them in a way that keeps their digests and
+their signatures, then point each component's `image.repository` at your registry:
+
+```bash
+cosign copy docker.scientiamobile.com/iekube/imageengine-frontend.edge:<tag> \
+  registry.example.com/imageengine/imageengine-frontend.edge:<tag>
+```
+
+`cosign copy` (or `crane copy`, or `skopeo copy --all`) copies the multi-arch index as it is, so
+the chart's pinned digests match your copy and `cosign verify` with our key still works there.
+Tools that rebuild the index, such as `docker pull` and `docker push` per platform, change its
+digest: then set plain tags in `images:` instead, or your own digests.
 
 ## 1. Verify image signatures (cosign)
 

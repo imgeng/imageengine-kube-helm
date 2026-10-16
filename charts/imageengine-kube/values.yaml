@@ -3,7 +3,15 @@ imagePullPolicy: Always
 ###################################################
 # Image Tags
 ###################################################
-# Centralized image tags/versions for all components
+# Centralized image versions for all components. Each release of this chart
+# pins every image by digest, as "<tag>@sha256:<digest>": the tag is for
+# reading, and the image is pulled by its digest, so a chart version always
+# deploys exactly the images it was released (and signed) with.
+#
+# To run another version, set a plain tag (for example edge: "4.11.0"); it is
+# pulled by tag. If you mirror the images to your own registry, copy them so
+# their digests are kept (docs/SECURITY.md, "Mirroring the images"), or set
+# plain tags.
 images:
   edge: "4.11.0"
   varnish: "9.1.0-2"
