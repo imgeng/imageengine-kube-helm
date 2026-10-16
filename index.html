@@ -155,6 +155,7 @@ helm repo update</pre>
           <div class="checklist">
             <div class="check"><span class="check-mark">✓</span><span class="check-text"><strong>Horizontal autoscaling</strong> out of the box</span></div>
             <div class="check"><span class="check-mark">✓</span><span class="check-text"><strong>Sharded cache layers</strong> for high hit rates</span></div>
+            <div class="check"><span class="check-mark">✓</span><span class="check-text"><strong>Edge Warm Start</strong>: new edges start with a warm cache</span></div>
             <div class="check"><span class="check-mark">✓</span><span class="check-text">Runs comfortably on <strong>small pods</strong></span></div>
             <div class="check"><span class="check-mark">✓</span><span class="check-text">Tunable <strong>replicas &amp; cache</strong> sizing</span></div>
           </div>
@@ -175,6 +176,33 @@ helm repo update</pre>
           </div>
         </div>
 
+      </div>
+
+      <!-- edge warm start -->
+      <div class="subsection" id="warm-start">
+        <div class="eyebrow">New in chart 1.10</div>
+        <h3 class="subsection-title">Edge Warm Start: new edges start warm.</h3>
+        <p class="lede lede-sm">A cache normally starts empty on every new server, so each deploy, scale-up or restart costs a dip in hit rate while it relearns. ImageEngine's edges size every image for the device asking for it, which means learning each image's original dimensions. With Edge Warm Start they share that knowledge: a new edge copies it from the edges already running before it takes traffic, and serves the same cached images from its first request.</p>
+        <div class="grid-3 grid-tight">
+
+          <div class="tile">
+            <div class="tile-title">Deploys without the dip</div>
+            <div class="tile-desc">In testing, a rolling deploy with Warm Start held its cache hit rate. Without it, the hit rate fell 18 points and was still well short ten minutes later.</div>
+          </div>
+
+          <div class="tile">
+            <div class="tile-title">More edges, not more misses</div>
+            <div class="tile-desc">Running edges keep sharing what they learn, within about a second, so scaling out doesn't multiply cache misses.</div>
+          </div>
+
+          <div class="tile">
+            <div class="tile-title">Nothing on the request path</div>
+            <div class="tile-desc">Edges sync in the background over their internal admin port. If no other edge is reachable, an edge simply starts on its own.</div>
+          </div>
+
+        </div>
+        <p class="lede lede-sm" style="margin: 20px 0 14px;">Opt-in in chart 1.10, and planned to be on by default in a future release.</p>
+        <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/CUSTOMIZATIONS.md#how-do-i-turn-on-edge-warm-start" class="btn btn-sm btn-outline" style="white-space: nowrap;">How to turn it on</a>
       </div>
 
       <div class="subsection">
