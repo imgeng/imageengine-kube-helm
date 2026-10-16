@@ -415,7 +415,7 @@ kubectl get gateway -A                                                   # the G
 
 ## An edge roll stalls with one new pod missing
 
-With `edge.widthSync.enabled` the edge rolls out surge-only: Kubernetes creates the new pod before it removes an old one. If a ResourceQuota on the namespace has no room for that extra pod, the ReplicaSet can't create it, no old pod is removed, and the roll waits forever.
+With Edge Warm Start (`edge.warmStart.enabled`) the edge rolls out surge-only: Kubernetes creates the new pod before it removes an old one. If a ResourceQuota on the namespace has no room for that extra pod, the ReplicaSet can't create it, no old pod is removed, and the roll waits forever.
 
 **Diagnose:**
 
@@ -428,9 +428,9 @@ A `FailedCreate` event says `exceeded quota`.
 
 **Fix:** give the quota room for one more edge pod (its requests and limits, for example 250m CPU, 256Mi requested and 1Gi limit), or lower `edge.replicaCount` by one.
 
-## An edge starts with an empty width cache
+## Edge Warm Start didn't warm a new edge
 
-With `edge.widthSync.enabled`, a new edge should copy its peers' width cache at start. `imageengine_edge_kvcache_bootstrap_total{result}` says what happened:
+With Edge Warm Start (`edge.warmStart.enabled`), a new edge should copy its peers' width cache at start. `imageengine_edge_kvcache_bootstrap_total{result}` says what happened:
 
 | `result` | Meaning |
 | --- | --- |

@@ -12,9 +12,9 @@ spec:
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      {{- if .Values.edge.widthSync.enabled }}
+      {{- if .Values.edge.warmStart.enabled }}
       # Surge only: a roll always leaves a live, warm peer for the new pod to
-      # bootstrap its natural-width store from (ADR 0025).
+      # bootstrap its natural-width store from (Edge Warm Start).
       maxUnavailable: 0
       {{- else }}
       maxUnavailable: 1
@@ -129,8 +129,8 @@ spec:
             - name: EDGE_CARBONTXT_FILE
               value: "/usr/share/iee/carbon.txt"
             {{- end }}
-            {{- if .Values.edge.widthSync.enabled }}
-            # Natural-width peer sync (ADR 0025): peers are the Ready edges
+            {{- if .Values.edge.warmStart.enabled }}
+            # Edge Warm Start: peers are the Ready edges
             # behind the headless Service; the local snapshot survives a
             # container restart inside the pod.
             {{- include "imageengine.derivedEnv" (dict "name" "EDGE_WIDTH_SYNC_PEERS" "value" (printf "%s-edge-peers.%s.svc.cluster.local" (include "imageengine.fullname" .) .Release.Namespace) "env" $edgeEnv) | nindent 12 }}
@@ -138,7 +138,7 @@ spec:
             {{- end }}
             {{- include "imageengine.renderEnv" $edgeEnv | nindent 12 }}
           volumeMounts:
-            {{- if .Values.edge.widthSync.enabled }}
+            {{- if .Values.edge.warmStart.enabled }}
             - name: width-cache
               mountPath: /var/cache/ie-edge
             {{- end }}
@@ -152,10 +152,10 @@ spec:
         {{- tpl (toYaml .) $ | nindent 8 }}
         {{- end }}
       volumes:
-        {{- if .Values.edge.widthSync.enabled }}
+        {{- if .Values.edge.warmStart.enabled }}
         - name: width-cache
           emptyDir:
-            sizeLimit: {{ .Values.edge.widthSync.localSnapshotSizeLimit | default "256Mi" }}
+            sizeLimit: {{ .Values.edge.warmStart.localSnapshotSizeLimit | default "256Mi" }}
         {{- end }}
         {{- if and .Values.edge.carbontxt.enabled .Values.edge.carbontxt.hash .Values.edge.carbontxt.content }}
         - name: carbontxt

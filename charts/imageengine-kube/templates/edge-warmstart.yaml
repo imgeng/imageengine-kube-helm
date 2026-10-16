@@ -1,5 +1,5 @@
-{{- if and .Values.frontend.enabled .Values.edge.widthSync.enabled }}
-# Natural-width peer sync (ADR 0025). The edges of this release find each
+{{- if and .Values.frontend.enabled .Values.edge.warmStart.enabled }}
+# Edge Warm Start. The edges of this release find each
 # other through this headless Service (A records of Ready pods only) and read
 # each other's natural-width stores on the admin port. Not a client-facing
 # Service.
@@ -36,10 +36,10 @@ spec:
     matchLabels:
       app: {{ include "imageengine.name" . }}
       tier: edge
-{{- if .Values.edge.widthSync.networkPolicy.enabled }}
+{{- if .Values.edge.warmStart.networkPolicy.enabled }}
 ---
 # Optional: only the release's own edges (and the scrapers listed in
-# edge.widthSync.networkPolicy.metricsFrom) may reach the edge admin port
+# edge.warmStart.networkPolicy.metricsFrom) may reach the edge admin port
 # (metrics, pprof, the read-only natural-width endpoints). Customer traffic on
 # 8080 stays open to everyone, since a NetworkPolicy that selects a pod blocks
 # every ingress it does not allow.
@@ -69,7 +69,7 @@ spec:
       ports:
         - port: 9464
           protocol: TCP
-    {{- with .Values.edge.widthSync.networkPolicy.metricsFrom }}
+    {{- with .Values.edge.warmStart.networkPolicy.metricsFrom }}
     - from:
         {{- toYaml . | nindent 8 }}
       ports:

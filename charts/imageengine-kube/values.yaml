@@ -454,17 +454,18 @@ edge:
   # "{{ .Values.identity.region }}". A pod-level ResourceQuota applies to these
   # containers too, so give them requests and limits.
   extraContainers: []
-  # Natural-width peer sync (ADR 0025). The edges of a release share the
-  # natural widths they learn, so a new or restarted edge starts warm instead
-  # of requesting uncapped variants that miss every cache. Adds a headless
+  # Edge Warm Start (opt-in; planned to be on by default in a future release).
+  # The edges of a release share the natural image widths they learn, so a new
+  # or restarted edge starts warm instead of requesting uncapped variants that
+  # miss every cache, and adding edges doesn't add cache misses. Adds a headless
   # Service on the admin port, an edge PodDisruptionBudget, an emptyDir for the
   # local snapshot, and a surge-only rollout. Needs an edge image with
   # EDGE_WIDTH_SYNC_* support, and EDGE_WIDTH_CACHE_SIZE sized to fit
   # limits.memory: a new edge fills to its peers' size within seconds.
-  # See docs/CUSTOMIZATIONS.md, "How do I keep the edge's width cache warm?".
+  # See docs/CUSTOMIZATIONS.md, "How do I turn on Edge Warm Start?".
   # A surge-only rollout needs room in any namespace ResourceQuota for one
   # extra edge pod, or a roll stalls.
-  widthSync:
+  warmStart:
     enabled: false
     # emptyDir for the local snapshot (12 bytes per entry, 30 MB at 2.5M).
     localSnapshotSizeLimit: "256Mi"
