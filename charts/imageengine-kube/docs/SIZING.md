@@ -188,7 +188,7 @@ What this is **not** good for: validating production sizing decisions. Cache hit
 
 You're past PoC and serving real traffic. Most of the value here comes from giving Varnish more RAM and OSC more disk; per-component replica counts go up modestly.
 
-- Edge and Varnish: **2 replicas each** (keep these matched 1:1 — see the Edge / Varnish sections above). Mostly for redundancy at this tier, not throughput.
+- Edge and Varnish: **2 replicas each** (keep these matched 1:1 — see the Edge / Varnish sections above). Mostly for redundancy at this tier, not throughput. Turn on [Edge Warm Start](CUSTOMIZATIONS.md#how-do-i-turn-on-edge-warm-start) so each new edge starts with what the other already knows; leave ResourceQuota room for a third edge during rolls.
 - Varnish, additionally: **bump RAM hard** — request 4–8 GiB, limit 12–16 GiB. This is your single highest-leverage knob. If you have spare RAM, give it to Varnish.
 - Backend: 3–4 replicas. Hold the memory limit at the default 6 GiB (or higher); do not trim it.
 - Fetcher: 3–4 replicas with **HPA enabled** so a miss storm can scale you out automatically.
@@ -202,7 +202,7 @@ Turn on real metrics now (request rate per pod, Varnish hit ratio, OSC fill, pro
 
 At this point you should be making sizing decisions from your own metrics, not from a generic doc. The starting points below assume a relatively miss-heavy workload (lots of unique URLs, new variants); a mostly cache-hit workload at the same req/sec needs much less.
 
-- Edge and Varnish: **same count, 3+ each** (1:1 ratio — see the Edge / Varnish sections above). Pin edge to a node pool with spare CPU bursting headroom — no component in the chart has a CPU limit, so the kernel will let edge stretch into idle cores under spike load.
+- Edge and Varnish: **same count, 3+ each** (1:1 ratio — see the Edge / Varnish sections above). Turn on [Edge Warm Start](CUSTOMIZATIONS.md#how-do-i-turn-on-edge-warm-start): the more edges, the more cache misses it saves, on deploys and in steady state. Pin edge to a node pool with spare CPU bursting headroom — no component in the chart has a CPU limit, so the kernel will let edge stretch into idle cores under spike load.
 - Varnish, additionally: the largest RAM you can spare per pod (8–32 GiB+), `VARNISH_STORAGE: tiered` with the file-backed tiers sized for your medium/large image working set. Consider dedicating a node pool to Varnish so the file-backed tier doesn't compete with other pods for disk IO.
 - Backend: 4+ replicas with HPA on; keep memory generous (6+ GiB limit) — this is the layer that buffers full images in flight.
 - Fetcher: HPA on, `maxReplicas` raised (e.g. 16+). Bandwidth to your origins becomes a real constraint here.

@@ -148,5 +148,6 @@ Why this shape:
 - [REQUIREMENTS.md](REQUIREMENTS.md) — confirm your cluster meets the hard minimums.
 - [SIZING.md](SIZING.md) — pick a sensible footprint for your traffic volume.
 - [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md) — replicas, autoscaling, ingress, Gateway API, TLS, OSC sizing, and so on.
+- Running two or more edges? Turn on [Edge Warm Start](CUSTOMIZATIONS.md#how-do-i-turn-on-edge-warm-start) so deploys, scale-ups and restarts don't cost you cache hits.
 - [TROUBLESHOOTING.md](TROUBLESHOOTING.md) — when something doesn't work.
 
