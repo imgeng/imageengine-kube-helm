@@ -2,7 +2,7 @@ apiVersion: v2
 name: imageengine-kube
 description: ImageEngine - cloud-native image optimization
 type: application
-version: 1.9.16
+version: 1.10.0
 kubeVersion: ">=1.30.0-0"
 home: https://imageengine.io
 sources:
@@ -25,7 +25,11 @@ annotations:
     fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
     url: https://kube.imageengine.io/pubkey.asc
   artifacthub.io/changes: |
-    - kind: fixed
-      description: "Lowered the edge's EDGE_WIDTH_CACHE_SIZE default from 10,000,000 to 2,500,000 entries. A full natural-width store costs about 180 bytes per entry on top of a ~400 MiB baseline, so 10M entries needed about 2.1 GiB and could never fit the 1 GiB edge memory limit: an edge that ran long enough to fill its store was OOMKilled and started again with an empty one. 2.5M fits the 1 GiB limit with headroom. If you set a larger size, raise edge.resources.limits.memory with it."
     - kind: added
-      description: "SIZING.md: \"Edge memory and the natural-width store\" gives the memory formula, a table of store sizes and matching memory limits, and the imageengine_edge_kvcache_* metrics that show whether the store is big enough. CUSTOMIZATIONS.md and TROUBLESHOOTING.md (edge OOMKilled after running for days) point to it."
+      description: "edge.widthSync.enabled (default false): the edges of a release share the natural image widths they learn. A new or restarted edge copies another edge's width cache before it becomes Ready (at most 15 s) and loads its own snapshot from a pod-local emptyDir after a container restart, and every edge picks up the widths the others learn within about a second. Without it, every new edge starts with an empty cache and requests uncapped variants that miss Varnish and the backend's caches until it relearns them. Adds a headless Service for the edges to find each other on the admin port, an edge PodDisruptionBudget, a surge-only edge rollout and the emptyDir. See CUSTOMIZATIONS.md, \"How do I keep the edge's width cache warm?\"."
+    - kind: added
+      description: "edge.widthSync.networkPolicy: an optional NetworkPolicy that limits the edge admin port (9464) to the release's own edges and the scrapers you list in metricsFrom, while customer traffic on 8080 stays open."
+    - kind: changed
+      description: "Updated the edge image to 4.11.0, which adds the width cache sharing (off unless edge.widthSync.enabled)."
+    - kind: added
+      description: "TROUBLESHOOTING.md: \"An edge roll stalls with one new pod missing\" (a ResourceQuota without room for the surge pod) and \"An edge starts with an empty width cache\" (what each imageengine_edge_kvcache_bootstrap_total result means)."

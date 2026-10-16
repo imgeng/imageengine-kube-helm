@@ -5,7 +5,7 @@ imagePullPolicy: Always
 ###################################################
 # Centralized image tags/versions for all components
 images:
-  edge: "4.10.5"
+  edge: "4.11.0"
   varnish: "9.1.0-2"
   backend: "2.16.0"
   fetcher: "1.32.0"
@@ -446,6 +446,29 @@ edge:
   # "{{ .Values.identity.region }}". A pod-level ResourceQuota applies to these
   # containers too, so give them requests and limits.
   extraContainers: []
+  # Natural-width peer sync (ADR 0025). The edges of a release share the
+  # natural widths they learn, so a new or restarted edge starts warm instead
+  # of requesting uncapped variants that miss every cache. Adds a headless
+  # Service on the admin port, an edge PodDisruptionBudget, an emptyDir for the
+  # local snapshot, and a surge-only rollout. Needs an edge image with
+  # EDGE_WIDTH_SYNC_* support, and EDGE_WIDTH_CACHE_SIZE sized to fit
+  # limits.memory: a new edge fills to its peers' size within seconds.
+  # See docs/CUSTOMIZATIONS.md, "How do I keep the edge's width cache warm?".
+  # A surge-only rollout needs room in any namespace ResourceQuota for one
+  # extra edge pod, or a roll stalls.
+  widthSync:
+    enabled: false
+    # emptyDir for the local snapshot (12 bytes per entry, 30 MB at 2.5M).
+    localSnapshotSizeLimit: "256Mi"
+    # Optional NetworkPolicy for the edge admin port (9464): only this
+    # release's edges, plus the peers in metricsFrom (for example your
+    # Prometheus namespace), may reach it. Customer traffic on 8080 stays open.
+    networkPolicy:
+      enabled: false
+      metricsFrom: []
+      # - namespaceSelector:
+      #     matchLabels:
+      #       kubernetes.io/metadata.name: monitoring
   # Image-pull Secret names added to the edge pod, for extraContainers images
   # outside secrets.imagePullSecretName's registry. The Secrets must exist in
   # the release namespace.

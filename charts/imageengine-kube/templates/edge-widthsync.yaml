@@ -1,0 +1,80 @@
+{{- if and .Values.frontend.enabled .Values.edge.widthSync.enabled }}
+# Natural-width peer sync (ADR 0025). The edges of this release find each
+# other through this headless Service (A records of Ready pods only) and read
+# each other's natural-width stores on the admin port. Not a client-facing
+# Service.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "imageengine.fullname" . }}-edge-peers
+  labels:
+    app: {{ include "imageengine.name" . }}
+    tier: edge
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: false
+  selector:
+    app: {{ include "imageengine.name" . }}
+    tier: edge
+  ports:
+    - name: admin
+      port: 9464
+      targetPort: metrics
+---
+# A drain must not take every edge of the release at once, or the next pod
+# starts with an empty natural-width store.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "imageengine.fullname" . }}-edge
+  labels:
+    app: {{ include "imageengine.name" . }}
+    tier: edge
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: {{ include "imageengine.name" . }}
+      tier: edge
+{{- if .Values.edge.widthSync.networkPolicy.enabled }}
+---
+# Optional: only the release's own edges (and the scrapers listed in
+# edge.widthSync.networkPolicy.metricsFrom) may reach the edge admin port
+# (metrics, pprof, the read-only natural-width endpoints). Customer traffic on
+# 8080 stays open to everyone, since a NetworkPolicy that selects a pod blocks
+# every ingress it does not allow.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "imageengine.fullname" . }}-edge-admin
+  labels:
+    app: {{ include "imageengine.name" . }}
+    tier: edge
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ include "imageengine.name" . }}
+      tier: edge
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - port: 8080
+          protocol: TCP
+    - from:
+        - podSelector:
+            matchLabels:
+              app: {{ include "imageengine.name" . }}
+              tier: edge
+      ports:
+        - port: 9464
+          protocol: TCP
+    {{- with .Values.edge.widthSync.networkPolicy.metricsFrom }}
+    - from:
+        {{- toYaml . | nindent 8 }}
+      ports:
+        - port: 9464
+          protocol: TCP
+    {{- end }}
+{{- end }}
+{{- end }}

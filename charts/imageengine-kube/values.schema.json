@@ -204,7 +204,21 @@
       "type": "object",
       "properties": {
         "replicaCount": { "type": "integer", "minimum": 0 },
-        "env": { "$ref": "#/definitions/envMap" }
+        "env": { "$ref": "#/definitions/envMap" },
+        "widthSync": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "localSnapshotSizeLimit": { "type": "string" },
+            "networkPolicy": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "metricsFrom": { "type": "array", "items": { "type": "object" } }
+              }
+            }
+          }
+        }
       }
     },
     "varnish": {
