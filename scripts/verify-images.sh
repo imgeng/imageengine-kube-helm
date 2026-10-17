@@ -35,10 +35,13 @@ for img in $images; do
     failed=1
     continue
   fi
-  if cosign verify --key "$key" "$img" >/dev/null 2>&1; then
+  # Keep cosign's stderr: "no signatures found" and a registry 401 both
+  # fail the gate, but the fix is different.
+  if err=$(cosign verify --key "$key" "$img" 2>&1 >/dev/null); then
     echo "ok          $img"
   else
     echo "NOT SIGNED  $img" >&2
+    echo "            $(printf '%s\n' "$err" | grep -v '^$' | tail -1)" >&2
     failed=1
   fi
 done
