@@ -46,10 +46,10 @@ jobs:
         uses: azure/setup-helm@v4
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3
+        # v4 of the installer is needed for cosign 3; the images are signed in
+        # the cosign 3 bundle format, which cosign 2.x cannot find.
+        uses: sigstore/cosign-installer@v4.1.2
         with:
-          # The images are signed in the cosign 3 bundle format, which
-          # cosign 2.x (the action's default) cannot find.
           cosign-release: v3.1.3
 
       # A chart release may only deploy images that are pinned by digest and
