@@ -32,8 +32,11 @@ digest_of() {
   fi
 }
 
-# name, repository and tag for each images.<name>, from values.yaml.
-mapfile -t rows < <(python3 - "$values" <<'PY'
+# name, repository and tag for each images.<name>, from values.yaml. Read
+# through a variable, not a process substitution, so a parser failure (missing
+# PyYAML, bad YAML, an unknown image) stops the script instead of leaving
+# "rows" short.
+parsed=$(python3 - "$values" <<'PY'
 import sys, yaml
 v = yaml.safe_load(open(sys.argv[1]))
 repo_of = {
@@ -49,7 +52,9 @@ for name, value in v["images"].items():
         sys.exit("error: no repository known for images.%s" % name)
     print(name, repo_of[name], str(value).split("@", 1)[0])
 PY
-)
+) || { echo "error: could not read images: from $values" >&2; exit 1; }
+mapfile -t rows <<<"$parsed"
+[ -n "$parsed" ] || { echo "error: no images: entries in $values" >&2; exit 1; }
 
 pins=()
 failed=0

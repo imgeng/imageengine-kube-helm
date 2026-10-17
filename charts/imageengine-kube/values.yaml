@@ -464,7 +464,8 @@ edge:
   # limits.memory: a new edge fills to its peers' size within seconds.
   # See docs/CUSTOMIZATIONS.md, "How do I turn on Edge Warm Start?".
   # A surge-only rollout needs room in any namespace ResourceQuota for one
-  # extra edge pod, or a roll stalls.
+  # extra edge pod, or a roll stalls. Run replicaCount 2 or more: the
+  # PodDisruptionBudget can't keep a drain from evicting a lone edge.
   warmStart:
     enabled: false
     # emptyDir for the local snapshot (12 bytes per entry, 30 MB at 2.5M).

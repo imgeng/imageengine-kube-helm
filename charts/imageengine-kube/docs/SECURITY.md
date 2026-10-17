@@ -38,10 +38,13 @@ cosign copy docker.scientiamobile.com/iekube/imageengine-frontend.edge:<tag> \
   registry.example.com/imageengine/imageengine-frontend.edge:<tag>
 ```
 
-`cosign copy` (or `crane copy`, or `skopeo copy --all`) copies the multi-arch index as it is, so
-the chart's pinned digests match your copy and `cosign verify` with our key still works there.
-Tools that rebuild the index, such as `docker pull` and `docker push` per platform, change its
-digest: then set plain tags in `images:` instead, or your own digests.
+`cosign copy` copies the multi-arch index as it is, so the chart's pinned digests match your
+copy, and it copies the signature with it, so `cosign verify` with our key still works there.
+`crane copy` and `skopeo copy --all` keep the digest but not the signature: cosign stores it
+under a separate tag, `sha256-<digest>.sig`, in the same repository, so copy that tag too (or
+run `scripts/verify-images.sh` against the mirror to see what is missing). Tools that rebuild
+the index, such as `docker pull` and `docker push` per platform, change its digest: then set
+plain tags in `images:` instead, or your own digests.
 
 ## 1. Verify image signatures (cosign)
 

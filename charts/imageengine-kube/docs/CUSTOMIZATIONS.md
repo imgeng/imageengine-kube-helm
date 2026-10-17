@@ -278,12 +278,13 @@ edge:
 What the chart adds when it's enabled:
 
 - A headless Service, `<release>-edge-peers`, on the admin port (9464), through which the edges find each other.
-- An edge PodDisruptionBudget (`maxUnavailable: 1`), so a node drain never takes every edge at once.
+- An edge PodDisruptionBudget (`maxUnavailable: 1`), so a node drain never takes every edge at once. This only protects a release with two or more edges: with `edge.replicaCount: 1` (the default), a drain still evicts the only edge, its snapshot goes with the pod, and the replacement starts cold. With one replica, only rolls and container restarts come back warm.
 - A surge-only rollout (`maxUnavailable: 0`), so a roll always leaves a warm edge for the new one to copy from.
 - An `emptyDir` at `/var/cache/ie-edge` for the edge's own snapshot (`edge.warmStart.localSnapshotSizeLimit`, default 256Mi; the file is about 12 bytes per entry).
 
 Before you enable it:
 
+- **Run at least two edges** (`edge.replicaCount: 2`), or there is no peer to copy from when a node drain or a pod eviction replaces the only one.
 - **Size the cache to fit memory** ([SIZING.md](SIZING.md#edge-memory-and-the-natural-width-store)). A new edge fills to its peers' size within seconds instead of over days, so an `EDGE_WIDTH_CACHE_SIZE` that doesn't fit `edge.resources.limits.memory` gets the pod `OOMKilled` right after it starts.
 - **Leave room for one extra edge pod** in any ResourceQuota on the namespace. A surge-only roll creates the new pod before it removes an old one; if the quota refuses it, the roll stalls (see [TROUBLESHOOTING.md](TROUBLESHOOTING.md#an-edge-roll-stalls-with-one-new-pod-missing)).
 - **The first roll that enables it starts cold**, because the edges it replaces don't share their caches yet. The benefit starts with the next roll or restart.

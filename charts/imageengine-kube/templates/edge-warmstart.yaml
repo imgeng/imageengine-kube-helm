@@ -16,13 +16,15 @@ spec:
   selector:
     app: {{ include "imageengine.name" . }}
     tier: edge
+    app.kubernetes.io/instance: {{ .Release.Name | quote }}
   ports:
     - name: admin
       port: 9464
       targetPort: metrics
 ---
 # A drain must not take every edge of the release at once, or the next pod
-# starts with an empty natural-width store.
+# starts with an empty natural-width store. Only protects a release with two
+# or more edges: with one, maxUnavailable 1 still lets the drain evict it.
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
@@ -36,6 +38,7 @@ spec:
     matchLabels:
       app: {{ include "imageengine.name" . }}
       tier: edge
+      app.kubernetes.io/instance: {{ .Release.Name | quote }}
 {{- if .Values.edge.warmStart.networkPolicy.enabled }}
 ---
 # Optional: only the release's own edges (and the scrapers listed in
@@ -55,6 +58,7 @@ spec:
     matchLabels:
       app: {{ include "imageengine.name" . }}
       tier: edge
+      app.kubernetes.io/instance: {{ .Release.Name | quote }}
   policyTypes:
     - Ingress
   ingress:
@@ -66,6 +70,7 @@ spec:
             matchLabels:
               app: {{ include "imageengine.name" . }}
               tier: edge
+              app.kubernetes.io/instance: {{ .Release.Name | quote }}
       ports:
         - port: 9464
           protocol: TCP

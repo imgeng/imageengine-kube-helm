@@ -29,6 +29,9 @@ spec:
       labels:
         app: {{ include "imageengine.name" . }}
         tier: edge
+        # Not in the (immutable) Deployment selector; lets the Edge Warm Start
+        # objects select only this release's edges.
+        app.kubernetes.io/instance: {{ .Release.Name | quote }}
       {{- with .Values.edge.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
