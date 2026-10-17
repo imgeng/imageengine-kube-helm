@@ -152,9 +152,9 @@ helm repo update</pre>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4-8 4-8-4 8-4z"></path><path d="M4 12l8 4 8-4"></path><path d="M4 17l8 4 8-4"></path></svg>
           </span>
           <h3 class="card-title">Built to scale</h3>
-          <p class="card-desc">Start with a compact chart and size edge, cache shards, processing and persistent storage independently against production traffic.</p>
+          <p class="card-desc">Start with a compact chart and size edge, cache shards, processing and persistent storage independently against production traffic.  <strong>Full support for x64_64 and ARM64.</strong></p>
           <div class="checklist">
-            <div class="check"><span class="check-mark">✓</span><span class="check-text"><strong>Optional CPU HPA</strong> for backend, fetcher and processor</span></div>
+            <div class="check"><span class="check-mark">✓</span><span class="check-text"><strong>Horizontal Pod Autoscaling</strong> in all the CPU-bound tiers</span></div>
             <div class="check"><span class="check-mark">✓</span><span class="check-text"><strong>HRW-sharded Varnish and OSC</strong> to distribute cache capacity</span></div>
             <div class="check"><span class="check-mark">✓</span><span class="check-text"><strong>Edge Warm Start</strong> available as an opt-in for multi-edge releases</span></div>
             <div class="check"><span class="check-mark">✓</span><span class="check-text"><strong>Independent tier sizing</strong> and regional frontends</span></div>
@@ -170,7 +170,7 @@ helm repo update</pre>
           <p class="card-desc">Find the bottleneck across image delivery, caching, fetching and processing with your own observability tools.</p>
           <div class="checklist">
             <div class="check"><span class="check-mark">✓</span><span class="check-text"><strong>Prometheus metrics</strong> from every pod</span></div>
-            <div class="check"><span class="check-mark">✓</span><span class="check-text"><strong>Opt-in OpenTelemetry</strong> across the Go components</span></div>
+            <div class="check"><span class="check-mark">✓</span><span class="check-text"><strong>Opt-in OpenTelemetry</strong> across all components</span></div>
             <div class="check"><span class="check-mark">✓</span><span class="check-text"><strong>Optional Sentry</strong> per component</span></div>
             <div class="check"><span class="check-mark">✓</span><span class="check-text"><strong>ECS structured logs</strong> in JSON</span></div>
           </div>
@@ -248,7 +248,7 @@ helm repo update</pre>
 
           <div class="tile">
             <div class="tile-title">Works with every major CDN</div>
-            <div class="tile-desc">Drop it in front of CloudFront, Fastly, Akamai and the rest.</div>
+            <div class="tile-desc">Drop it in front of Cloudflare, CloudFront, Fastly, Akamai and the rest.</div>
           </div>
 
         </div>
