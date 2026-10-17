@@ -12,7 +12,13 @@ spec:
   strategy:
     type: RollingUpdate
     rollingUpdate:
+      {{- if .Values.edge.warmStart.enabled }}
+      # Surge only: a roll always leaves a live, warm peer for the new pod to
+      # bootstrap its natural-width store from (Edge Warm Start).
+      maxUnavailable: 0
+      {{- else }}
       maxUnavailable: 1
+      {{- end }}
       maxSurge: 1
   selector:
     matchLabels:
@@ -23,6 +29,9 @@ spec:
       labels:
         app: {{ include "imageengine.name" . }}
         tier: edge
+        # Not in the (immutable) Deployment selector; lets the Edge Warm Start
+        # objects select only this release's edges.
+        app.kubernetes.io/instance: {{ .Release.Name | quote }}
       {{- with .Values.edge.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
@@ -123,8 +132,19 @@ spec:
             - name: EDGE_CARBONTXT_FILE
               value: "/usr/share/iee/carbon.txt"
             {{- end }}
+            {{- if .Values.edge.warmStart.enabled }}
+            # Edge Warm Start: peers are the Ready edges
+            # behind the headless Service; the local snapshot survives a
+            # container restart inside the pod.
+            {{- include "imageengine.derivedEnv" (dict "name" "EDGE_WIDTH_SYNC_PEERS" "value" (printf "%s-edge-peers.%s.svc.cluster.local" (include "imageengine.fullname" .) .Release.Namespace) "env" $edgeEnv) | nindent 12 }}
+            {{- include "imageengine.derivedEnv" (dict "name" "EDGE_WIDTH_SYNC_LOCAL_SNAPSHOT_PATH" "value" "/var/cache/ie-edge/naturalwidth.ienw" "env" $edgeEnv) | nindent 12 }}
+            {{- end }}
             {{- include "imageengine.renderEnv" $edgeEnv | nindent 12 }}
           volumeMounts:
+            {{- if .Values.edge.warmStart.enabled }}
+            - name: width-cache
+              mountPath: /var/cache/ie-edge
+            {{- end }}
             {{- if and .Values.edge.carbontxt.enabled .Values.edge.carbontxt.hash .Values.edge.carbontxt.content }}
             - name: carbontxt
               mountPath: /usr/share/iee/carbon.txt
@@ -135,6 +155,11 @@ spec:
         {{- tpl (toYaml .) $ | nindent 8 }}
         {{- end }}
       volumes:
+        {{- if .Values.edge.warmStart.enabled }}
+        - name: width-cache
+          emptyDir:
+            sizeLimit: {{ .Values.edge.warmStart.localSnapshotSizeLimit | default "256Mi" }}
+        {{- end }}
         {{- if and .Values.edge.carbontxt.enabled .Values.edge.carbontxt.hash .Values.edge.carbontxt.content }}
         - name: carbontxt
           configMap:

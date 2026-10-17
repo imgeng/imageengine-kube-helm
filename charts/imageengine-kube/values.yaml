@@ -3,14 +3,22 @@ imagePullPolicy: Always
 ###################################################
 # Image Tags
 ###################################################
-# Centralized image tags/versions for all components
+# Centralized image versions for all components. Each release of this chart
+# pins every image by digest, as "<tag>@sha256:<digest>": the tag is for
+# reading, and the image is pulled by its digest, so a chart version always
+# deploys exactly the images it was released (and signed) with.
+#
+# To run another version, set a plain tag (for example edge: "4.11.1"); it is
+# pulled by tag. If you mirror the images to your own registry, copy them so
+# their digests are kept (docs/SECURITY.md, "Mirroring the images"), or set
+# plain tags.
 images:
-  edge: "4.10.5"
-  varnish: "9.1.0-2"
-  backend: "2.16.0"
-  fetcher: "1.32.0"
-  processor: "3.30.0"
-  osc: "3.7.0"
+  edge: "4.11.1@sha256:27267e831cc0447ac952a27c89e01c02a9e4c237bb669f14a7ef5a71c1089f85"
+  varnish: "9.1.0-2@sha256:387038ba648668a93f8b1ba3d57bf22f86e00637af07206adc284787d2d4bf71"
+  backend: "2.16.0@sha256:cd119c34b9ad7870b4264de51f33576dca1be7addfd393af06d229e136624aaf"
+  fetcher: "1.32.0@sha256:5dc28e1708e9bc67534fc7348dd3d6e01d9e2511abd82e4eed40239b807d0f2e"
+  processor: "3.30.0@sha256:be9f857e8778434e442c902fecb6cd60955380ccc7b64a7c9950c79bfb49cf01"
+  osc: "3.7.0@sha256:e2bfbb36082568e06bf56151cebc82fe39e5ad1dbfb8ea886b74150491202523"
 
 ###################################################
 # Deployment topology (ADR 0021)
@@ -446,6 +454,31 @@ edge:
   # "{{ .Values.identity.region }}". A pod-level ResourceQuota applies to these
   # containers too, so give them requests and limits.
   extraContainers: []
+  # Edge Warm Start (opt-in; planned to be on by default in a future release).
+  # The edges of a release share the natural image widths they learn, so a new
+  # or restarted edge starts warm instead of requesting uncapped variants that
+  # miss every cache, and adding edges doesn't add cache misses. Adds a headless
+  # Service on the admin port, an edge PodDisruptionBudget, an emptyDir for the
+  # local snapshot, and a surge-only rollout. Needs an edge image with
+  # EDGE_WIDTH_SYNC_* support, and EDGE_WIDTH_CACHE_SIZE sized to fit
+  # limits.memory: a new edge fills to its peers' size within seconds.
+  # See docs/CUSTOMIZATIONS.md, "How do I turn on Edge Warm Start?".
+  # A surge-only rollout needs room in any namespace ResourceQuota for one
+  # extra edge pod, or a roll stalls. Run replicaCount 2 or more: the
+  # PodDisruptionBudget can't keep a drain from evicting a lone edge.
+  warmStart:
+    enabled: false
+    # emptyDir for the local snapshot (12 bytes per entry, 30 MB at 2.5M).
+    localSnapshotSizeLimit: "256Mi"
+    # Optional NetworkPolicy for the edge admin port (9464): only this
+    # release's edges, plus the peers in metricsFrom (for example your
+    # Prometheus namespace), may reach it. Customer traffic on 8080 stays open.
+    networkPolicy:
+      enabled: false
+      metricsFrom: []
+      # - namespaceSelector:
+      #     matchLabels:
+      #       kubernetes.io/metadata.name: monitoring
   # Image-pull Secret names added to the edge pod, for extraContainers images
   # outside secrets.imagePullSecretName's registry. The Secrets must exist in
   # the release namespace.

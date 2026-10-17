@@ -45,6 +45,22 @@ jobs:
       - name: Install Helm
         uses: azure/setup-helm@v4
 
+      - name: Install cosign
+        # v4 of the installer is needed for cosign 3; the images are signed in
+        # the cosign 3 bundle format, which cosign 2.x cannot find.
+        uses: sigstore/cosign-installer@v4.1.2
+        with:
+          cosign-release: v3.1.3
+
+      # A chart release may only deploy images that are pinned by digest and
+      # signed with the ImageEngine image-signing key. Skipped when this chart
+      # version is already released (chart-releaser would publish nothing).
+      - name: Verify pinned, signed images
+        env:
+          REGISTRY_USER: ${{ secrets.IMAGE_REGISTRY_USER }}
+          REGISTRY_TOKEN: ${{ secrets.IMAGE_REGISTRY_TOKEN }}
+        run: scripts/release-gate.sh
+
       - name: Run chart-releaser
         id: cr
         uses: helm/chart-releaser-action@v1.7.0

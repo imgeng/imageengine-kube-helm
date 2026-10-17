@@ -413,6 +413,41 @@ kubectl get gateway -A                                                   # the G
 
 ---
 
+## An edge roll stalls with one new pod missing
+
+With Edge Warm Start (`edge.warmStart.enabled`) the edge rolls out surge-only: Kubernetes creates the new pod before it removes an old one. If a ResourceQuota on the namespace has no room for that extra pod, the ReplicaSet can't create it, no old pod is removed, and the roll waits forever.
+
+**Diagnose:**
+
+```bash
+kubectl get events -n imageengine --sort-by=.lastTimestamp | grep -i quota
+kubectl describe resourcequota -n imageengine
+```
+
+A `FailedCreate` event says `exceeded quota`.
+
+**Fix:** give the quota room for one more edge pod (its requests and limits, for example 250m CPU, 256Mi requested and 1Gi limit), or lower `edge.replicaCount` by one.
+
+## Edge Warm Start didn't warm a new edge
+
+With Edge Warm Start (`edge.warmStart.enabled`), a new edge should copy its peers' width cache at start. `imageengine_edge_kvcache_bootstrap_total{result}` says what happened:
+
+| `result` | Meaning |
+| --- | --- |
+| `ok` | It copied a peer's whole cache. |
+| `partial` / `timeout` | It got part of it within 15 s; the rest is fetched in the background once the pod is Ready. |
+| `local_only` | No peer answered, but it loaded its own snapshot (a restarted container). |
+| `no_peer` | No other edge was Ready. Normal for the first edge of a release, and when every edge restarts at once. |
+| `error` | Its peers didn't answer. Expected on the first roll after enabling sync, when the old edges don't share their caches yet. |
+| `incompatible` | The peers run an edge version with another cache format. Normal during a roll that changes it. |
+
+If every new edge reports `error` or `no_peer` outside those cases, check that the peers Service lists the edges and that the edges can reach each other on port 9464 (a NetworkPolicy):
+
+```bash
+kubectl get endpointslices -n imageengine -l kubernetes.io/service-name=<release>-edge-peers
+kubectl logs -n imageengine deploy/<release>-edge | grep natural-width
+```
+
 ## Pods evicted under load / nodes OOM
 
 **Symptom:** `kubectl get events` shows pod evictions or OOMKilled under traffic.

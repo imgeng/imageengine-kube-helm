@@ -2,6 +2,8 @@
 
 ImageEngine Kube deploys the [ImageEngine](https://imageengine.io) image-optimization and delivery platform inside your own Kubernetes cluster — device-aware image transformation, multi-tier caching, and edge delivery, all running on infrastructure you control. See [imageengine.io/why-kube/](https://imageengine.io/why-kube/) for what the platform does and why you might want to self-host it.
 
+**New in 1.10: Edge Warm Start.** A cache normally starts empty on every new server, so each deploy, scale-up or restart costs a dip in cache hit rate while it relearns. ImageEngine's edges size every image for the device asking for it, and to do that they learn each image's original dimensions. With Edge Warm Start, a new or restarted edge copies what the running edges already know before it takes traffic, so it serves the same cached variants from its first request; running edges keep sharing what they learn, so adding edges doesn't add cache misses either. In testing, a rolling deploy with Warm Start kept the cache hit rate steady where a deploy without it lost 18 points. It is opt-in in this release and planned to be on by default in a future one: see [How do I turn on Edge Warm Start?](docs/CUSTOMIZATIONS.md#how-do-i-turn-on-edge-warm-start).
+
 ImageEngine Kube runs on both **arm64** and **x86-64** nodes. arm64 is recommended wherever your provider offers it, since it gives the best price/performance (see [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md#cpu-architecture)).
 
 The chart is published to the Helm repository at `https://kube.imageengine.io`. Source and issue tracking live at [`imgeng/imageengine-kube-helm`](https://github.com/imgeng/imageengine-kube-helm) on GitHub.
@@ -127,7 +129,7 @@ To pin a specific chart version: `helm upgrade ... --version 1.2.3 -f imageengin
 - [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) — full first-deployment walkthrough.
 - [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) — Kubernetes version, CPU architecture (arm64 / x86-64), storage, network, and compute minimums.
 - [docs/SIZING.md](docs/SIZING.md) — recommended footprints for low / medium / high traffic.
-- [docs/CUSTOMIZATIONS.md](docs/CUSTOMIZATIONS.md) — replicas, autoscaling, ingress, Gateway API, TLS, HTTP/3, OSC sizing, Varnish tuning, OpenTelemetry tracing, and the rest.
+- [docs/CUSTOMIZATIONS.md](docs/CUSTOMIZATIONS.md) — Edge Warm Start, replicas, autoscaling, ingress, Gateway API, TLS, HTTP/3, OSC sizing, Varnish tuning, OpenTelemetry tracing, and the rest.
 - [docs/TOPOLOGIES.md](docs/TOPOLOGIES.md) — running the full pipeline (default) vs. splitting it into frontend-only / backend-only tiers across clusters or regions.
 - [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — common issues and fixes.
 - Platform-specific guidance: [AWS](docs/providers/AWS.md), [Azure](docs/providers/AZURE.md), [DigitalOcean](docs/providers/DIGITALOCEAN.md), [GKE](docs/providers/GKE.md), [Linode](docs/providers/LINODE.md), [self-managed / bare metal](docs/providers/CUSTOM.md).

@@ -1,0 +1,38 @@
+name: Verify chart images
+
+# The same gate as the release workflow, on pull requests, so a chart version
+# that would deploy an unpinned or unsigned image is caught before it merges.
+
+on:
+  pull_request:
+    paths:
+      - "charts/**"
+      - "scripts/**"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Install cosign
+        # v4 of the installer is needed for cosign 3; the images are signed in
+        # the cosign 3 bundle format, which cosign 2.x cannot find.
+        uses: sigstore/cosign-installer@v4.1.2
+        with:
+          cosign-release: v3.1.3
+
+      - name: Verify pinned, signed images
+        env:
+          REGISTRY_USER: ${{ secrets.IMAGE_REGISTRY_USER }}
+          REGISTRY_TOKEN: ${{ secrets.IMAGE_REGISTRY_TOKEN }}
+        run: scripts/release-gate.sh

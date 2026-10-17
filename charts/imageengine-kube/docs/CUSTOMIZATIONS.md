@@ -258,6 +258,53 @@ edge:
 
 Both have sensible defaults; only touch them if you have a specific reason. The width cache lives in the edge's memory, about 180 bytes per entry once full, so raising `EDGE_WIDTH_CACHE_SIZE` means raising `edge.resources.limits.memory` too. [SIZING.md](SIZING.md#edge-memory-and-the-natural-width-store) has the formula and a table of sizes and limits.
 
+## How do I turn on Edge Warm Start?
+
+**Edge Warm Start** improves cache hit rates when you deploy new edge pods: each new edge starts with what the running edges already know about your images, instead of relearning it from cache misses. Running edges also share what they learn, so adding edges doesn't add cache misses. It is opt-in in this release (`edge.warmStart.enabled`), and planned to be on by default in a future one.
+
+How it works: each edge learns the natural (original) width of every image it serves and uses it to avoid requesting a resize wider than the original. An edge that doesn't know an image yet requests an uncapped variant, which is a different cache key, so it misses Varnish and the backend's caches. Without Warm Start, a new or restarted edge starts knowing nothing, and every edge relearns what the others already know. With it, the edges of a release share what they learn:
+
+```yaml
+edge:
+  replicaCount: 2
+  warmStart:
+    enabled: true
+```
+
+- **At start**, an edge loads its own snapshot from a pod-local `emptyDir` (so a restarted container comes back warm), then copies the cache of another edge of the release. `/health` answers `503` meanwhile, for at most 15 s, so the pod isn't Ready until its cache is warm.
+- **While running**, every edge reads the new widths the others learned, once a second.
+- **Nothing on the request path.** If no other edge is reachable, an edge starts and serves as it does without Warm Start.
+
+What the chart adds when it's enabled:
+
+- A headless Service, `<release>-edge-peers`, on the admin port (9464), through which the edges find each other.
+- An edge PodDisruptionBudget (`maxUnavailable: 1`), so a node drain never takes every edge at once. This only protects a release with two or more edges: with `edge.replicaCount: 1` (the default), a drain still evicts the only edge, its snapshot goes with the pod, and the replacement starts cold. With one replica, only rolls and container restarts come back warm.
+- A surge-only rollout (`maxUnavailable: 0`), so a roll always leaves a warm edge for the new one to copy from.
+- An `emptyDir` at `/var/cache/ie-edge` for the edge's own snapshot (`edge.warmStart.localSnapshotSizeLimit`, default 256Mi; the file is about 12 bytes per entry).
+
+Before you enable it:
+
+- **Run at least two edges** (`edge.replicaCount: 2`), or there is no peer to copy from when a node drain or a pod eviction replaces the only one.
+- **Size the cache to fit memory** ([SIZING.md](SIZING.md#edge-memory-and-the-natural-width-store)). A new edge fills to its peers' size within seconds instead of over days, so an `EDGE_WIDTH_CACHE_SIZE` that doesn't fit `edge.resources.limits.memory` gets the pod `OOMKilled` right after it starts.
+- **Leave room for one extra edge pod** in any ResourceQuota on the namespace. A surge-only roll creates the new pod before it removes an old one; if the quota refuses it, the roll stalls (see [TROUBLESHOOTING.md](TROUBLESHOOTING.md#an-edge-roll-stalls-with-one-new-pod-missing)).
+- **The first roll that enables it starts cold**, because the edges it replaces don't share their caches yet. The benefit starts with the next roll or restart.
+
+To restrict the admin port to the release's own edges and your metrics scraper, also enable the NetworkPolicy. Customer traffic on port 8080 stays open:
+
+```yaml
+edge:
+  warmStart:
+    enabled: true
+    networkPolicy:
+      enabled: true
+      metricsFrom:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+```
+
+The edge reports how it went in `imageengine_edge_kvcache_bootstrap_total{result}` (`ok`, `partial`, `local_only`, `no_peer`, `incompatible`, `timeout`, `error`), `imageengine_edge_kvcache_bootstrap_entries` and `imageengine_edge_kvcache_sync_lag_seconds`.
+
 ## How long does the edge wait for a slow image?
 
 On a cache miss the edge waits for your origin and for processing. The default is 75 seconds, after which it answers `504`:
