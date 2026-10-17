@@ -41,7 +41,7 @@ cosign copy docker.scientiamobile.com/iekube/imageengine-frontend.edge:<tag> \
 `cosign copy` copies the multi-arch index as it is, so the chart's pinned digests match your
 copy, and it copies the signature with it, so `cosign verify` with our key still works there.
 `crane copy` and `skopeo copy --all` keep the digest but not the signature: cosign stores it
-under a separate tag, `sha256-<digest>.sig`, in the same repository, so copy that tag too (or
+under a separate tag, `sha256-<digest>`, in the same repository, so copy that tag too (or
 run `scripts/verify-images.sh` against the mirror to see what is missing). Tools that rebuild
 the index, such as `docker pull` and `docker push` per platform, change its digest: then set
 plain tags in `images:` instead, or your own digests.
@@ -63,6 +63,10 @@ cosign verify --key cosign.pub \
 
 `cosign verify` exits non-zero if the signature is missing or does not match the key. The
 signature covers the multi-arch image index **and** every per-platform manifest.
+
+**You need cosign 3.x.** The signatures are stored in the cosign 3 bundle format (an OCI
+referrer under the tag `sha256-<digest>`), which cosign 2.x does not look for: it reports
+`no signatures found` for an image that is signed. `cosign version` shows what you have.
 
 For reference, the public key (`cosign.pub`):
 
