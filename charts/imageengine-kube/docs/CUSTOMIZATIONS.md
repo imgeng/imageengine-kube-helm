@@ -19,13 +19,13 @@ processor:
   replicaCount: 4
 ```
 
-`replicaCount` applies to `edge`, `varnish`, `backend`, `fetcher`, `processor`, and `objectStorageCache`.
+`replicaCount` applies to `edge`, `varnish`, `backend`, `fetcher`, `processor`, and `objectStorageCache`. The compact defaults (1 edge, 3 Varnish shards, 2 backend/fetcher/processor pods each, 4 OSC shards) are intended for evaluation; production sizing is governed by working-set size, traffic distribution, latency and available node/storage resources ([SIZING.md](SIZING.md)).
 
 If a component has autoscaling enabled (see below), `replicaCount` is **ignored** in favor of `autoscaling.minReplicas`.
 
 A few components have important constraints:
 
-- **Varnish** holds the high-performance in-memory cache of optimized images. Restarting it (whether from a chart upgrade, a `replicaCount` change, an `env`/`resources` edit, or a rollout) **empties that cache**, and the next wave of requests has to refill it from the backend. The edge proxies to a single Varnish endpoint with no consistent hashing, so **adding replicas lowers your hit ratio** (each pod caches an overlapping random subset). Keep `varnish.replicaCount: 1` and treat Varnish as a long-lived component — change it only when you actually need to. Resilience comes from `varnish.priorityClassName` and graceful drain, not replication (see [`How do I protect the cache tiers from disruption?`](#how-do-i-protect-the-cache-tiers-from-disruption)). See also [`How do I tune Varnish storage?`](#how-do-i-tune-varnish-storage).
+- **Varnish** is a **sharded StatefulSet** (default **3 shards**). The edge discovers its shards by Kubernetes SRV records and consistently routes each image's variants by rendezvous (HRW) hashing, so added shards contribute cache capacity without random round-robin duplication. A restart still empties that shard's *ephemeral* hot cache; most subsequent misses can refill from persistent OSC. Changing shard count remaps a portion of keys and causes temporary cold misses, so size it deliberately instead of autoscaling. Edge replicas **do not** need to equal Varnish shards. A Varnish PDB is enabled by default (`maxUnavailable: 1`); see [`How do I protect the cache tiers from disruption?`](#how-do-i-protect-the-cache-tiers-from-disruption).
 - **Object Storage Cache** runs as a **sharded StatefulSet** (`objectStorageCache.replicaCount` = number of shards, default 4). Each shard is an independent OSC node with its own PersistentVolume, and clients consistent-hash the origin key across shards, so each shard owns a disjoint slice of the keyspace. Scaling shards is safe and online — see [`How do I size and scale the OSC shards?`](#how-do-i-size-and-scale-the-osc-shards).
 
 ## How do I autoscale on CPU?
@@ -61,7 +61,6 @@ processor:
       cpu: "1"
     limits:
       memory: "8Gi"
-      cpu: "4"
 
 backend:
   resources:
@@ -92,7 +91,7 @@ Each shard's PVC is `ReadWriteOnce`, so a shard is pinned to whichever node/AZ o
 
 ## How do I size and scale the OSC shards?
 
-OSC runs as a StatefulSet of `objectStorageCache.replicaCount` shards (default **4**). Each shard (`<release>-osc-0`, `-osc-1`, ...) is an independent OSC node with its own volume, and the backend/fetcher/processor use the OSC sharding client to consistent-hash the **origin key** (Google Jump Consistent Hash) across them. Benefits of sharding by default:
+OSC runs as a StatefulSet of `objectStorageCache.replicaCount` shards (default **4**). Each shard (`<release>-osc-0`, `-osc-1`, ...) is an independent OSC node with its own volume, and the backend/fetcher/processor use the OSC sharding client to consistent-hash the **origin key** (HRW/rendezvous hashing by default; `objectStorageCache.client.hash: jump` is a legacy option) across them. Benefits of sharding by default:
 
 - **Bounded blast radius:** losing one shard only affects ~`1 / replicaCount` of *cache-miss* traffic (those keys recompute from origin), not the whole cache. With the default 4, that's ~25%.
 - **No write races:** each shard owns a disjoint slice of the keyspace on its own volume, so there is never more than one writer per object.
@@ -195,7 +194,7 @@ varnish:
     VARNISH_STORAGE_2: "file,/u/cache/varnish-tier2.bin,150G,8K"
 ```
 
-Reads from tier 2 come from the page cache or local disk, which on local NVMe adds well under a millisecond per object. Avoid network-attached volumes for the file tiers: Varnish reads them in small pages, one at a time.
+Reads from tier 2 come from the page cache or local disk, which on local NVMe adds well under a millisecond per object. Favor fast local or equivalently low-latency storage for the file tiers: Varnish may incur substantial page-read latency with network-attached volumes. Benchmark your actual storage class.
 
 Full list of varnishd parameters and storage options lives in the comments of [`values.yaml`](https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/values.yaml), in the `varnish:` block.
 
@@ -213,11 +212,11 @@ objectStorageCache:
 
 varnish:
   pdb:
-    enabled: false         # default off (see trade-off below)
-    minAvailable: 1
+    enabled: true          # default with 3 Varnish shards
+    maxUnavailable: 1
 ```
 
-Note the Varnish trade-off: with a single replica, `minAvailable: 1` blocks node drains entirely (a drain will hang until forced). That's strong protection, but enable it deliberately. OSC's `maxUnavailable: 1` only bites once you run 2+ shards.
+With multiple Varnish shards (default 3), `maxUnavailable: 1` protects the remaining shards during voluntary disruptions. With a single Varnish shard, use care when selecting PDB settings: requiring `minAvailable: 1` would block normal drains. OSC's `maxUnavailable: 1` becomes useful with 2+ shards. These budgets do not protect against hard node failures.
 
 **Shutdown.** A Varnish pod that is stopping is stopped at once by its preStop hook (Varnish images 9.1.0-1 and later). The edge then sees refused connections and moves that shard's requests to the next shard; requests that were waiting on that shard are retried there. Draining it slowly does not help: on SIGTERM Varnish keeps accepting connections it no longer answers, and the edge keeps routing to the shard until its pod is gone. With older images the hook sleeps `drainSeconds` instead:
 
@@ -243,7 +242,7 @@ varnish:
 
 If your org already manages PriorityClasses, leave `priorityClass.create: false` and just set each component's `priorityClassName` to an existing class.
 
-Because ImageEngine recomputes from origin on an OSC miss and the OSC write-back is asynchronous, a shard reschedule is a non-event for end users — so you generally don't need to make OSC drain-blocking. See [TROUBLESHOOTING.md](TROUBLESHOOTING.md#an-osc-shard-restarted--rescheduled).
+Because ImageEngine can refetch and recompute on an OSC miss and OSC write-back can be asynchronous, losing a shard does not lose customer origin content, **but can increase response latency, origin requests and processing load** until its cache is available or repopulated — so you generally don't need to make OSC drain-blocking. See [TROUBLESHOOTING.md](TROUBLESHOOTING.md#an-osc-shard-restarted--rescheduled).
 
 ## How do I tune the edge cache?
 
