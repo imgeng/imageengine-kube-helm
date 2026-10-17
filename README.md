@@ -87,7 +87,7 @@ Every image a chart release deploys must be pinned by digest and cosign-signed:
 
 1. Set the new tags in `images:` in `charts/imageengine-kube/values.yaml` and bump the chart
    `version`.
-2. Run `scripts/pin-digests.sh`. It resolves each tag to its digest, checks the image's
+2. Run `scripts/pin-digests.py` (needs PyYAML, cosign, and crane or docker). It resolves each tag to its digest, checks the image's
    signature with the published key, and rewrites the values as `<tag>@sha256:…`. It refuses,
    and changes nothing, if any image is missing or unsigned. Commit the result.
 3. The "Verify chart images" check runs `scripts/verify-images.sh` on the pull request, and
@@ -100,7 +100,7 @@ Every image a chart release deploys must be pinned by digest and cosign-signed:
 ```
 charts/imageengine-kube/   # the chart itself: templates, values, docs
 .github/workflows/         # chart-releaser-action release pipeline, image verification
-scripts/                   # pin-digests.sh, verify-images.sh, release-gate.sh
+scripts/                   # pin-digests.py, verify-images.sh, release-gate.sh
 ```
 
 The `gh-pages` branch hosts the served Helm repo: `index.yaml`, signed `.tgz`

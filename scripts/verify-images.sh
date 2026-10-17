@@ -31,7 +31,7 @@ images=$(helm template verify "$chart" | sed -n 's/^[[:space:]]*image:[[:space:]
 failed=0
 for img in $images; do
   if [[ "$img" != *@sha256:* ]]; then
-    echo "NOT PINNED  $img (run scripts/pin-digests.sh)" >&2
+    echo "NOT PINNED  $img (run scripts/pin-digests.py)" >&2
     failed=1
     continue
   fi
