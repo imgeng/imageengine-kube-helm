@@ -15,7 +15,7 @@ The hard minimums for running ImageEngine Kube. If your environment doesn't meet
 
 ## Storage
 
-- **A `StorageClass` with dynamic provisioning** that supports `ReadWriteOnce` PersistentVolumeClaims. Only the Object Storage Cache (OSC) needs persistent storage; the chart creates a single PVC for it.
+- **A `StorageClass` with dynamic provisioning** that supports `ReadWriteOnce` PersistentVolumeClaims. Only the Object Storage Cache (OSC) needs persistent storage; the chart creates **one PVC per OSC shard** (default 4), rather than one shared PVC. Each cache shard uses a separate `ReadWriteOnce` volume.
 - If you set `provider:` to one of the supported clouds (`aws`, `azure`, `digitalocean`, `gke`, `linode`), the right storage class is picked automatically. Otherwise, set `objectStorageCache.persistence.storageClass` explicitly.
 - The OSC needs to be **fast** (the cache is on the hot path for every request that misses Varnish) and **large** (it holds origin images plus every processed variant). 40 GiB is fine for a smoke test; production deployments will want hundreds of GiB to multiple TiB. See [SIZING.md](SIZING.md).
 
@@ -52,13 +52,14 @@ A third optional secret, `ie-kube-fetcher`, is referenced in [`values.yaml`](htt
 
 ## Compute footprint
 
-At default replica counts (1 edge, 1 varnish, 2 backend, 2 fetcher, 2 processor, 1 OSC), the chart asks for roughly:
+At chart 1.10.0 defaults (**1 edge, 3 Varnish shards, 2 backend, 2 fetcher, 2 processor, 4 OSC shards**), the sum of component requests is approximately:
 
-- **CPU requests:** ~3 vCPU total.
-- **Memory requests:** ~10 GiB total.
-- **Memory limits (burst ceiling):** ~40 GiB total.
+- **CPU requests:** ~8 vCPU total.
+- **Memory requests:** ~12 GiB total.
+- **Persistent OSC volumes:** 4 × 10 GiB = 40 GiB.
+- **Varnish ephemeral-storage requests:** 3 × 10 GiB = 30 GiB.
 
-To leave room for OS overhead, system daemons, and burst headroom, plan on **at least 3 worker nodes of 4 vCPU / 8 GiB each** for a comfortable PoC deployment. Smaller node sizes may force pods to fail scheduling because Varnish (1 GiB request, 4 GiB limit) and OSC (2 GiB request, 4 GiB limit) need a non-trivial slice of any one node.
+These sums exclude cluster-system overhead, pod surge headroom, logging/monitoring agents and any added sidecars. **There is no finite sum of chart memory limits:** OSC intentionally has no memory limit, relying on node-level sizing for filesystem page cache. Even small installations require enough suitable nodes for individual pod requests, scheduling and volume topology; do not treat a total resource sum as a guaranteed node shape. See [SIZING.md](SIZING.md) for practical tuning and [values.yaml](../values.yaml) for exact defaults.
 
 For higher traffic tiers, see [SIZING.md](SIZING.md).
 
