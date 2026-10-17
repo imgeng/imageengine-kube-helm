@@ -3,6 +3,47 @@ entries:
   imageengine-kube:
   - annotations:
       artifacthub.io/changes: |
+        - kind: added
+          description: "Edge Warm Start (edge.warmStart.enabled; opt-in, planned to be on by default in a future release) improves cache hit rates when you deploy new edge pods: the edges of a release share the natural image widths they learn. A new or restarted edge copies another edge's width cache before it becomes Ready (at most 15 s) and loads its own snapshot from a pod-local emptyDir after a container restart, and every edge picks up the widths the others learn within about a second. Without it, every new edge starts with an empty cache and requests uncapped variants that miss Varnish and the backend's caches until it relearns them. Adds a headless Service for the edges to find each other on the admin port, an edge PodDisruptionBudget, a surge-only edge rollout and the emptyDir; edge pods gain an app.kubernetes.io/instance label so these select only the release's own edges. Run two or more edges: the PodDisruptionBudget can't keep a drain from evicting a lone edge. See CUSTOMIZATIONS.md, \"How do I turn on Edge Warm Start?\"."
+        - kind: added
+          description: "edge.warmStart.networkPolicy: an optional NetworkPolicy for Edge Warm Start that limits the edge admin port (9464) to the release's own edges and the scrapers you list in metricsFrom, while customer traffic on 8080 stays open."
+        - kind: changed
+          description: "Updated the edge image to 4.11.1, which adds Edge Warm Start (off unless edge.warmStart.enabled). It also ignores EDGE_WURFL_UPDATER_URL and runs on the WURFL data in its image: the WURFL updater needs a shell and curl, which the image does not have."
+        - kind: changed
+          description: "Every image is pinned by digest: images: values are now \"<tag>@sha256:<digest>\", so a chart version always deploys exactly the images it was released with, and a release is refused unless every image it pins is cosign-signed. Setting a plain tag still works and pulls by tag. If you mirror the images, copy them with cosign copy, which keeps their digests and their signatures; SECURITY.md, \"Mirroring the images\", explains."
+        - kind: added
+          description: "TROUBLESHOOTING.md: \"An edge roll stalls with one new pod missing\" (a ResourceQuota without room for the surge pod) and \"Edge Warm Start didn't warm a new edge\" (what each imageengine_edge_kvcache_bootstrap_total result means)."
+      artifacthub.io/signKey: |
+        fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+        url: https://kube.imageengine.io/pubkey.asc
+    apiVersion: v2
+    created: "2026-10-17T02:13:30.163488693Z"
+    description: ImageEngine - cloud-native image optimization
+    digest: 6939265e71cb423a4f8ee2ea078f701c271734381eaf82e37b6a31b4a2bcb6dc
+    home: https://imageengine.io
+    icon: https://imageengine.io/favicon.ico
+    keywords:
+    - image-optimization
+    - image-cdn
+    - cdn
+    - imageengine
+    - varnish
+    - wurfl
+    kubeVersion: '>=1.30.0-0'
+    maintainers:
+    - email: support@scientiamobile.com
+      name: ScientiaMobile
+      url: https://www.scientiamobile.com
+    name: imageengine-kube
+    sources:
+    - https://kube.imageengine.io
+    - https://github.com/imgeng/imageengine-kube-helm
+    type: application
+    urls:
+    - imageengine-kube-1.10.0.tgz
+    version: 1.10.0
+  - annotations:
+      artifacthub.io/changes: |
         - kind: fixed
           description: "Lowered the edge's EDGE_WIDTH_CACHE_SIZE default from 10,000,000 to 2,500,000 entries. A full natural-width store costs about 180 bytes per entry on top of a ~400 MiB baseline, so 10M entries needed about 2.1 GiB and could never fit the 1 GiB edge memory limit: an edge that ran long enough to fill its store was OOMKilled and started again with an empty one. 2.5M fits the 1 GiB limit with headroom. If you set a larger size, raise edge.resources.limits.memory with it."
         - kind: added
@@ -1426,4 +1467,4 @@ entries:
     urls:
     - imageengine-kube-0.8.0.tgz
     version: 0.8.0
-generated: "2026-10-15T18:25:36.487851281Z"
+generated: "2026-10-17T02:13:30.163911736Z"
