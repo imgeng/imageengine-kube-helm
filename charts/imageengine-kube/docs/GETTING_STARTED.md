@@ -8,7 +8,7 @@ If you just want a one-page reference, the chart [README.md](../README.md) has a
 
 You need:
 
-- A Kubernetes cluster you can install into (1.27+ recommended). See [REQUIREMENTS.md](REQUIREMENTS.md) for hard minimums.
+- A Kubernetes cluster you can install into (**1.30+ required** by chart `kubeVersion`; 1.33+ recommended as of October 2026). See [REQUIREMENTS.md](REQUIREMENTS.md) for hard minimums.
 - `kubectl` configured for that cluster.
 - `helm` 3.x.
 - An **active** ImageEngine Kube subscription or trial. Without it you cannot create the secrets in step 2.
@@ -78,7 +78,7 @@ Create `imageengine-values.yaml`. The only thing you really need is `provider:`:
 provider: aws
 ```
 
-That's it: the edge gets a public LoadBalancer from your cloud, with no Ingress controller or Gateway to install. To route hostnames through an Ingress controller or a Gateway you already run instead, see [How do I add an Ingress in front of the Service?](CUSTOMIZATIONS.md#how-do-i-add-an-ingress-in-front-of-the-service) and [How do I route through a Gateway?](CUSTOMIZATIONS.md#how-do-i-route-through-a-gateway-gateway-api). Every other setting has a sensible default. When you're ready to scale or customize further, see [SIZING.md](SIZING.md) and [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md).
+That's it: the edge gets a public LoadBalancer from your cloud, with no Ingress controller or Gateway to install. To route hostnames through an Ingress controller or a Gateway you already run instead, see [How do I add an Ingress in front of the Service?](CUSTOMIZATIONS.md#how-do-i-add-an-ingress-in-front-of-the-service) and [How do I route through a Gateway?](CUSTOMIZATIONS.md#how-do-i-route-through-a-gateway-gateway-api). Other settings have **compact evaluation defaults**, not production capacity guarantees. The current chart starts with one edge, three Varnish shards and four OSC shards; advanced HPA, tracing, monitoring and Edge Warm Start are opt-in. Before production, use [SIZING.md](SIZING.md) and [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md) to size and instrument the pipeline.
 
 ## Step 5 — Install
 

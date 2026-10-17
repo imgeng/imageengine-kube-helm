@@ -1,6 +1,6 @@
 # Sizing
 
-Three rough deployment tiers and starting-point footprints. **These are starting points to bench from, not contracts.** Real throughput depends heavily on:
+Three rough deployment tiers and starting-point footprints. **These are starting points to benchmark from, not throughput contracts or platform ceilings.** Chart defaults are a compact evaluation footprint; high-traffic deployments intentionally override them. This guide is synchronized with the chart 1.10.0 `values.yaml`; verify the defaults for the version you install. Real throughput depends heavily on:
 
 - Image sizes and formats coming from your origins.
 - The mix of transformations being requested.
@@ -32,13 +32,11 @@ Each section below covers what the component does, how it behaves under load, an
 
 ### Edge
 
-**What it does:** Go proxy that's the entry point for every request. Performs WURFL device detection (identifies the requesting browser/device so the rest of the pipeline knows what optimization is appropriate), admission control, and routing into Varnish. Stateless — no shared state across replicas.
+**What it does:** Go entry proxy with WURFL device detection, request policy, admission control and **deterministic routing to Varnish shards**. Edges also maintain an in-memory natural-width cache. With opt-in Edge Warm Start, replicas share newly learned width metadata and a replacement can bootstrap from a peer; **this synchronizes metadata, not image bytes**.
 
-**How it scales:** Latency-sensitive rather than throughput-sensitive. Scales linearly with request volume. The work it does per request is small (microsecond-level device lookup against an in-memory WURFL cache, then proxy through to Varnish), so even one well-resourced edge pod handles a lot of requests.
+**How it scales:** Edge replicas can scale independently of the number of Varnish shards. There is **no 1:1 edge/Varnish requirement**: the chart's default is one edge and three HRW-sharded Varnish pods. Size edges for request volume, connections, device lookup, memory and availability. Edge HPA is **not shipped**; set `edge.replicaCount` deliberately.
 
-**Important:** keep `edge.replicaCount` equal to `varnish.replicaCount`. Edge does the connection-limiting that protects Varnish from overload, and the limits are tuned for a 1:1 ratio — see the Varnish section below for details.
-
-**Defaults:** 1 replica, 256 MiB / 250m CPU requests, 1 GiB memory limit. (No CPU limit — chart-wide policy, see the note above.)
+**Defaults:** 1 replica; 256 MiB memory / 250m CPU requests, 1 GiB memory limit. Warm Start is **off** by default and is useful across rollouts/evictions with two or more edges. No CPU limit (chart-wide policy).
 
 #### Edge memory and the natural-width store
 
@@ -78,29 +76,23 @@ edge:
 
 ### Varnish
 
-**What it does:** HTTP cache that sits between the edge and the backend. Holds the **current hot set** of already-processed images so most repeat requests never reach the backend. Deployed separately from the edge so the cache survives edge restarts and rolling updates.
+**What it does:** A horizontally sharded hot-object HTTP cache. The edge discovers the Varnish StatefulSet shards and uses **rendezvous (HRW) hashing on image identity** to route an image's variants to a preferred shard. Unlike round-robin replica caching, the normal path does not replicate the whole working set on every pod. A failed shard can cause misses on its failover target; there is no replicated copy of that shard's cache.
 
-**How it scales:** **RAM-hungry.** Small images live entirely in memory — the default tiered storage puts 70% of pod RAM into tier 1 (`malloc`). Medium and large images spill to file-backed tiers 2 and 3 (`VARNISH_STORAGE_2` / `VARNISH_STORAGE_3`). The more RAM you give Varnish, the higher your in-memory hit ratio, which is the single biggest lever for keeping load off the backend, processor, and fetcher.
+**How it scales:** Plan *aggregate cache capacity, hot-set memory, disk I/O and per-shard concurrency*. Add shards for capacity, throughput or a smaller per-shard blast radius, not merely to track edge replicas. Changes to shard count remap a fraction of keys and temporarily increase misses. Do **not** attach an HPA: cold shards appear exactly when traffic is high and deleting warm shards destroys their local cache. A restarted shard's volatile cache is cold, but most refill traffic should be served by the persistent OSC tier.
 
-A 5% Varnish hit-ratio improvement is usually worth more than doubling any downstream component.
+**Storage:** With `VARNISH_STORAGE: tiered`, small objects use a malloc tier and larger objects use file-backed tiers. The `VARNISH_STORAGE_1: malloc,70%` setting operates on RAM left after the Varnish reserve, not a promise of 70% of total container memory. Every cached object also consumes heap metadata. Larger memory allocations are particularly valuable for a hot working set.
 
-**Cache warm-up curve:** an empty Varnish (fresh deploy, restart, or scale-up) typically reaches a **30–50% hit ratio within the first hour** of real traffic, then climbs more slowly to a steady-state **80–90% within 24–48 hours**. Two things keep that curve smooth and prevent thundering-herd behavior in steady state:
+**Defaults in 1.10.0:** **3 shards**; each requests 1 GiB memory, 500m CPU, and 10 GiB ephemeral storage, with a 4 GiB memory limit and 500 GiB ephemeral-storage limit. `varnish.pdb.enabled: true` and `maxUnavailable: 1`. These are small, evaluation-oriented shards; tune memory/disk for production.
 
-- Varnish misses don't usually mean re-processing — most fall through to OSC, which is much larger and holds items for far longer (default 90 days). So "cold Varnish" almost never means "cold system."
-- The platform applies a small jitter to per-image TTLs so items that were cached together don't all expire at the same instant. This avoids the cyclical cache-slamming you'd otherwise see during catalog-wide refreshes.
+**Cache warm-up:** The commonly cited 30–50% hit ratio in the first hour and 80–90% within 24–48 hours are **workload-dependent rules of thumb, not a benchmark**. Avoid promising a universal warm-up curve. Varnish miss traffic often refills from persistent OSC instead of origin or processor.
 
-**Important:** restarting a Varnish pod (chart upgrade, resource change, env-var change, anything that triggers a rollout) **empties its in-memory cache**. Multiple replicas are still fine because each pod has its own cache and Edge load-balances across them, so a rolling update only loses one pod's cache at a time. But **don't autoscale Varnish** — reactive scaling means the pods you add are cold exactly when you need warm capacity, and the pods you remove take warm cache with them. Pick a steady `varnish.replicaCount` sized for peak traffic.
+**What to watch:** Each Varnish shard exposes Prometheus metrics on port 9464:
+- **Hits:** `imageengine_varnish_main_cache_hit_total` versus `imageengine_varnish_main_cache_miss_total`.
+- **Evictions:** `imageengine_varnish_main_n_lru_nuked_total` and `imageengine_varnish_storage_c_fail_total{tier="tier2"}`.
+- **Worker saturation:** `imageengine_varnish_main_threads_limited_total`, `imageengine_varnish_main_sess_dropped_total`, `imageengine_varnish_main_thread_queue_len`.
+- **Memory:** `imageengine_varnish_cgroup_memory_anon_bytes` and file cache versus the container/node budget.
 
-**Important:** keep `edge.replicaCount` equal to `varnish.replicaCount`. The edge enforces concurrent-connection limits to protect Varnish from overload, and those limits are tuned assuming a 1:1 ratio. Skewing the ratio (more edges per Varnish, or more Varnishes per edge) either over-throttles legitimate traffic or lets too much through for Varnish to handle.
-
-**Defaults:** 1 replica, 1 GiB / 500m CPU requests, 4 GiB memory limit, 10 GiB / 500 GiB ephemeral storage request/limit. Storage strategy via `varnish.env.VARNISH_STORAGE` and the per-tier knobs — see [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md) and the inline comments in [`values.yaml`](https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/values.yaml).
-
-**What to watch:** each Varnish pod serves Prometheus metrics on its `metrics` port (9464), like the other components, so `metrics.podMonitor.enabled` scrapes it too. The ones that answer sizing questions:
-
-- **Hit ratio:** `imageengine_varnish_main_cache_hit_total` against `imageengine_varnish_main_cache_miss_total`.
-- **Cache too small:** a rising `imageengine_varnish_main_n_lru_nuked_total`, or `imageengine_varnish_storage_c_fail_total{tier="tier2"}`, means a tier is full and evicting.
-- **Out of threads:** any increase in `imageengine_varnish_main_threads_limited_total`, `imageengine_varnish_main_sess_dropped_total` or a nonzero `imageengine_varnish_main_thread_queue_len` means Varnish is refusing or queueing work. Add shards or give each one more CPU.
-- **Memory pressure:** `imageengine_varnish_cgroup_memory_anon_bytes` against `imageengine_varnish_memory_limit_bytes`. Page cache (`imageengine_varnish_cgroup_memory_file_bytes`) is reclaimable and doesn't cause OOM kills.
+See [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md#how-do-i-scale-a-component) and `varnish.replicaCount` in `values.yaml` for the live sharding model.
 
 ### Backend
 
@@ -110,7 +102,7 @@ A 5% Varnish hit-ratio improvement is usually worth more than doubling any downs
 
 The backend supports HPA on CPU, but in practice memory pressure shows up before CPU pressure on this component.
 
-**Defaults:** 2 replicas, 1 GiB / 250m CPU requests, 6 GiB memory limit. HPA available (off by default).
+**Defaults:** 2 replicas; **500 MiB memory / 250m CPU** requests, **2 GiB memory limit** per pod. CPU HPA is available but off by default (maxReplicas 4 until overridden). Increase backend memory for large concurrent images rather than assuming the compact chart setting is a high-traffic recommendation.
 
 ### Fetcher
 
@@ -118,7 +110,7 @@ The backend supports HPA on CPU, but in practice memory pressure shows up before
 
 **How it scales:** **CPU- and bandwidth-bound during miss storms.** Scaling pattern is similar to the processor — give it generous CPU requests and turn on the HPA at non-PoC traffic levels. At high traffic, network bandwidth to your origins becomes a real constraint. Tunables of note: `IE_ORIGINFETCHER_FETCHER_THREADS_FOR_DOMAIN`, `IE_ORIGINFETCHER_MAX_QUEUE_PER_ORIGIN`, `IE_ORIGINFETCHER_FETCHER_CLIENT_DIAL_TIMEOUT`.
 
-**Defaults:** 2 replicas, 768 MiB / 250m CPU requests, 4 GiB memory limit. HPA available (off by default; `maxReplicas: 4` if enabled).
+**Defaults:** 2 replicas; **500 MiB memory / 250m CPU** requests, **2 GiB memory limit** per pod. CPU HPA is available but off by default (`maxReplicas: 4` unless overridden).
 
 ### Processor
 
@@ -128,13 +120,13 @@ The backend supports HPA on CPU, but in practice memory pressure shows up before
 
 Useful tunables when CPU is plentiful but throughput is low: `IE_PROCESSOR_PROCESSINGTHREADS_PER_CORE` (default 1.2 — push toward 1.5 if you have headroom), and `IE_PROCESSOR_VIPS_DISC_THRESHOLD` (default 10 GiB; lower it to push large images through libvips' on-disk path instead of memory).
 
-**Defaults:** 2 replicas, 1 GiB / 500m CPU requests, 6 GiB memory limit. HPA available (off by default; `maxReplicas: 16` if enabled).
+**Defaults:** 2 replicas; **2400 MiB memory / 800m CPU** requests, **6 GiB memory limit** per pod. CPU HPA is available but off by default (`maxReplicas: 16` unless overridden).
 
 ### Object Storage Cache (OSC)
 
-**What it does:** Persistent disk cache for everything: origin images/objects and their metadata **plus** every processed variant the platform has produced recently. The only stateful component in the chart — backed by a PVC per shard. Cache hits here mean the backend can answer without touching fetcher or processor at all.
+**What it does:** Persistent disk cache for everything: origin images/objects and their metadata **plus** every processed variant the platform has produced recently. The only **persistent** cache tier in the chart — backed by a PVC per shard (Varnish is also a StatefulSet, but its cache is ephemeral). Cache hits here mean the backend can answer without touching fetcher or processor at all.
 
-**How it's deployed:** A **sharded StatefulSet** of `objectStorageCache.replicaCount` shards (default **4**), each an independent OSC node with its own PVC. Clients consistent-hash the origin key across shards, so each shard owns a disjoint ~`1 / replicaCount` slice of the keyspace. Shard count is a capacity/blast-radius decision, not a throughput knob — losing one shard only costs ~`1 / replicaCount` of cache-miss traffic (which recomputes from origin), and shards reschedule freely.
+**How it's deployed:** A **sharded StatefulSet** of `objectStorageCache.replicaCount` shards (default **4**), each an independent OSC node with its own PVC. Clients consistent-hash the origin key across shards, so each shard owns a disjoint ~`1 / replicaCount` slice of the keyspace. Shard count is primarily a working-set, throughput and blast-radius decision. The steady-state keyspace is approximately divided by the shard count; losing one shard makes its share temporarily unavailable in OSC and its misses may need origin fetching and/or reprocessing. The cache is not replicated, so a failure can affect latency and upstream load.
 
 **How it scales:** Wants a **big, fast disk** — sized by total working set, then divided across shards. Sizing is driven by your catalog and how many variants you serve per origin, not by raw req/sec. Variants are typically **~10× smaller than the originals** they came from (smaller dimensions and stronger optimization), so a useful rough formula is:
 
@@ -161,9 +153,9 @@ CPU footprint is small. Memory footprint is moderate (caching metadata, in-fligh
 
 If the disk-pressure cleaner is firing regularly in your metrics, you're undersized — give the PVC more room rather than relying on the cleaner as a steady-state mechanism.
 
-**Choosing shard count:** Default **4** is a good balance for most deployments — small enough to keep overhead modest, large enough that any one shard owns only ~25% of the keyspace and can be rescheduled almost anytime. Increase shard count to bound per-shard blast radius further or when a single volume would be impractically large (e.g. multi-TiB tiers). Drop to **1–2** for tiny/dev installs. `persistence.size` is **per shard**, so remember total capacity is `size × replicaCount`. Scaling shard count is online and near-minimal-disruption (see [CUSTOMIZATIONS.md → How do I size and scale the OSC shards?](CUSTOMIZATIONS.md#how-do-i-size-and-scale-the-osc-shards)).
+**Choosing shard count:** Default **4** is a compact starting point for many evaluations — small enough to keep overhead modest, large enough that any one shard owns only ~25% of the keyspace and can be rescheduled almost anytime. Increase shard count to bound per-shard blast radius further or when a single volume would be impractically large (e.g. multi-TiB tiers). Drop to **1–2** for tiny/dev installs. `persistence.size` is **per shard**, so remember total capacity is `size × replicaCount`. Scaling shard count is online and near-minimal-disruption (see [CUSTOMIZATIONS.md → How do I size and scale the OSC shards?](CUSTOMIZATIONS.md#how-do-i-size-and-scale-the-osc-shards)).
 
-**Defaults:** 4 shards, 512 MiB / 250m CPU requests and 1 GiB memory limit **per shard**, 10 GiB PVC **per shard** (40 GiB total). Tunables: `objectStorageCache.replicaCount` (shard count), `objectStorageCache.persistence.size` (per-shard), `objectStorageCache.persistence.storageClass`, `OSC_MAX_TTL` (default 90 days), `OSC_FS_DISK_FREE_LIMIT_PERC` / `OSC_FS_DISK_FREE_TARGET_PERC` (cleaner thresholds), `OSC_EXPIRER_LOOP_DELAY` (background scanner cadence). Protection knobs (`objectStorageCache.pdb`, `priorityClassName`) are covered in [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md#how-do-i-protect-the-cache-tiers-from-disruption).
+**Defaults:** 4 shards, **512 MiB memory / 900m CPU requests per shard, with no configured memory limit**, 10 GiB PVC **per shard** (40 GiB total). Node memory and page-cache capacity must be planned explicitly; the chart intentionally omits an OSC memory limit. Tunables: `objectStorageCache.replicaCount` (shard count), `objectStorageCache.persistence.size` (per-shard), `objectStorageCache.persistence.storageClass`, `OSC_MAX_TTL` (default 90 days), `OSC_FS_DISK_FREE_LIMIT_PERC` / `OSC_FS_DISK_FREE_TARGET_PERC` (cleaner thresholds), `OSC_EXPIRER_LOOP_DELAY` (background scanner cadence). Protection knobs (`objectStorageCache.pdb`, `priorityClassName`) are covered in [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md#how-do-i-protect-the-cache-tiers-from-disruption).
 
 ### Logging
 
@@ -173,42 +165,44 @@ StatsD emission on backend, fetcher, processor, and OSC is still disabled by def
 
 ## Tier 1 — Low traffic / PoC (<10 req/sec, 100/sec bursts)
 
-Chart defaults are fine. This is the "evaluate ImageEngine on a free-tier cluster" footprint.
+The chart defaults are a **functional evaluation starting point**, not a free-tier guarantee and not an estimate of peak architecture scale. This tier does not validate production hit ratio or tail latency.
 
-- 1× edge, 1× varnish, 2× backend, 2× fetcher, 2× processor, 4× OSC shards (or drop to `objectStorageCache.replicaCount: 1–2` to minimize footprint on a free-tier cluster).
-- OSC PVC: the default **10 GiB per shard** (40 GiB total across 4 shards) is enough for a smoke test. If you're actually proving out catalog freshness, raise `persistence.size` to ~25–50 GiB per shard so you can see realistic 30-day retention behavior.
-- Varnish: default `VARNISH_STORAGE: tiered` with 1 GiB request / 4 GiB limit RAM is plenty.
-- Processor / fetcher: HPA off; defaults are fine.
-- Backend: defaults (1 GiB request, 6 GiB limit) are plenty.
-- Cluster footprint: a single small node group, ~8 vCPU / 16 GiB total across at least 3 nodes so that pods can spread out.
+- Chart 1.10.0 defaults: **1 edge, 3 HRW Varnish shards, 2 backends, 2 fetchers, 2 processors and 4 OSC shards** (or explicitly reduce shard counts for a smaller evaluation).
+- Varnish: **1 GiB memory / 500m CPU requests, 4 GiB memory limit per shard**; tiered storage. A test may downsize shard count, but any different shard count will change cache behavior.
+- OSC: default **10 GiB PVC per shard** (40 GiB total), enough for smoke testing but not representative of large catalogs.
+- Backend/fetcher/processor HPA, Edge Warm Start, PodMonitor and OpenTelemetry are all **off unless enabled**.
+- Baseline sum of component **CPU requests is ~8 vCPU**, and **memory requests ~12 GiB**, before Kubernetes/system daemons and sidecars. The OSC has no memory limit, so there is no meaningful finite sum of all container memory limits. Allow headroom for scheduling, cache file pages, pod surges and network I/O.
+- Use `kubectl describe nodes` / `kubectl top pods` and your cloud provider's scheduling constraints to verify the actual footprint; a particular number or size of nodes is **not** guaranteed by these defaults.
 
-What this is **not** good for: validating production sizing decisions. Cache hit ratios at PoC traffic levels do not predict anything about cache hit ratios at production traffic levels.
+Do not extrapolate PoC cache hit ratios to a production traffic distribution or CDN mix.
 
 ## Tier 2 — Medium traffic (<200 req/sec, 750/sec bursts)
 
-You're past PoC and serving real traffic. Most of the value here comes from giving Varnish more RAM and OSC more disk; per-component replica counts go up modestly.
+Real traffic justifies redundancy and tuning, but the thresholds above categorize operations rather than impose a product capacity limit.
 
-- Edge and Varnish: **2 replicas each** (keep these matched 1:1 — see the Edge / Varnish sections above). Mostly for redundancy at this tier, not throughput. Turn on [Edge Warm Start](CUSTOMIZATIONS.md#how-do-i-turn-on-edge-warm-start) so each new edge starts with what the other already knows; leave ResourceQuota room for a third edge during rolls.
-- Varnish, additionally: **bump RAM hard** — request 4–8 GiB, limit 12–16 GiB. This is your single highest-leverage knob. If you have spare RAM, give it to Varnish.
-- Backend: 3–4 replicas. Hold the memory limit at the default 6 GiB (or higher); do not trim it.
-- Fetcher: 3–4 replicas with **HPA enabled** so a miss storm can scale you out automatically.
-- Processor: 3–4 replicas with **HPA enabled** at `targetCPUUtilizationPercentage: 80`. The chart already ships `maxReplicas: 16` for the processor HPA — that ceiling is fine for this tier.
-- OSC: keep the default **4 shards** (or more); set `persistence.size` per shard so total (`size × replicaCount`) lands at **500 GiB to 2 TiB** depending on your origin catalog size — e.g. ~125–512 GiB per shard across 4. Use a fast (NVMe-backed) storage class — your provider doc lists the right one.
-- Cluster footprint: ~3–5 nodes of 8 vCPU / 16 GiB, or equivalent.
+- **Edge:** start at 2 or more replicas for availability; enable [Edge Warm Start](CUSTOMIZATIONS.md#how-do-i-turn-on-edge-warm-start) to share natural-width metadata. Size `EDGE_WIDTH_CACHE_SIZE` and memory together. **Edge count is independent of Varnish shard count.**
+- **Varnish:** start from the chart's 3 HRW shards. Increase per-shard RAM substantially when a larger hot set demands it (e.g. requests 4–8 GiB, limits 12–16 GiB) or add shards after measuring per-shard cache capacity and concurrency. Do not use an HPA.
+- **Backend:** consider 3–4 replicas and greater memory limits (the chart's default is 2 GiB per pod, not 6 GiB). Size against images buffered in flight.
+- **Fetcher:** start at 3–4 replicas with CPU HPA enabled; measure origin concurrency and bandwidth, and raise `maxReplicas` if necessary.
+- **Processor:** start at 3–4 replicas with CPU HPA enabled (target 80%, default `maxReplicas: 16`) and benchmark format- and image-size-specific throughput.
+- **OSC:** size 4 or more shards with total PV space estimated from the original catalog and derivative working set (often hundreds of GiB or TiB). Favor SSD-backed storage and measure IOPS, IO queueing, and background eviction.
+- **Node footprint:** distribute edge, Varnish, processing and OSC according to resource pressure. Do not infer schedulability from aggregate CPU/RAM alone; per-pod requests, node/AZ placement and storage topology also matter.
 
-Turn on real metrics now (request rate per pod, Varnish hit ratio, OSC fill, processor CPU saturation). Tune from there.
+Turn on your monitoring pipeline and set alerts for shard saturation, hit ratio, OSC disk pressure, processor queues and backend memory occupancy.
 
 ## Tier 3 — High traffic (>200 req/sec, >750/sec bursts)
 
-At this point you should be making sizing decisions from your own metrics, not from a generic doc. The starting points below assume a relatively miss-heavy workload (lots of unique URLs, new variants); a mostly cache-hit workload at the same req/sec needs much less.
+Size from a real trace and your own measured hit ratio, not a generic limit. An entirely cached workload and a new-variant/miss-heavy workload at identical incoming RPS put **very different** loads on the expensive downstream tiers.
 
-- Edge and Varnish: **same count, 3+ each** (1:1 ratio — see the Edge / Varnish sections above). Turn on [Edge Warm Start](CUSTOMIZATIONS.md#how-do-i-turn-on-edge-warm-start): the more edges, the more cache misses it saves, on deploys and in steady state. Pin edge to a node pool with spare CPU bursting headroom — no component in the chart has a CPU limit, so the kernel will let edge stretch into idle cores under spike load.
-- Varnish, additionally: the largest RAM you can spare per pod (8–32 GiB+), `VARNISH_STORAGE: tiered` with the file-backed tiers sized for your medium/large image working set. Consider dedicating a node pool to Varnish so the file-backed tier doesn't compete with other pods for disk IO.
-- Backend: 4+ replicas with HPA on; keep memory generous (6+ GiB limit) — this is the layer that buffers full images in flight.
-- Fetcher: HPA on, `maxReplicas` raised (e.g. 16+). Bandwidth to your origins becomes a real constraint here.
-- Processor: HPA on, `maxReplicas` 16+ (raise from default if you bench higher). Consider a dedicated CPU-optimized node pool via `nodeSelector` so a miss storm doesn't evict other workloads. Tune `IE_PROCESSOR_PROCESSINGTHREADS_PER_CORE` if you can keep cores busy without context-switch overhead.
-- OSC: **more shards** (e.g. 6–8+) on the fastest storage class your provider offers, each with a multi-hundred-GiB to TiB PVC so total capacity reaches multi-TiB. More shards both raise aggregate IO throughput and shrink per-shard blast radius. OSC IO latency directly affects every cache hit. Slow OSC disk shows up as backend memory pressure (because everything buffers in backend longer) and processor queue growth.
-- Cluster footprint: heterogeneous — small nodes for edge/varnish/backend, CPU-optimized nodes for processor/fetcher (arm64 where available, e.g. Graviton `c7g`/`c8g` on AWS), and nodes with fast attached disks spread across AZs for the OSC shards.
+- **Edge:** start with multiple replicas for availability; use Warm Start where appropriate. Scale manually after measuring edge CPU, connections, admission and natural-width-store misses. Edge HPA is not shipped.
+- **Varnish:** keep an intentionally stable shard count sized for the hot working set and peak throughput; consider more HRW shards and per-shard RAM (8–32 GiB+ where justified), with dedicated nodes/local disk I/O. Adding shards is online but temporarily remaps a fraction of keys to cold shards.
+- **Backend:** use CPU HPA and generous memory for concurrently buffered full images; verify actual peak memory and response latency under slow OSC/origin.
+- **Fetcher:** CPU HPA with measured origin bandwidth and per-origin concurrency; raise HPA max if benchmarks require it. Protect origins against miss storms.
+- **Processor:** CPU HPA with a measured max beyond 16 if warranted, dedicated compute-oriented/arm64 node pools where economical, format-specific profiling and right-sized memory.
+- **OSC:** more HRW shards (often 6–8+ for large working sets) and suitably sized SSD-class PVs to spread capacity and aggregate I/O. A lost shard causes additional miss/rehydration traffic; run failure tests and ensure storage/AZ rescheduling fits your recovery objectives.
+- **Regional deployments:** for geographically distributed audiences, use [TOPOLOGIES.md](TOPOLOGIES.md) for regional frontend-only releases sharing a **private** backend stack. This does not replicate OSC to each region.
+
+Benchmark normal, cold-start, rolling-upgrade, shard-loss and origin-slowdown behavior. Report p50/p95/**p99/p99.9**, origin fetches and processor jobs per 1,000 requests, layer-specific hit ratios, and per-tier CPU/memory/storage/I/O. Do not market a maximum RPS or linear scale factor without measured results.
 
 ## Cross-cutting notes
 
