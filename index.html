@@ -12,8 +12,8 @@
 </script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ImageEngine Kube — cloud-native image optimization for Kubernetes</title>
-<meta name="description" content="Enterprise-grade, self-hosted image optimization packaged as a signed Helm chart that runs in your own Kubernetes cluster. Install on any major provider in a handful of commands.">
+<title>ImageEngine Kube — distributed image delivery for Kubernetes</title>
+<meta name="description" content="Distributed, self-hosted image optimization for Kubernetes. Independently scale delivery, processing and HRW-sharded persistent caches with native observability and WURFL device intelligence.">
 <link rel="icon" href="assets/ie-mark-v3.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
@@ -31,6 +31,7 @@
         <img src="assets/logo-white.png" alt="ImageEngine Kube">
       </div>
       <div class="nav-links">
+        <a href="#architecture" class="nav-link">Architecture</a>
         <a href="#features" class="nav-link">Features</a>
         <a href="configurator.html" class="nav-link">Configurator</a>
         <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/GETTING_STARTED.md" class="nav-link">Docs</a>
@@ -45,11 +46,11 @@
   <div class="wrap hero">
     <div>
       <div class="eyebrow">Enterprise · self-hosted · imageengine-kube</div>
-      <h1 class="hero-title">Cloud-native image optimization, <span class="highlight">running in your Kubernetes cluster</span>.</h1>
-      <p class="lede hero-lede">Enterprise-grade and self-hosted, packaged as a signed Helm chart that runs on the infrastructure you already own. Install on any major provider in a handful of commands — scale on your own terms, without per-request SaaS pricing.</p>
+      <h1 class="hero-title">Distributed image delivery, <span class="highlight">built to scale in Kubernetes</span>.</h1>
+      <p class="lede hero-lede">A complete image optimization and delivery pipeline in your cluster: device-aware routing, HRW-sharded hot and persistent caches, separately scalable compute tiers, and pipeline-wide metrics and tracing. Start with compact evaluation defaults, then plan capacity around your image catalog and real traffic.</p>
       <div class="actions">
         <a href="https://imageengine.io" class="btn btn-primary">Get your API key →</a>
-        <a href="configurator.html" class="btn btn-outline">Size your cluster</a>
+        <a href="configurator.html" class="btn btn-outline">Plan capacity</a>
         <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/GETTING_STARTED.md" class="btn btn-outline">Read the docs</a>
       </div>
       <div class="trust">
@@ -124,8 +125,8 @@ helm repo update</pre>
   <div id="features" class="band band-bottom">
     <div class="wrap section">
       <div class="eyebrow">Built for the enterprise</div>
-      <h2 class="section-title">Enterprise-grade from the first install.</h2>
-      <p class="lede">Everything a large team needs to run image optimization in-house: a supply chain you can verify, a footprint that scales with your traffic, and telemetry that plugs straight into your existing stack — all under your own cost controls.</p>
+      <h2 class="section-title">Architecture for large image workloads.</h2>
+      <p class="lede">ImageEngine is more than a standalone image processor. Its delivery, hot cache, orchestration, origin fetching, transformation, and persistent storage are separate components that can be sized for different bottlenecks.</p>
 
       <div class="grid-3">
 
@@ -151,12 +152,12 @@ helm repo update</pre>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4-8 4-8-4 8-4z"></path><path d="M4 12l8 4 8-4"></path><path d="M4 17l8 4 8-4"></path></svg>
           </span>
           <h3 class="card-title">Built to scale</h3>
-          <p class="card-desc">From a small PoC cluster to a sharded, 3-tier caching layer — the footprint follows your traffic.</p>
+          <p class="card-desc">Start with a compact chart and size edge, cache shards, processing and persistent storage independently against production traffic.</p>
           <div class="checklist">
-            <div class="check"><span class="check-mark">✓</span><span class="check-text"><strong>Horizontal autoscaling</strong> out of the box</span></div>
-            <div class="check"><span class="check-mark">✓</span><span class="check-text"><strong>Sharded cache layers</strong> for high hit rates</span></div>
-            <div class="check"><span class="check-mark">✓</span><span class="check-text">Runs comfortably on <strong>small pods</strong></span></div>
-            <div class="check"><span class="check-mark">✓</span><span class="check-text">Tunable <strong>replicas &amp; cache</strong> sizing</span></div>
+            <div class="check"><span class="check-mark">✓</span><span class="check-text"><strong>Optional CPU HPA</strong> for backend, fetcher and processor</span></div>
+            <div class="check"><span class="check-mark">✓</span><span class="check-text"><strong>HRW-sharded Varnish and OSC</strong> to distribute cache capacity</span></div>
+            <div class="check"><span class="check-mark">✓</span><span class="check-text"><strong>Edge Warm Start</strong> available as an opt-in for multi-edge releases</span></div>
+            <div class="check"><span class="check-mark">✓</span><span class="check-text"><strong>Independent tier sizing</strong> and regional frontends</span></div>
           </div>
         </div>
 
@@ -165,16 +166,54 @@ helm repo update</pre>
           <span class="icon-tile">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2 6 4-14 2 8 2-3h4"></path></svg>
           </span>
-          <h3 class="card-title">Observable by default</h3>
-          <p class="card-desc">See exactly what the edge is doing — telemetry that drops straight into your stack.</p>
+          <h3 class="card-title">Instrumented across the pipeline</h3>
+          <p class="card-desc">Find the bottleneck across image delivery, caching, fetching and processing with your own observability tools.</p>
           <div class="checklist">
             <div class="check"><span class="check-mark">✓</span><span class="check-text"><strong>Prometheus metrics</strong> from every pod</span></div>
-            <div class="check"><span class="check-mark">✓</span><span class="check-text"><strong>OpenTelemetry traces</strong> end to end</span></div>
-            <div class="check"><span class="check-mark">✓</span><span class="check-text"><strong>Sentry error reporting</strong> built in</span></div>
+            <div class="check"><span class="check-mark">✓</span><span class="check-text"><strong>Opt-in OpenTelemetry</strong> across the Go components</span></div>
+            <div class="check"><span class="check-mark">✓</span><span class="check-text"><strong>Optional Sentry</strong> per component</span></div>
             <div class="check"><span class="check-mark">✓</span><span class="check-text"><strong>ECS structured logs</strong> in JSON</span></div>
           </div>
         </div>
 
+      </div>
+
+      <!-- distributed architecture -->
+      <div class="subsection" id="architecture">
+        <div class="eyebrow">The architectural difference</div>
+        <h3 class="subsection-title">Scale the bottleneck, not the whole stack.</h3>
+        <p class="lede lede-sm">ImageEngine Kube packages a distributed delivery pipeline rather than only an image transformation API. Deterministic routing spreads cache capacity across shards, while independent compute tiers handle origin fetching and processing. Cache misses and expensive work need not grow in lockstep with incoming traffic.</p>
+        <div class="grid-3 grid-tight">
+          <div class="tile">
+            <div class="tile-title">Sharded hot and persistent caches</div>
+            <div class="tile-desc">Rendezvous hashing assigns an image's variants to a Varnish shard and assigns origin/derivative objects to persistent OSC shards. Grow capacity without intentionally duplicating the full working set across every cache pod.</div>
+          </div>
+          <div class="tile">
+            <div class="tile-title">Independent scaling boundaries</div>
+            <div class="tile-desc">Size the edge, Varnish, backend, fetcher, processor and OSC separately. Enable CPU autoscaling for backend, fetcher and processor as needed; keep cache shard counts deliberate.</div>
+          </div>
+          <div class="tile">
+            <div class="tile-title">Regional delivery topology</div>
+            <div class="tile-desc">Deploy regional frontend-only edge/Varnish tiers that share a central backend stack. Use private connectivity between tiers; backend storage is not automatically replicated between regions.</div>
+          </div>
+          <div class="tile">
+            <div class="tile-title">Protect expensive work</div>
+            <div class="tile-desc">Hot cache hits bypass processing. Persistent origin and derivative storage reduces repeat work, while admission controls and request coalescing help manage miss-heavy bursts.</div>
+          </div>
+          <div class="tile">
+            <div class="tile-title">Operationally visible</div>
+            <div class="tile-desc">Prometheus metrics cover all six components. Opt-in OpenTelemetry links the Go services, while Varnish forwards trace context on misses; structured logs and optional Sentry add diagnostics.</div>
+          </div>
+          <div class="tile">
+            <div class="tile-title">Capacity planning, not magic numbers</div>
+            <div class="tile-desc">Compact defaults are for evaluation. Plan cache working sets, origin load, shard IO, CPU, memory and tail latency using realistic traffic before committing to production resources.</div>
+          </div>
+        </div>
+        <div class="actions" style="margin-top: 20px;">
+          <a href="configurator.html" class="btn btn-sm btn-primary">Estimate a deployment →</a>
+          <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/SIZING.md" class="btn btn-sm btn-outline">Sizing guide</a>
+          <a href="https://github.com/imgeng/imageengine-kube-helm/blob/main/charts/imageengine-kube/docs/TOPOLOGIES.md" class="btn btn-sm btn-outline">Deployment topologies</a>
+        </div>
       </div>
 
       <div class="subsection">
