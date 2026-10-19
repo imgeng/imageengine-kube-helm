@@ -397,7 +397,8 @@ edge:
     EDGE_MAX_TTL: 604800
     # Natural-width LRU cache size (entries). Each entry costs about 180 bytes of
     # edge memory when the store is full, on top of a ~400 MiB baseline, so
-    # 2.5M entries fits the 1Gi limit above. Raise limits.memory with it; see
+    # 2.5M entries fits the 1Gi limit above. Raise limits.memory with it: the
+    # chart refuses a limit under (400 MiB + 180 bytes × entries) / 0.85. See
     # docs/SIZING.md, "Edge memory and the natural-width store".
     EDGE_WIDTH_CACHE_SIZE: "2500000"
     # Seconds the edge waits for Varnish's response headers before answering 504.

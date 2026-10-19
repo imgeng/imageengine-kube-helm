@@ -1,0 +1,34 @@
+{{- /*
+Edge memory validation. Renders no resources; it aborts the install when
+edge.resources.limits.memory can't hold a full natural-width store, which
+would otherwise surface only as an OOMKilled edge days later, once the store
+has filled (or within seconds with Edge Warm Start). The rule is the one in
+docs/SIZING.md, "Edge memory and the natural-width store":
+
+  400 MiB + EDGE_WIDTH_CACHE_SIZE × 180 bytes <= 85% of limits.memory
+
+Skipped when the edge has no memory limit in values (one set by a LimitRange
+can't be seen here), or when EDGE_WIDTH_CACHE_SIZE comes from a Secret or
+ConfigMap. An unset EDGE_WIDTH_CACHE_SIZE is the edge's own default, 5000000.
+*/ -}}
+{{- if .Values.frontend.enabled }}
+{{- $limit := include "imageengine.memoryBytes" (dig "resources" "limits" "memory" "" .Values.edge) }}
+{{- $size := dig "env" "EDGE_WIDTH_CACHE_SIZE" "5000000" .Values.edge }}
+{{- if and $limit (not (kindIs "map" $size)) }}
+{{- $entries := float64 $size }}
+{{- $baseline := mulf 400 1048576 }}
+{{- $need := addf $baseline (mulf $entries 180) }}
+{{- $usable := mulf (float64 $limit) 0.85 }}
+{{- if gt $need $usable }}
+{{- $minLimitMi := ceil (divf (divf $need 0.85) 1048576) }}
+{{- $maxEntries := floor (divf (subf $usable $baseline) 180) }}
+{{- $shown := .Values.edge.resources.limits.memory }}
+{{- if kindIs "float64" $shown }}{{ $shown = printf "%.0f" $shown }}{{ end }}
+{{- $fix := printf "Raise edge.resources.limits.memory to at least %.0fMi" $minLimitMi }}
+{{- if ge $maxEntries 1.0 }}
+{{- $fix = printf "%s, or lower EDGE_WIDTH_CACHE_SIZE to %.0f or fewer" $fix $maxEntries }}
+{{- end }}
+{{- fail (printf "\n\nImageEngine: edge.resources.limits.memory (%s) can't hold a full natural-width store of edge.env.EDGE_WIDTH_CACHE_SIZE=%.0f entries. A full store needs about 400 MiB + 180 bytes per entry = %.0f MiB, which must stay within 85%% of the limit, or the edge is OOMKilled once its store fills. %s. See docs/SIZING.md, \"Edge memory and the natural-width store\"." (toString $shown) $entries (divf $need 1048576) $fix) }}
+{{- end }}
+{{- end }}
+{{- end }}

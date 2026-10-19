@@ -50,7 +50,7 @@ memory ≈ 400 MiB baseline + EDGE_WIDTH_CACHE_SIZE × 180 bytes
 
 - **Baseline (~400 MiB):** the edge process without the store, including the WURFL device-detection data. Busier pods use somewhat more for connections and buffers.
 - **180 bytes per entry:** about 110 bytes of live data (key, value, LRU list node and hash-map slot) plus the headroom Go's garbage collector leaves before it collects (`GOGC=100`), measured on a full store.
-- Keep the result at or below **85% of `limits.memory`**. Past the limit the kernel kills the container (`OOMKilled`) and the store starts empty again.
+- Keep the result at or below **85% of `limits.memory`**. Past the limit the kernel kills the container (`OOMKilled`) and the store starts empty again. The chart checks this: `helm install` and `helm upgrade` fail with the limit to set (or the largest store that fits) when `edge.resources.limits.memory` is below `(400 MiB + EDGE_WIDTH_CACHE_SIZE × 180 bytes) / 0.85`. An unset `EDGE_WIDTH_CACHE_SIZE` counts as the edge's own default, 5,000,000. The check is skipped when the limit isn't in `edge.resources` (for example, set by a LimitRange) or the size comes from a Secret or ConfigMap.
 
 | `EDGE_WIDTH_CACHE_SIZE` | Store when full | Edge total (approx.) | Memory limit |
 | ----------------------- | --------------- | -------------------- | ------------ |
