@@ -3,6 +3,41 @@ entries:
   imageengine-kube:
   - annotations:
       artifacthub.io/changes: |
+        - kind: changed
+          description: "Updated the edge image to 4.12.0, which sets its Go memory limit from the container's memory limit: 90% of edge.resources.limits.memory, less the memory outside the Go runtime (mostly the WURFL device-detection data), recomputed every minute so it follows an in-place resize. Near that limit the garbage collector runs more often instead of letting the heap grow to twice the live data, so a busy edge with a full natural-width store is far less likely to be OOMKilled. No new value; an explicit GOMEMLIMIT in edge.env still wins. See docs/SIZING.md, \"Edge memory and the natural-width store\"."
+        - kind: added
+          description: "helm install and helm upgrade now fail when edge.resources.limits.memory can't hold a full natural-width store of edge.env.EDGE_WIDTH_CACHE_SIZE entries: (400 MiB + 180 bytes per entry) must stay within 85% of the limit. A store too big for its limit runs fine until it fills, days later or within seconds with Edge Warm Start, and then the edge is OOMKilled. The message gives the limit to set, or the largest store that fits. The defaults (2.5M entries, 1Gi) pass; an unset EDGE_WIDTH_CACHE_SIZE counts as the edge's default of 5M, which needs about 1.5Gi. See docs/SIZING.md, \"Edge memory and the natural-width store\"."
+      artifacthub.io/signKey: |
+        fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+        url: https://kube.imageengine.io/pubkey.asc
+    apiVersion: v2
+    created: "2026-10-19T16:31:43.614328794Z"
+    description: ImageEngine - cloud-native image optimization
+    digest: 9293f4637cac4427aee1d56d588796681b80bc2267eabcd085cfd2f0acb396cd
+    home: https://imageengine.io
+    icon: https://imageengine.io/favicon.ico
+    keywords:
+    - image-optimization
+    - image-cdn
+    - cdn
+    - imageengine
+    - varnish
+    - wurfl
+    kubeVersion: '>=1.30.0-0'
+    maintainers:
+    - email: support@scientiamobile.com
+      name: ScientiaMobile
+      url: https://www.scientiamobile.com
+    name: imageengine-kube
+    sources:
+    - https://kube.imageengine.io
+    - https://github.com/imgeng/imageengine-kube-helm
+    type: application
+    urls:
+    - imageengine-kube-1.10.1.tgz
+    version: 1.10.1
+  - annotations:
+      artifacthub.io/changes: |
         - kind: added
           description: "Edge Warm Start (edge.warmStart.enabled; opt-in, planned to be on by default in a future release) improves cache hit rates when you deploy new edge pods: the edges of a release share the natural image widths they learn. A new or restarted edge copies another edge's width cache before it becomes Ready (at most 15 s) and loads its own snapshot from a pod-local emptyDir after a container restart, and every edge picks up the widths the others learn within about a second. Without it, every new edge starts with an empty cache and requests uncapped variants that miss Varnish and the backend's caches until it relearns them. Adds a headless Service for the edges to find each other on the admin port, an edge PodDisruptionBudget, a surge-only edge rollout and the emptyDir; edge pods gain an app.kubernetes.io/instance label so these select only the release's own edges. Run two or more edges: the PodDisruptionBudget can't keep a drain from evicting a lone edge. See CUSTOMIZATIONS.md, \"How do I turn on Edge Warm Start?\"."
         - kind: added
@@ -1467,4 +1502,4 @@ entries:
     urls:
     - imageengine-kube-0.8.0.tgz
     version: 0.8.0
-generated: "2026-10-17T02:13:30.163911736Z"
+generated: "2026-10-19T16:31:43.61459394Z"
