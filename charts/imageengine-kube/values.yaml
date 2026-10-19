@@ -8,12 +8,12 @@ imagePullPolicy: Always
 # reading, and the image is pulled by its digest, so a chart version always
 # deploys exactly the images it was released (and signed) with.
 #
-# To run another version, set a plain tag (for example edge: "4.11.1"); it is
+# To run another version, set a plain tag (for example edge: "4.12.0"); it is
 # pulled by tag. If you mirror the images to your own registry, copy them so
 # their digests are kept (docs/SECURITY.md, "Mirroring the images"), or set
 # plain tags.
 images:
-  edge: "4.11.1@sha256:27267e831cc0447ac952a27c89e01c02a9e4c237bb669f14a7ef5a71c1089f85"
+  edge: "4.12.0@sha256:cda60f4a92f79be709ed3622572814c4277d03d0ef317bf1571693e7ef05aa64"
   varnish: "9.1.0-2@sha256:387038ba648668a93f8b1ba3d57bf22f86e00637af07206adc284787d2d4bf71"
   backend: "2.16.0@sha256:cd119c34b9ad7870b4264de51f33576dca1be7addfd393af06d229e136624aaf"
   fetcher: "1.32.0@sha256:5dc28e1708e9bc67534fc7348dd3d6e01d9e2511abd82e4eed40239b807d0f2e"
@@ -397,7 +397,8 @@ edge:
     EDGE_MAX_TTL: 604800
     # Natural-width LRU cache size (entries). Each entry costs about 180 bytes of
     # edge memory when the store is full, on top of a ~400 MiB baseline, so
-    # 2.5M entries fits the 1Gi limit above. Raise limits.memory with it; see
+    # 2.5M entries fits the 1Gi limit above. Raise limits.memory with it: the
+    # chart refuses a limit under (400 MiB + 180 bytes × entries) / 0.85. See
     # docs/SIZING.md, "Edge memory and the natural-width store".
     EDGE_WIDTH_CACHE_SIZE: "2500000"
     # Seconds the edge waits for Varnish's response headers before answering 504.

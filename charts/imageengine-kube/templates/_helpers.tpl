@@ -403,3 +403,24 @@ Usage: {{ include "imageengine.renderEnv" .Values.edge.env | nindent 12 }}
 {{- end }}
 {{- end -}}
 
+
+{{/*
+A Kubernetes memory quantity ("1Gi", "1536Mi", "1.5G", "1073741824") in bytes,
+or "" when it is empty or not a form this parses (an exponent like "1e9", or
+milli units). Used only to check values, so an unparsed quantity skips the check
+instead of failing the install.
+Usage: {{ include "imageengine.memoryBytes" .Values.edge.resources.limits.memory }}
+*/}}
+{{- define "imageengine.memoryBytes" -}}
+{{- $q := . -}}
+{{- if kindIs "float64" $q -}}
+{{- $q = printf "%.0f" $q -}}
+{{- end -}}
+{{- $q = toString $q | trim -}}
+{{- if regexMatch "^[0-9]+(\\.[0-9]+)?(Ki|Mi|Gi|Ti|Pi|Ei|k|M|G|T|P|E)?$" $q -}}
+{{- $units := dict "" 1.0 "Ki" 1024.0 "Mi" 1048576.0 "Gi" 1073741824.0 "Ti" 1099511627776.0 "Pi" 1125899906842624.0 "Ei" 1152921504606846976.0 "k" 1e3 "M" 1e6 "G" 1e9 "T" 1e12 "P" 1e15 "E" 1e18 -}}
+{{- $num := regexFind "^[0-9]+(\\.[0-9]+)?" $q -}}
+{{- $unit := trimPrefix $num $q -}}
+{{- printf "%.0f" (mulf (float64 $num) (get $units $unit)) -}}
+{{- end -}}
+{{- end -}}
