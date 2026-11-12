@@ -1,6 +1,12 @@
 <!doctype html>
 <html lang="en" class="page-home">
 <head>
+<!-- GitHub Pages can't 301 /index.html, so send visitors to the canonical / instead. -->
+<script>
+  if (/\/index\.html$/.test(location.pathname)) {
+    location.replace(location.pathname.replace(/index\.html$/, '') + location.search + location.hash);
+  }
+</script>
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-C7JXP0C43K"></script>
 <script>
@@ -14,6 +20,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ImageEngine Kube — distributed image delivery for Kubernetes</title>
 <meta name="description" content="Distributed, self-hosted image optimization for Kubernetes. Independently scale delivery, processing and HRW-sharded persistent caches with native observability and WURFL device intelligence.">
+<link rel="canonical" href="https://kube.imageengine.io/">
 <link rel="icon" href="assets/ie-mark-v3.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
