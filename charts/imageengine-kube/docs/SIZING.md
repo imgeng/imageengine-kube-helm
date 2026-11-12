@@ -93,6 +93,8 @@ edge:
 - **Worker saturation:** `imageengine_varnish_main_threads_limited_total`, `imageengine_varnish_main_sess_dropped_total`, `imageengine_varnish_main_thread_queue_len`.
 - **Memory:** `imageengine_varnish_cgroup_memory_anon_bytes` and file cache versus the container/node budget.
 
+See [MONITORING.md](MONITORING.md) for how to scrape these and the rest of the metrics.
+
 See [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md#how-do-i-scale-a-component) and `varnish.replicaCount` in `values.yaml` for the live sharding model.
 
 ### Backend
