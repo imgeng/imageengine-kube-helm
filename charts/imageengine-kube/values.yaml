@@ -49,11 +49,11 @@ backendStack:
   enabled: true
 
 ###################################################
-# Prometheus metrics (ADR 0004)
+# Prometheus metrics
 ###################################################
 # Every ImageEngine component exposes Prometheus metrics on a dedicated
 # container port named "metrics" (9464), separate from the data-plane port and
-# kept OFF the customer-facing edge LoadBalancer. See docs/operations/metrics.md.
+# kept OFF the customer-facing edge LoadBalancer. See docs/MONITORING.md.
 metrics:
   # The metrics port is fixed at 9464 (the binary defaults for
   # EDGE_METRICS_ADDR / IE_*_METRICS_ADDR / OSC_METRICS_ADDR /
