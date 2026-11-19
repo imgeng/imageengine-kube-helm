@@ -1,0 +1,58 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+annotations:
+  artifacthub.io/changes: |
+    - kind: changed
+      description: "Updated the edge image to 4.13.1. The edge now measures the memory outside its Go runtime (WURFL's C heap and the mapped binary) instead of inferring it from RSS, and turns transparent huge pages off for its own process (new edge.env EDGE_TRANSPARENT_HUGEPAGES, default off; system keeps the node's setting). On nodes with THP set to always, 4.12.0 could count memory Go had released as outside Go, lower its Go memory limit until it sat just above the live heap, and spend several CPU cores on garbage collection. New edge metrics imageengine_edge_memlimit_* show the limit's inputs. The image is also rebuilt on a smaller distroless base without OpenSSL, with libwurfl 1.14.1.2 and updated dependencies."
+    - kind: changed
+      description: "The edge memory check is corrected: a full natural-width store now needs 340 MiB + 2 × (60 MiB + 106 bytes per entry) within 90% of edge.resources.limits.memory, which leaves the garbage collector room for twice the live heap. The old rule (400 MiB + 180 bytes per entry within 85%) passed 2.5M entries at 1Gi, which collects almost continuously once the store fills. helm upgrade now fails for a release with that combination, or any other that no longer fits; the message gives the limit to set or the largest store that fits. 2.5M entries need a 1.5Gi limit and 5M need 2Gi. See docs/SIZING.md, \"Edge memory and the natural-width store\"."
+    - kind: changed
+      description: "The default edge.env.EDGE_WIDTH_CACHE_SIZE is now 1000000 (was 2500000) and the default edge memory request 768Mi (was 256Mi), so the default 1Gi limit holds a full store and the scheduler reserves the memory it uses. A release that relies on the default keeps its 1Gi limit and gets a smaller store; to keep 2.5M entries, set it explicitly with a 1Gi request and a 1.5Gi limit. Leave room in any ResourceQuota for the larger request."
+    - kind: added
+      description: "TROUBLESHOOTING.md: \"Edge CPU high while its memory looks fine\", how to recognize and fix an edge whose Go memory limit is too small for its natural-width store."
+  artifacthub.io/signKey: |
+    fingerprint: C3A55111ED91FEDE4A82A4B4463266060957C4B3
+    url: https://kube.imageengine.io/pubkey.asc
+apiVersion: v2
+description: ImageEngine - cloud-native image optimization
+home: https://imageengine.io
+icon: https://imageengine.io/favicon.ico
+keywords:
+- - image-optimization
+- - image-cdn
+- - cdn
+- - imageengine
+- - varnish
+- - wurfl
+kubeVersion: '>=1.30.0-0'
+maintainers:
+- - email: support@scientiamobile.com
+  name: ScientiaMobile
+  url: https://www.scientiamobile.com
+name: imageengine-kube
+sources:
+- - https://kube.imageengine.io
+- - https://github.com/imgeng/imageengine-kube-helm
+type: application
+version: 1.10.2
+
+...
+files:
+  imageengine-kube-1.10.2.tgz: sha256:979344d96f02c7b77fd72f44b5abab45fb543c5617a4d60d19cdd09b5356fa20
+-----BEGIN PGP SIGNATURE-----
+
+wsFcBAEBCgAQBQJq/nkiCRBGMmYGCVfEswAAj5cQAI+5B3G5lLhD1pV37FlyIa/g
+EnpC4xr0WU4RcFdZirZGd9rMPIKGKybVxDZwAokETrWTcX9yvhDoYJlu63couER4
+0f7Je25vaiFD91DDgbbBpw0HnuIqLkGy+TuYnvLIIUj7AHCNx+ZAR15b5SxVqw/m
+fwFT/aB9+ws7i6eH/ydB93ScLUA/ihBIaPlPuO3qRJ3S3WrszvIo6hIpn+bRA4Y1
+vILG/WosjFex71BXt4m13JKnoU5TdXlAs0ynV9IN8j17D5KPlEAB+BZiJ0MHSyiO
+vL9LYrLzPYkM35zjKBH3pSWgZUeCXkA4bPqk241dCs2SxK79Au6BLIWmZO48EEKd
+sQyV8FBb6F5rPrKcreZ8Vspswou7H75H4vR8XmFgKh7oAh3GqjwfNYda4DzAhTpU
+8xXF99ib2JcV2Yi2orczqUtYStrFuWOdgwFHHdiGKB9waczplMeK4u0DHeeXgkEC
+QcKMYxlyOFD/2Qv0eiDeKNqcgiaXEYnu+WRlwMFcFAGEGza5zuvk3e3ZfliSQTaF
+mtCoIGnb2R4ZYwAPeZCs2VLqsshxpyMUXsz9HSDxKXQ2WdbIvMGfUkJQZvQjio3V
+Fk240XA1wE9QeRe3G4zPs/IL52gQGBJNGrmHWkick1CxTAVfK4clNaiz2zEacU20
+/7k4TVdz/abxEvu7/RYl
+=fHey
+-----END PGP SIGNATURE-----
