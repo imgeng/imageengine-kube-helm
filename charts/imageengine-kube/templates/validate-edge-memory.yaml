@@ -5,7 +5,12 @@ would otherwise surface only as an OOMKilled edge days later, once the store
 has filled (or within seconds with Edge Warm Start). The rule is the one in
 docs/SIZING.md, "Edge memory and the natural-width store":
 
-  400 MiB + EDGE_WIDTH_CACHE_SIZE × 180 bytes <= 85% of limits.memory
+  340 MiB + 2 × (60 MiB + EDGE_WIDTH_CACHE_SIZE × 106 bytes) <= 90% of limits.memory
+
+340 MiB is the memory outside the Go heap (WURFL's C heap, the binary, the Go
+runtime); the Go heap is the store at 106 bytes an entry plus about 60 MiB of
+other live data, and the garbage collector needs room for twice that. 90% is
+the share of the container limit the edge gives its Go memory limit.
 
 Skipped when the edge has no memory limit in values (one set by a LimitRange
 can't be seen here), or when EDGE_WIDTH_CACHE_SIZE comes from a Secret or
@@ -16,19 +21,21 @@ ConfigMap. An unset EDGE_WIDTH_CACHE_SIZE is the edge's own default, 5000000.
 {{- $size := dig "env" "EDGE_WIDTH_CACHE_SIZE" "5000000" .Values.edge }}
 {{- if and $limit (not (kindIs "map" $size)) }}
 {{- $entries := float64 $size }}
-{{- $baseline := mulf 400 1048576 }}
-{{- $need := addf $baseline (mulf $entries 180) }}
-{{- $usable := mulf (float64 $limit) 0.85 }}
+{{- $mib := 1048576.0 }}
+{{- /* 460 MiB = 340 + 2 × 60; 212 bytes = 2 × 106 */ -}}
+{{- $fixed := mulf 460 $mib }}
+{{- $need := addf $fixed (mulf $entries 212) }}
+{{- $usable := mulf (float64 $limit) 0.9 }}
 {{- if gt $need $usable }}
-{{- $minLimitMi := ceil (divf (divf $need 0.85) 1048576) }}
-{{- $maxEntries := floor (divf (subf $usable $baseline) 180) }}
+{{- $minLimitMi := ceil (divf (divf $need 0.9) $mib) }}
+{{- $maxEntries := floor (divf (subf $usable $fixed) 212) }}
 {{- $shown := .Values.edge.resources.limits.memory }}
 {{- if kindIs "float64" $shown }}{{ $shown = printf "%.0f" $shown }}{{ end }}
 {{- $fix := printf "Raise edge.resources.limits.memory to at least %.0fMi" $minLimitMi }}
 {{- if ge $maxEntries 1.0 }}
 {{- $fix = printf "%s, or lower EDGE_WIDTH_CACHE_SIZE to %.0f or fewer" $fix $maxEntries }}
 {{- end }}
-{{- fail (printf "\n\nImageEngine: edge.resources.limits.memory (%s) can't hold a full natural-width store of edge.env.EDGE_WIDTH_CACHE_SIZE=%.0f entries. A full store needs about 400 MiB + 180 bytes per entry = %.0f MiB, which must stay within 85%% of the limit, or the edge is OOMKilled once its store fills. %s. See docs/SIZING.md, \"Edge memory and the natural-width store\"." (toString $shown) $entries (divf $need 1048576) $fix) }}
+{{- fail (printf "\n\nImageEngine: edge.resources.limits.memory (%s) can't hold a full natural-width store of edge.env.EDGE_WIDTH_CACHE_SIZE=%.0f entries. A full store needs about 340 MiB + 2 × (60 MiB + 106 bytes per entry) = %.0f MiB, which must stay within 90%% of the limit; with less, the edge's garbage collector runs almost continuously once the store fills, and a store that doesn't fit at all gets the edge OOMKilled. %s. See docs/SIZING.md, \"Edge memory and the natural-width store\"." (toString $shown) $entries (divf $need $mib) $fix) }}
 {{- end }}
 {{- end }}
 {{- end }}

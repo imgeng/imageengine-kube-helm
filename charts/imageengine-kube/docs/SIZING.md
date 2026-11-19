@@ -36,7 +36,7 @@ Each section below covers what the component does, how it behaves under load, an
 
 **How it scales:** Edge replicas can scale independently of the number of Varnish shards. There is **no 1:1 edge/Varnish requirement**: the chart's default is one edge and three HRW-sharded Varnish pods. Size edges for request volume, connections, device lookup, memory and availability. Edge HPA is **not shipped**; set `edge.replicaCount` deliberately.
 
-**Defaults:** 1 replica; 256 MiB memory / 250m CPU requests, 1 GiB memory limit. Warm Start is **off** by default and is useful across rollouts/evictions with two or more edges. No CPU limit (chart-wide policy).
+**Defaults:** 1 replica; 768 MiB memory / 250m CPU requests, 1 GiB memory limit, a 1,000,000-entry natural-width store. Warm Start is **off** by default and is useful across rollouts/evictions with two or more edges. No CPU limit (chart-wide policy).
 
 #### Edge memory and the natural-width store
 
@@ -45,33 +45,40 @@ Each edge pod keeps an in-memory LRU of the natural (original) width of every or
 Plan edge memory as:
 
 ```
-memory ≈ 400 MiB baseline + EDGE_WIDTH_CACHE_SIZE × 180 bytes
+edge memory ≈ 340 MiB + 2 × (60 MiB + EDGE_WIDTH_CACHE_SIZE × 106 bytes)
 ```
 
-- **Baseline (~400 MiB):** the edge process without the store, including the WURFL device-detection data. Busier pods use somewhat more for connections and buffers.
-- **180 bytes per entry:** about 110 bytes of live data (key, value, LRU list node and hash-map slot) plus the headroom Go's garbage collector leaves before it collects (`GOGC=100`), measured on a full store.
-- **The edge's garbage collector follows its memory limit** (edge 4.12.0 and later). The edge sets its Go memory limit to 90% of the container's limit, less the memory outside the Go runtime (mostly the WURFL device-detection data, 180-290 MiB), and recomputes it every minute, so it also follows an in-place resize. Near that limit the collector runs more often instead of letting the heap grow, which keeps a busy edge out of `OOMKilled`. It doesn't cap memory: a store too big for the limit still runs out, after a stretch of high GC CPU. An explicit `GOMEMLIMIT` in `edge.env` overrides it.
-- Keep the result at or below **85% of `limits.memory`**. Past the limit the kernel kills the container (`OOMKilled`) and the store starts empty again. The chart checks this: `helm install` and `helm upgrade` fail with the limit to set (or the largest store that fits) when `edge.resources.limits.memory` is below `(400 MiB + EDGE_WIDTH_CACHE_SIZE × 180 bytes) / 0.85`. An unset `EDGE_WIDTH_CACHE_SIZE` counts as the edge's own default, 5,000,000. The check is skipped when the limit isn't in `edge.resources` (for example, set by a LimitRange) or the size comes from a Secret or ConfigMap.
+- **340 MiB outside the Go heap:** the WURFL device-detection engine and its user-agent cache (about 265 MiB of C heap), the binary and libraries (about 31 MiB) and the Go runtime. Busier pods use somewhat more for connections and buffers.
+- **106 bytes per entry, plus about 60 MiB:** the store's live data (key, value, LRU list node and hash-map slot, measured on a full 2.5M-entry store), and the edge's other live Go data, including Edge Warm Start's log of recent widths.
+- **× 2:** Go's garbage collector needs room for about twice the live heap. With less, it doesn't fail: it collects almost continuously, and a busy edge can spend several CPU cores on it while its memory looks fine.
+- **The edge's garbage collector follows its memory limit.** The edge sets its Go memory limit to 90% of the container's limit, less the memory it measures outside Go, and recomputes it every minute, so it also follows an in-place resize. Near that limit the collector runs more often instead of letting the heap grow, which keeps a busy edge out of `OOMKilled`. It doesn't cap memory: a store too big for the limit still runs out, after a stretch of high GC CPU. An explicit `GOMEMLIMIT` in `edge.env` overrides it. From edge 4.13.0 the edge also turns transparent huge pages off for its own process (`EDGE_TRANSPARENT_HUGEPAGES=off`, the default), so memory the collector releases really leaves the container; `system` keeps the node's setting.
+- Keep the result within **90% of `limits.memory`**. The chart checks this: `helm install` and `helm upgrade` fail with the limit to set (or the largest store that fits) when `edge.resources.limits.memory` is below `(340 MiB + 2 × (60 MiB + EDGE_WIDTH_CACHE_SIZE × 106 bytes)) / 0.9`. An unset `EDGE_WIDTH_CACHE_SIZE` counts as the edge's own default, 5,000,000. The check is skipped when the limit isn't in `edge.resources` (for example, set by a LimitRange) or the size comes from a Secret or ConfigMap.
+- **Set the memory request near the full-store total**, so the scheduler places the edge where that memory is free.
 
-| `EDGE_WIDTH_CACHE_SIZE` | Store when full | Edge total (approx.) | Memory limit |
-| ----------------------- | --------------- | -------------------- | ------------ |
-| 1,000,000               | ~170 MiB        | ~570 MiB             | 768 MiB      |
-| **2,500,000 (default)** | ~430 MiB        | ~830 MiB             | **1 GiB**    |
-| 5,000,000               | ~860 MiB        | ~1.25 GiB            | 1.5 GiB      |
-| 10,000,000              | ~1.7 GiB        | ~2.1 GiB             | 2.5 GiB      |
+| `EDGE_WIDTH_CACHE_SIZE` | Store (live) | Edge total, full (approx.) | Memory request / limit |
+| ----------------------- | ------------ | -------------------------- | ---------------------- |
+| 500,000                 | ~50 MiB      | ~560 MiB                   | 640 MiB / 768 MiB      |
+| **1,000,000 (default)** | ~100 MiB     | ~660 MiB                   | **768 MiB / 1 GiB**    |
+| 2,500,000               | ~255 MiB     | ~965 MiB                   | 1 GiB / 1.5 GiB        |
+| 5,000,000               | ~505 MiB     | ~1.45 GiB                  | 1.5 GiB / 2 GiB        |
+| 10,000,000              | ~1 GiB       | ~2.4 GiB                   | 2.5 GiB / 3 GiB        |
+
+**How big a store?** One entry is one distinct origin image the edge has seen. An edge that doesn't know an image's width asks for an uncapped variant, a different cache key that misses Varnish and the processed-image cache, so every store miss is an expensive request. If your edges serve a few hundred thousand distinct images, the default holds them all. With millions, a bigger store keeps paying off: on edges whose traffic has a long tail of rarely requested images, raising the store from 1M to 2.5M entries nearly halved its miss rate (44% to 24%), while on edges dominated by popular images it saved only a few points (10% to 7%). Compare `imageengine_edge_kvcache_entries` with `imageengine_edge_kvcache_capacity`: an edge that stays below capacity doesn't need more.
 
 Change the size and the limit together:
 
 ```yaml
 edge:
   env:
-    EDGE_WIDTH_CACHE_SIZE: "5000000"
+    EDGE_WIDTH_CACHE_SIZE: "2500000"
   resources:
+    requests:
+      memory: "1Gi"
     limits:
       memory: "1536Mi"
 ```
 
-**Is the store big enough?** The edge exports `imageengine_edge_kvcache_entries` and `imageengine_edge_kvcache_capacity` (fill level) and `imageengine_edge_kvcache_evictions_total`. A store that never reaches capacity is big enough, and lowering the size changes nothing but the worst case. Steady evictions with a falling `imageengine_edge_kvcache_lookups_total{result="hit"}` share mean the catalogue outgrows the store; raise both values per the table. Watch `container_memory_working_set_bytes` for the edge container against its limit as the store fills.
+**Is the store big enough?** The edge exports `imageengine_edge_kvcache_entries` and `imageengine_edge_kvcache_capacity` (fill level) and `imageengine_edge_kvcache_evictions_total`. A store that never reaches capacity is big enough, and lowering the size changes nothing but the worst case. Steady evictions with a falling `imageengine_edge_kvcache_lookups_total{result="hit"}` share mean the catalogue outgrows the store; raise both values per the table. Watch `container_memory_working_set_bytes` for the edge container against its limit as the store fills, and the edge's garbage collection: `go_gc_gomemlimit_bytes` close to `go_memstats_heap_alloc_bytes` means the limit is too small for the store (see [TROUBLESHOOTING.md](TROUBLESHOOTING.md#edge-cpu-high-while-its-memory-looks-fine)).
 
 **Access logs at scale:** the edge writes a structured JSON access log — one line per request — and `EDGE_ACCESS_LOG_TARGET` defaults to `stdout`. At high request volume this is a real cost (stdout I/O, CPU, and downstream log storage) for no benefit if nothing is ingesting it. **For high-traffic load tests and production, set `edge.env.EDGE_ACCESS_LOG_TARGET: none`** unless you are actively collecting these logs (`stdout`, `stderr`, or a `tcp://…` collector). See [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md) for the full breakdown.
 

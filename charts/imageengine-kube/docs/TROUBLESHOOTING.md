@@ -426,7 +426,7 @@ kubectl describe resourcequota -n imageengine
 
 A `FailedCreate` event says `exceeded quota`.
 
-**Fix:** give the quota room for one more edge pod (its requests and limits, for example 250m CPU, 256Mi requested and 1Gi limit), or lower `edge.replicaCount` by one.
+**Fix:** give the quota room for one more edge pod (its requests and limits, for example 250m CPU, 768Mi requested and 1Gi limit), or lower `edge.replicaCount` by one.
 
 ## Edge Warm Start didn't warm a new edge
 
@@ -448,6 +448,23 @@ kubectl get endpointslices -n imageengine -l kubernetes.io/service-name=<release
 kubectl logs -n imageengine deploy/<release>-edge | grep natural-width
 ```
 
+## Edge CPU high while its memory looks fine
+
+**Symptom:** edge pods use one or more CPU cores each at ordinary traffic, latency rises, and other pods on the same nodes slow down, but the edges aren't near their memory limit and aren't restarting.
+
+**Cause:** the edge's garbage collector is running almost continuously. The edge keeps its Go memory below a limit derived from `edge.resources.limits.memory`; when the live heap (mostly a full natural-width store) is close to that limit, every collection frees little and the next one starts at once. Serving a peer's start-up copy under Edge Warm Start adds enough to tip a tight edge over.
+
+**Diagnose:** compare the edge's Go memory limit with its live heap, and look at its collection rate:
+
+```bash
+kubectl port-forward -n imageengine pod/<edge-pod> 9464:9464 &
+curl -s localhost:9464/metrics | grep -E '^(go_gc_gomemlimit_bytes|go_memstats_heap_alloc_bytes|go_gc_duration_seconds_count|imageengine_edge_kvcache_(entries|capacity)|imageengine_edge_memlimit_)'
+```
+
+A limit less than about twice the heap, with `go_gc_duration_seconds_count` rising by several per second, is this problem. Edge 4.13.0 and later also export the limit's inputs (`imageengine_edge_memlimit_*`); `imageengine_edge_memlimit_floored` at 1 means the edge fell back to a quarter of the container limit.
+
+**Fix:** raise `edge.resources.limits.memory` or lower `edge.env.EDGE_WIDTH_CACHE_SIZE` until the store fits as in [SIZING.md](SIZING.md#edge-memory-and-the-natural-width-store); the chart refuses combinations that don't. As a stopgap, a pod's memory limit can be raised in place (`kubectl patch pod <edge-pod> --subresource resize`, Kubernetes 1.33 and later) and the edge picks it up within a minute, without a restart. Edge 4.12.x can also be misled by transparent huge pages on the node; edge 4.13.0 and later turn them off for the edge process.
+
 ## Pods evicted under load / nodes OOM
 
 **Symptom:** `kubectl get events` shows pod evictions or OOMKilled under traffic.
@@ -462,7 +479,7 @@ kubectl top nodes
 
 **Fix:**
 
-**Edge OOMKilled after running for days**, with a restart count but no traffic spike: its natural-width store has filled towards `EDGE_WIDTH_CACHE_SIZE` and no longer fits `edge.resources.limits.memory`. Check `imageengine_edge_kvcache_entries` against `imageengine_edge_kvcache_capacity`, then lower the size or raise the limit as in [SIZING.md](SIZING.md#edge-memory-and-the-natural-width-store) (about 180 bytes per entry plus a ~400 MiB baseline).
+**Edge OOMKilled after running for days**, with a restart count but no traffic spike: its natural-width store has filled towards `EDGE_WIDTH_CACHE_SIZE` and no longer fits `edge.resources.limits.memory`. Check `imageengine_edge_kvcache_entries` against `imageengine_edge_kvcache_capacity`, then lower the size or raise the limit as in [SIZING.md](SIZING.md#edge-memory-and-the-natural-width-store) (about 340 MiB + 2 × (60 MiB + 106 bytes per entry), within 90% of the limit).
 
 Most often this is backend memory or processor CPU. Backend buffers full images in memory between layers — if the limit is too tight it OOMs exactly when traffic spikes. Don't trim backend memory:
 

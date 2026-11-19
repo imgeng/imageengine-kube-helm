@@ -252,10 +252,10 @@ Edge ships a per-image natural-width LRU and clamps backend TTLs:
 edge:
   env:
     EDGE_MAX_TTL: 604800            # 7 days, in seconds
-    EDGE_WIDTH_CACHE_SIZE: "2500000"  # entries; sized for the 1 GiB edge memory limit
+    EDGE_WIDTH_CACHE_SIZE: "1000000"  # entries; sized for the 1 GiB edge memory limit
 ```
 
-Both have sensible defaults; only touch them if you have a specific reason. The width cache lives in the edge's memory, about 180 bytes per entry once full, so raising `EDGE_WIDTH_CACHE_SIZE` means raising `edge.resources.limits.memory` too. [SIZING.md](SIZING.md#edge-memory-and-the-natural-width-store) has the formula and a table of sizes and limits.
+Both have sensible defaults; only touch them if you have a specific reason. The width cache lives in the edge's memory, about 106 bytes per entry of live data and twice that with the garbage collector's headroom, so raising `EDGE_WIDTH_CACHE_SIZE` means raising `edge.resources.limits.memory` too. [SIZING.md](SIZING.md#edge-memory-and-the-natural-width-store) has the formula and a table of sizes and limits.
 
 ## How do I turn on Edge Warm Start?
 

@@ -13,7 +13,7 @@ imagePullPolicy: Always
 # their digests are kept (docs/SECURITY.md, "Mirroring the images"), or set
 # plain tags.
 images:
-  edge: "4.12.0@sha256:cda60f4a92f79be709ed3622572814c4277d03d0ef317bf1571693e7ef05aa64"
+  edge: "4.13.1@sha256:cda74417afcc6e4040cadf6ef597a5baae728acd5245c7be149f7c4f19668b39"
   varnish: "9.1.0-2@sha256:387038ba648668a93f8b1ba3d57bf22f86e00637af07206adc284787d2d4bf71"
   backend: "2.16.0@sha256:cd119c34b9ad7870b4264de51f33576dca1be7addfd393af06d229e136624aaf"
   fetcher: "1.32.0@sha256:5dc28e1708e9bc67534fc7348dd3d6e01d9e2511abd82e4eed40239b807d0f2e"
@@ -386,21 +386,25 @@ edge:
   affinity: {}
   image:
     repository: docker.scientiamobile.com/iekube/imageengine-frontend.edge
+  # A full 1M-entry width store (below) puts an edge at about 660 MiB, so the
+  # request covers it and the limit leaves the garbage collector room.
   resources:
     requests:
-      memory: "256Mi"
+      memory: "768Mi"
       cpu: "250m"
     limits:
       memory: "1Gi"
   env:
     # Max cache TTL (seconds); backend TTLs above this are clamped (604800 = 7 days)
     EDGE_MAX_TTL: 604800
-    # Natural-width LRU cache size (entries). Each entry costs about 180 bytes of
-    # edge memory when the store is full, on top of a ~400 MiB baseline, so
-    # 2.5M entries fits the 1Gi limit above. Raise limits.memory with it: the
-    # chart refuses a limit under (400 MiB + 180 bytes × entries) / 0.85. See
-    # docs/SIZING.md, "Edge memory and the natural-width store".
-    EDGE_WIDTH_CACHE_SIZE: "2500000"
+    # Natural-width LRU cache size (entries). An entry is about 106 bytes of live
+    # heap and the garbage collector needs room for twice the live heap, so a full
+    # store needs about 340 MiB + 2 × (60 MiB + 106 bytes × entries) within 90% of
+    # limits.memory: 1M entries fit 1Gi, 2.5M need 1.5Gi, 5M need 2Gi. The chart
+    # refuses a limit that can't hold a full store. A busy edge with many distinct
+    # images gains from a bigger store; see docs/SIZING.md, "Edge memory and the
+    # natural-width store".
+    EDGE_WIDTH_CACHE_SIZE: "1000000"
     # Seconds the edge waits for Varnish's response headers before answering 504.
     # A cache miss waits here for the origin fetch and processing, and origins may
     # be given up to 120s, so keep this long. Any load balancer or ingress in front

@@ -2,7 +2,7 @@
 
 Every ImageEngine Kube component exposes Prometheus metrics. This guide covers how to scrape them, which ones to watch, and a starting set of dashboard panels and alerts. The metric reference at the end lists everything each component exports.
 
-This guide matches chart 1.10.1 and the images it pins (edge 4.12.0, Varnish 9.1.0-2, backend 2.16.0, fetcher 1.32.0, processor 3.30.0, OSC 3.7.0). Metric names can change between image versions; `curl` a pod's `/metrics` (below) to see exactly what your version exports.
+This guide matches chart 1.10.2 and the images it pins (edge 4.13.1, Varnish 9.1.0-2, backend 2.16.0, fetcher 1.32.0, processor 3.30.0, OSC 3.7.0). Metric names can change between image versions; `curl` a pod's `/metrics` (below) to see exactly what your version exports.
 
 ## Where the metrics are
 
@@ -252,6 +252,7 @@ Some counters only appear after their first event (for example `imageengine_edge
 | `edge_wurfl_lookup_duration_seconds` | histogram | | Device detection time |
 | `edge_access_log_dropped_total` | counter | | Access log entries dropped under backpressure |
 | `edge_kvcache_*` | | | Natural-width cache and Edge Warm Start: `entries`, `capacity`, `lookups_total`, `evictions_total`, `bootstrap_total`, `sync_lag_seconds`, `sync_errors_total` and others |
+| `edge_memlimit_*` | gauge | | Inputs of the edge's Go memory limit (edge 4.13.0+): `cgroup_limit_bytes`, `non_go_bytes`, `c_heap_bytes`, `other_processes_bytes`, `floored`, `thp_disabled`. The limit itself is `go_gc_gomemlimit_bytes` (see [TROUBLESHOOTING.md](TROUBLESHOOTING.md#edge-cpu-high-while-its-memory-looks-fine)) |
 
 ### Varnish
 
